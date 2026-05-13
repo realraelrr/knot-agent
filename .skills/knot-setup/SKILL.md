@@ -40,6 +40,8 @@ Keep code and agent work separate:
   knowledge/vault/
   work/
   deliverables/
+  admin/
+  sessions/
   .state/tasks/
 ./runtime/
 ```
@@ -82,7 +84,17 @@ mkdir -p components runtime \
   workspace/knowledge/vault \
   workspace/work \
   workspace/deliverables \
+  workspace/admin \
+  workspace/sessions \
   workspace/.state/tasks
+```
+
+Create admin templates if missing:
+
+```bash
+test -f workspace/admin/permissions.md || cp .skills/knot-setup/references/permissions.template.md workspace/admin/permissions.md
+test -f workspace/admin/knowledge-feedback.md || cp .skills/knot-setup/references/knowledge-feedback.template.md workspace/admin/knowledge-feedback.md
+test -f workspace/admin/backup-policy.md || cp .skills/knot-setup/references/backup-policy.template.md workspace/admin/backup-policy.md
 ```
 
 4. Ensure component repos exist:
@@ -153,13 +165,20 @@ linking. The component copy should be the active source of truth.
 6. Configure `AGENTS.md`.
 
 If `AGENTS.md` is missing, create it from
-`./.skills/knot-setup/references/AGENTS.template.md`. If the template is not
-present, create a concise `AGENTS.md` that defines:
+`./.skills/knot-setup/references/AGENTS.template.md`. If `AGENTS.md` already
+exists, inspect it. When it lacks the current permissions, session isolation,
+or workflow routing sections, show a visible diff and ask before replacing or
+patching it. If the template is not present, create a concise `AGENTS.md` that
+defines:
 
 - Codex starts from the Knot root.
 - Code lives in `components/`.
 - User and agent work lives in `workspace/`.
 - Complex task state goes under `workspace/.state/tasks/<task_id>/`.
+- IM-triggered session work is isolated under `workspace/sessions/<platform>/<chat_id>/<user_id>/`.
+- Three roles exist: `operator`, `admin`, and `member`.
+- Daily rollback backup uses Codex app automation and
+  `workspace/admin/backup-policy.md`.
 - Knowledge conversion and wiki ingest are decoupled.
 - Knot workflow routing uses `knot-workflow`.
 - IM attachments use `cc-connect-attachments`.
@@ -236,6 +255,9 @@ Report only:
 - skills linked, including `knot-workflow`, `planning-with-files`, and
   `guizang-ppt-skill`;
 - `AGENTS.md` created or preserved;
+- `workspace/admin/permissions.md` and
+  `workspace/admin/knowledge-feedback.md` created or preserved;
+- `workspace/admin/backup-policy.md` created or preserved;
 - `cc-connect` build/version result;
 - IM platforms configured;
 - `/whoami` contexts authorized;

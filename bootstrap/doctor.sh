@@ -57,6 +57,40 @@ check_dir() {
   fi
 }
 
+check_file_contains() {
+  local path="$1"
+  local pattern="$2"
+  local label="$3"
+
+  if [ ! -f "$path" ]; then
+    fail "$label missing: $path"
+    return
+  fi
+
+  if grep -Fq "$pattern" "$path"; then
+    ok "$label contains: $pattern"
+  else
+    fail "$label missing required text: $pattern"
+  fi
+}
+
+check_file_not_contains() {
+  local path="$1"
+  local pattern="$2"
+  local label="$3"
+
+  if [ ! -f "$path" ]; then
+    fail "$label missing: $path"
+    return
+  fi
+
+  if grep -Fq "$pattern" "$path"; then
+    fail "$label contains stale text: $pattern"
+  else
+    ok "$label does not contain stale text: $pattern"
+  fi
+}
+
 check_any_dir() {
   local label="$1"
   shift
@@ -216,12 +250,56 @@ check_dir "$ROOT/components/guizang-ppt-skill" "guizang-ppt-skill source"
 printf '\nWorkspace\n'
 WORKSPACE="$ROOT/workspace"
 
+check_file_contains "$ROOT/.gitignore" "workspace/" ".gitignore"
+check_file_contains "$ROOT/.gitignore" "runtime/" ".gitignore"
+check_file_contains "$ROOT/.gitignore" "components/" ".gitignore"
+
+check_file_contains "$ROOT/AGENTS.md" "## Permissions" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "## Session Isolation" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "knot-workflow" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "operator" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "admin" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "member" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "Do not check permissions for every harmless IM request" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "modify system files" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "modify durable knowledge" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "edit the permissions table" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "access another user's" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "send files outside the user's own session" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "shared knowledge does not require a permissions check" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "Only \`operator\` and \`admin\` may edit" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables" "AGENTS.md"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Do not check permissions for every harmless IM request" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "If a permission check is required and the user has no matching row" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables" "runtime config"
+check_file_not_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "\$KNOT_ROOT/workspace/deliverables/example" "runtime config"
+
 check_dir "$WORKSPACE/inbox" "inbox"
 check_dir "$WORKSPACE/knowledge/raw" "knowledge/raw"
 check_dir "$WORKSPACE/knowledge/processed" "knowledge/processed"
 check_dir "$WORKSPACE/knowledge/vault" "knowledge/vault"
 check_dir "$WORKSPACE/work" "work"
 check_dir "$WORKSPACE/deliverables" "deliverables"
+check_dir "$WORKSPACE/admin" "admin"
+check_dir "$WORKSPACE/sessions" "sessions"
+check_file_contains "$WORKSPACE/admin/permissions.md" "| Platform | Chat ID | User ID | Session Key | Name | Role | Scope | Notes |" "permissions"
+check_file_contains "$WORKSPACE/admin/permissions.md" "agent operating contract, not a security sandbox" "permissions"
+check_file_contains "$WORKSPACE/admin/permissions.md" "\`operator\`" "permissions"
+check_file_contains "$WORKSPACE/admin/permissions.md" "\`admin\`" "permissions"
+check_file_contains "$WORKSPACE/admin/permissions.md" "\`member\`" "permissions"
+check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "| Platform | Chat ID | User ID | Session Key | Name | Role | Scope | Notes |" "permissions template"
+check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "Only \`operator\` and \`admin\` may edit this file" "permissions template"
+check_file_contains "$WORKSPACE/admin/knowledge-feedback.md" "| Time | Platform | Chat ID | User ID | Session Key | Name | Topic | Feedback | Evidence | Status | Admin Notes |" "knowledge feedback"
+check_file_contains "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "| Time | Platform | Chat ID | User ID | Session Key | Name | Topic | Feedback | Evidence | Status | Admin Notes |" "knowledge feedback template"
+check_file_contains "$WORKSPACE/admin/backup-policy.md" "committed and pushed by a Codex app" "backup policy"
+check_file_contains "$WORKSPACE/admin/backup-policy.md" "customer-controlled git remote" "backup policy"
+check_file_contains "$WORKSPACE/admin/backup-policy.md" "git add -f" "backup policy"
+check_file_contains "$WORKSPACE/admin/backup-policy.md" "Never use broad \`git add -A\`" "backup policy"
+check_file_contains "$WORKSPACE/admin/backup-policy.md" "runtime/" "backup policy"
+check_file_contains "$WORKSPACE/admin/backup-policy.md" "components/" "backup policy"
+check_file_contains "$WORKSPACE/admin/backup-policy.md" "local secrets" "backup policy"
+check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "controlled \`git add -f\`" "backup automation template"
+check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "Do not use broad \`git add -A\`" "backup automation template"
 check_dir "$ROOT/runtime" "runtime"
 check_dir "$WORKSPACE/.state/tasks" ".state/tasks"
 

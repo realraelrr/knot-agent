@@ -195,8 +195,8 @@ Use strict attachment blocks when Codex must send files through IM:
 
 ````text
 ```cc-connect-attachments
-image: $KNOT_ROOT/workspace/deliverables/example.png
-file: $KNOT_ROOT/workspace/deliverables/example.pdf
+image: $KNOT_ROOT/workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables/example.png
+file: $KNOT_ROOT/workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables/example.pdf
 ```
 ````
 
