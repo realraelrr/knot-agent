@@ -9,17 +9,13 @@ components/
 # User, customer, and generated work data.
 workspace/
 
-# IM gateway secrets, logs, sockets, locks, and local runtime files.
-runtime/**/.env
-runtime/**/*.env
-runtime/**/*.log
-runtime/**/*.lock
-runtime/**/api.sock
-runtime/**/bin/
+# IM gateway configs, secrets, logs, sockets, locks, and local runtime files.
+# Runtime files are generated locally by knot-setup. Keep reusable templates in
+# .skills/knot-setup/references/ instead of committing live runtime config.
+runtime/
 
 # Common generated/cache output.
 **/.cache/
 **/node_modules/
 **/__pycache__/
 **/.pytest_cache/
-

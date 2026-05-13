@@ -92,8 +92,50 @@ check_skill_file() {
 
   if [ -f "$path/SKILL.md" ]; then
     ok "$label: $path"
+    return 0
   else
     fail "$label missing SKILL.md: $path"
+    return 1
+  fi
+}
+
+resolve_symlink() {
+  local path="$1"
+  local target
+
+  target="$(readlink "$path")" || return 1
+  case "$target" in
+    /*)
+      printf '%s\n' "$target"
+      ;;
+    *)
+      (cd "$(dirname "$path")/$target" 2>/dev/null && pwd)
+      ;;
+  esac
+}
+
+check_skill_link() {
+  local name="$1"
+  local expected="$2"
+  local dest="$HOME/.codex/skills/$name"
+  local resolved
+
+  check_skill_file "$dest" "$name skill" || return
+
+  if [ ! -L "$dest" ]; then
+    fail "$name skill is not a symlink: $dest"
+    return
+  fi
+
+  resolved="$(resolve_symlink "$dest")" || {
+    fail "$name skill symlink cannot be resolved: $dest"
+    return
+  }
+
+  if [ "$resolved" = "$expected" ]; then
+    ok "$name skill target: $resolved"
+  else
+    fail "$name skill points to $resolved, expected $expected"
   fi
 }
 
@@ -155,13 +197,13 @@ check_macos_app Codex
 check_macos_app Obsidian
 
 printf '\nSkills\n'
-check_skill_file "$HOME/.codex/skills/planning-with-files" "planning-with-files skill"
-check_skill_file "$HOME/.codex/skills/docling-skill" "docling-skill in ~/.codex/skills"
-check_skill_file "$HOME/.codex/skills/guizang-ppt-skill" "guizang-ppt-skill in ~/.codex/skills"
-check_skill_file "$HOME/.codex/skills/knot-setup" "knot-setup in ~/.codex/skills"
-check_skill_file "$HOME/.codex/skills/wiki-ingest" "wiki-ingest in ~/.codex/skills"
-check_skill_file "$HOME/.codex/skills/wiki-query" "wiki-query in ~/.codex/skills"
-check_skill_file "$HOME/.codex/skills/wiki-status" "wiki-status in ~/.codex/skills"
+check_skill_link "planning-with-files" "$ROOT/components/planning-with-files/.codex/skills/planning-with-files"
+check_skill_link "docling-skill" "$ROOT/components/docling-skill"
+check_skill_link "guizang-ppt-skill" "$ROOT/components/guizang-ppt-skill"
+check_skill_link "knot-setup" "$ROOT/.skills/knot-setup"
+check_skill_link "wiki-ingest" "$ROOT/components/obsidian-wiki/.skills/wiki-ingest"
+check_skill_link "wiki-query" "$ROOT/components/obsidian-wiki/.skills/wiki-query"
+check_skill_link "wiki-status" "$ROOT/components/obsidian-wiki/.skills/wiki-status"
 
 printf '\nComponents\n'
 check_dir "$ROOT/components/docling-skill" "docling-skill source"
@@ -184,6 +226,7 @@ check_dir "$WORKSPACE/.state/tasks" ".state/tasks"
 
 if [ -n "$PLATFORMS" ]; then
   printf '\nPlatforms\n'
+  warn "platform checks validate files only; credentials and /whoami authorization require live IM verification"
   OLD_IFS="$IFS"
   IFS=","
   for platform in $PLATFORMS; do

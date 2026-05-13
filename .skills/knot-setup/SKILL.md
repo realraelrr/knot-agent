@@ -102,14 +102,51 @@ should contain links to these component copies, not independent editable copies.
 
 ```bash
 mkdir -p "$HOME/.codex/skills"
-ln -sfn "$(cd components/docling-skill && pwd)" "$HOME/.codex/skills/docling-skill"
-ln -sfn "$(cd components/planning-with-files/.codex/skills/planning-with-files && pwd)" "$HOME/.codex/skills/planning-with-files"
-ln -sfn "$(cd components/guizang-ppt-skill && pwd)" "$HOME/.codex/skills/guizang-ppt-skill"
+
+link_skill() {
+  name="$1"
+  target="$(cd "$2" && pwd)"
+  dest="$HOME/.codex/skills/$name"
+
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    if [ -L "$dest" ]; then
+      rm "$dest"
+    else
+      backup="$dest.backup.$(date +%Y%m%d%H%M%S)"
+      mv "$dest" "$backup"
+      printf 'Backed up existing skill directory: %s -> %s\n' "$dest" "$backup"
+    fi
+  fi
+
+  ln -s "$target" "$dest"
+}
+
+link_skill docling-skill components/docling-skill
+link_skill planning-with-files components/planning-with-files/.codex/skills/planning-with-files
+link_skill guizang-ppt-skill components/guizang-ppt-skill
 find components/obsidian-wiki/.skills -mindepth 1 -maxdepth 1 -type d -exec sh -c '
-  for d do ln -sfn "$(cd "$d" && pwd)" "$HOME/.codex/skills/$(basename "$d")"; done
+  link_skill() {
+    name="$1"
+    target="$(cd "$2" && pwd)"
+    dest="$HOME/.codex/skills/$name"
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+      if [ -L "$dest" ]; then
+        rm "$dest"
+      else
+        backup="$dest.backup.$(date +%Y%m%d%H%M%S)"
+        mv "$dest" "$backup"
+        printf "Backed up existing skill directory: %s -> %s\n" "$dest" "$backup"
+      fi
+    fi
+    ln -s "$target" "$dest"
+  }
+  for d do link_skill "$(basename "$d")" "$d"; done
 ' sh {} +
-test -d .skills/knot-setup && ln -sfn "$(cd .skills/knot-setup && pwd)" "$HOME/.codex/skills/knot-setup"
+test -d .skills/knot-setup && link_skill knot-setup .skills/knot-setup
 ```
+
+This intentionally backs up existing non-symlink skill directories before
+linking. The component copy should be the active source of truth.
 
 6. Configure `AGENTS.md`.
 
