@@ -20,5 +20,6 @@ secrets, caches, node_modules, or dependency checkouts. Do not commit IM runtime
 credentials.
 
 If the script reports missing git setup, missing remote `backup`, unsafe remote,
-no changes, commit hash, pushed branch, or an exact failure, relay that result.
+duplicate origin/scaffold remote, no changes, commit hash, pushed branch, or an
+exact failure, relay that result.
 ```

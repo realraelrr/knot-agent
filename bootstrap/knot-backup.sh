@@ -43,6 +43,12 @@ BACKUP_URL="$(git -C "$ROOT" remote get-url "$REMOTE" 2>/dev/null)" || die "remo
 if printf '%s\n' "$BACKUP_URL" | grep -qi 'realraelrr/knot-agent'; then
   die "remote 'backup' points to the scaffold repository: $BACKUP_URL"
 fi
+for unsafe_remote in origin scaffold; do
+  unsafe_url="$(git -C "$ROOT" remote get-url "$unsafe_remote" 2>/dev/null || true)"
+  if [ -n "$unsafe_url" ] && [ "$BACKUP_URL" = "$unsafe_url" ]; then
+    die "remote 'backup' matches '$unsafe_remote'; configure a customer-controlled backup remote"
+  fi
+done
 
 BRANCH="$(git -C "$ROOT" symbolic-ref --short HEAD 2>/dev/null)" || die "cannot determine current branch"
 

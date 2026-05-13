@@ -7,6 +7,7 @@ CHAT_ID=""
 USER_ID=""
 SESSION_KEY=""
 NAME=""
+CREATE_DIRS=1
 WRITE_METADATA=1
 
 usage() {
@@ -17,6 +18,7 @@ Options:
   --root DIR          Knot root. Defaults to the parent of this script.
   --session-key KEY   Original IM session key to record in metadata.
   --name NAME         Human display name to record in metadata.
+  --no-create         Resolve and print the session path without creating it.
   --no-metadata       Create directories only; do not write session.tsv.
   --help, -h          Show this help.
 
@@ -80,6 +82,10 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -gt 0 ] || die "--name requires a value"
       NAME="$1"
       ;;
+    --no-create)
+      CREATE_DIRS=0
+      WRITE_METADATA=0
+      ;;
     --no-metadata)
       WRITE_METADATA=0
       ;;
@@ -111,11 +117,13 @@ CHAT_SEGMENT="$(safe_id_segment "$CHAT_ID")"
 USER_SEGMENT="$(safe_id_segment "$USER_ID")"
 SESSION_DIR="$ROOT/workspace/sessions/$PLATFORM/$CHAT_SEGMENT/$USER_SEGMENT"
 
-mkdir -p \
-  "$SESSION_DIR/inbox" \
-  "$SESSION_DIR/work" \
-  "$SESSION_DIR/deliverables" \
-  "$SESSION_DIR/.state/tasks"
+if [ "$CREATE_DIRS" -eq 1 ]; then
+  mkdir -p \
+    "$SESSION_DIR/inbox" \
+    "$SESSION_DIR/work" \
+    "$SESSION_DIR/deliverables" \
+    "$SESSION_DIR/.state/tasks"
+fi
 
 if [ "$WRITE_METADATA" -eq 1 ]; then
   if [ -f "$SESSION_DIR/session.tsv" ] && [ -z "$SESSION_KEY" ] && [ -z "$NAME" ]; then

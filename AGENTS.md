@@ -128,7 +128,8 @@ workspace/sessions/<platform>/<chat_id>/<user_id>/
 Use filesystem-safe path segments for IM ids. Preserve the original `chat_id`
 and `user_id` in task notes or feedback rows when they differ from folder names.
 Use `bootstrap/knot-session.sh` for this path creation instead of hand-rolling
-session folders.
+session folders. The helper prints the actual normalized path, which may differ
+from the conceptual `<chat_id>/<user_id>` shape shown here.
 
 Shared durable knowledge remains under `workspace/knowledge/`. Non-admin users
 should not inspect or reuse other users' session files unless explicitly

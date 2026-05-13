@@ -25,13 +25,12 @@ die() {
 
 resolve_path() {
   local path="$1"
-  local dir
-  local base
 
-  dir="$(dirname "$path")"
-  base="$(basename "$path")"
-  [ -d "$dir" ] || return 1
-  printf '%s/%s\n' "$(cd "$dir" && pwd -P)" "$base"
+  perl -MCwd=realpath -e '
+    my $path = realpath($ARGV[0]);
+    exit 1 unless defined $path;
+    print "$path\n";
+  ' "$path"
 }
 
 while [ "$#" -gt 0 ]; do
@@ -94,7 +93,7 @@ esac
 [ -f "$FILE_PATH" ] || die "file not found: $FILE_PATH"
 
 ROOT="$(cd "$ROOT" && pwd)"
-SESSION_DIR="$(bash "$SCRIPT_DIR/knot-session.sh" --root "$ROOT" --platform "$PLATFORM" --chat-id "$CHAT_ID" --user-id "$USER_ID" --no-metadata)"
+SESSION_DIR="$(bash "$SCRIPT_DIR/knot-session.sh" --root "$ROOT" --platform "$PLATFORM" --chat-id "$CHAT_ID" --user-id "$USER_ID" --no-create)"
 DELIVERABLES_DIR="$(resolve_path "$SESSION_DIR/deliverables")" || die "cannot resolve deliverables directory"
 ABS_FILE="$(resolve_path "$FILE_PATH")" || die "cannot resolve file path: $FILE_PATH"
 

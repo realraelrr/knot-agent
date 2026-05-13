@@ -132,6 +132,66 @@ check_backup_remote() {
   else
     ok "backup remote: $backup_url"
   fi
+
+  local unsafe_remote
+  local unsafe_url
+  for unsafe_remote in origin scaffold; do
+    unsafe_url="$(git -C "$ROOT" remote get-url "$unsafe_remote" 2>/dev/null || true)"
+    if [ -n "$unsafe_url" ] && [ "$backup_url" = "$unsafe_url" ]; then
+      fail "backup remote matches $unsafe_remote; configure a customer-controlled backup remote"
+    fi
+  done
+}
+
+run_helper_smoke_tests() {
+  local tmp_root
+  local session_dir
+
+  tmp_root="$(mktemp -d)"
+  session_dir="$(bash "$ROOT/bootstrap/knot-session.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --session-key "feishu:oc:ou" --name "Smoke Test")" || {
+    fail "knot-session smoke test failed"
+    rm -rf "$tmp_root"
+    return
+  }
+
+  if [ -d "$session_dir/deliverables" ] && grep -Fq $'session_key\tfeishu:oc:ou' "$session_dir/session.tsv"; then
+    ok "knot-session smoke test"
+  else
+    fail "knot-session smoke test did not create expected session state"
+  fi
+
+  printf 'ok\n' > "$session_dir/deliverables/result.txt"
+  if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --kind file --path "$session_dir/deliverables/result.txt" >/dev/null; then
+    ok "knot-attachment allows current session deliverable"
+  else
+    fail "knot-attachment rejected current session deliverable"
+  fi
+
+  printf 'outside\n' > "$tmp_root/outside.txt"
+  if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --kind file --path "$tmp_root/outside.txt" >/dev/null 2>&1; then
+    fail "knot-attachment allowed file outside current session"
+  else
+    ok "knot-attachment rejects file outside current session"
+  fi
+
+  ln -s "$tmp_root/outside.txt" "$session_dir/deliverables/leak.txt"
+  if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --kind file --path "$session_dir/deliverables/leak.txt" >/dev/null 2>&1; then
+    fail "knot-attachment allowed symlink escaping current session"
+  else
+    ok "knot-attachment rejects symlink escaping current session"
+  fi
+
+  local unsafe_root
+  unsafe_root="$(mktemp -d)"
+  git -C "$unsafe_root" init >/dev/null 2>&1
+  git -C "$unsafe_root" remote add backup https://github.com/realraelrr/knot-agent.git
+  if bash "$ROOT/bootstrap/knot-backup.sh" --root "$unsafe_root" >/dev/null 2>&1; then
+    fail "knot-backup allowed scaffold backup remote"
+  else
+    ok "knot-backup rejects scaffold backup remote"
+  fi
+
+  rm -rf "$tmp_root" "$unsafe_root"
 }
 
 check_any_dir() {
@@ -396,10 +456,13 @@ check_file_not_contains "$ROOT/.skills/knot-setup/references/backup-policy.templ
 check_file_not_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "- knowledge/" "backup policy template"
 check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "bootstrap/" "backup policy template"
 check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "bootstrap/knot-backup.sh" "backup policy template"
+check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "same URL as \`origin\` or \`scaffold\`" "backup policy template"
 check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "bash bootstrap/knot-backup.sh" "backup automation template"
+check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "duplicate origin/scaffold remote" "backup automation template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "legacy" "backup automation template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "- knowledge/" "backup automation template"
 check_backup_remote
+run_helper_smoke_tests
 check_dir "$ROOT/runtime" "runtime"
 check_dir "$WORKSPACE/.state/tasks" ".state/tasks"
 

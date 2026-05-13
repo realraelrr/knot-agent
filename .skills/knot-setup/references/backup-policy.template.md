@@ -29,6 +29,7 @@ audit history in git.
 - Use a customer-controlled git remote named `backup`.
 - Do not use `origin`, `scaffold`, or any remote pointing to
   `realraelrr/knot-agent` for durable data backup.
+- Do not point `backup` at the same URL as `origin` or `scaffold`.
 - If the backup root is not a git repository, or remote `backup` is missing,
   report setup required instead of creating an unreviewed remote.
 - Stage only the durable backup scope.
