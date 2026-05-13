@@ -103,7 +103,7 @@ test -f workspace/admin/backup-policy.md || cp .skills/knot-setup/references/bac
 Ensure helper scripts are executable:
 
 ```bash
-chmod +x bootstrap/knot-session.sh bootstrap/knot-attachment.sh bootstrap/knot-backup.sh bootstrap/doctor.sh
+chmod +x bootstrap/knot-session.sh bootstrap/knot-attachment.sh bootstrap/knot-backup.sh bootstrap/knot-runtime-check.sh bootstrap/doctor.sh
 ```
 
 Configure the required customer backup remote:
@@ -213,6 +213,7 @@ defines:
 - Material knowledge changes require human approval or a visible diff.
 - IM session work uses `bootstrap/knot-session.sh`.
 - IM attachments use `bootstrap/knot-attachment.sh`.
+- IM runtime preflight uses `bootstrap/knot-runtime-check.sh`.
 
 7. Build `cc-connect`:
 
@@ -248,6 +249,8 @@ For each chosen platform:
 - copy the built `cc-connect` binary into the selected runtime `bin/`
   directory, using the path detected after `make build-noweb`;
 - ask the human to fill platform credentials;
+- run `bash bootstrap/knot-runtime-check.sh --platform PLATFORM` before
+  starting the gateway;
 - start only that platform gateway;
 - ask the human to send `/whoami` from every intended context.
 
@@ -273,7 +276,7 @@ to verify from that exact context. Repeat until every intended context passes.
 
 ```bash
 bash bootstrap/doctor.sh
-bash bootstrap/doctor.sh --platform dingtalk
+bash bootstrap/doctor.sh --platform <configured-platform>
 ```
 
 Run the platform-specific doctor once for each configured platform. Also verify
@@ -300,7 +303,7 @@ Report only:
   `workspace/admin/knowledge-feedback.md` created or preserved;
 - `workspace/admin/backup-policy.md` created or preserved;
 - thin helper scripts available: `knot-session`, `knot-attachment`, and
-  `knot-backup`;
+  `knot-backup`, and `knot-runtime-check`;
 - backup remote and daily backup automation status;
 - `cc-connect` build/version result;
 - IM platforms configured;

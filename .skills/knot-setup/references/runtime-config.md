@@ -20,6 +20,7 @@ by default.
     run-wecom.sh
   weixin/
     bin/cc-connect
+    .env
     config.weixin.toml
     run-weixin.sh
 ```
@@ -163,7 +164,7 @@ base_url = "https://ilinkai.weixin.qq.com"
 Each run script should:
 
 - `cd` to its runtime directory;
-- load `.env` if present;
+- load `.env`;
 - fail if required credentials are missing;
 - execute `bin/cc-connect --config config.PLATFORM.toml`;
 - write logs inside the selected runtime directory.
@@ -175,9 +176,19 @@ Example:
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
-test -f .env && set -a && . ./.env && set +a
+test -f .env || { echo ".env missing" >&2; exit 1; }
+set -a && . ./.env && set +a
 exec ./bin/cc-connect --config config.PLATFORM.toml
 ```
+
+Before starting a selected platform, run:
+
+```bash
+bash bootstrap/knot-runtime-check.sh --platform PLATFORM
+```
+
+This is a static preflight only. It does not start cc-connect, call `/whoami`,
+or verify live IM authorization.
 
 ## Authorization
 

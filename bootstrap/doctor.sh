@@ -280,42 +280,11 @@ check_platform() {
   local platform="$1"
 
   case "$platform" in
-    dingtalk|feishu|wecom)
-      check_dir "$ROOT/runtime/dingtalk-feishu-wecom" "$platform runtime"
-      check_dir "$ROOT/runtime/dingtalk-feishu-wecom/bin" "$platform runtime bin"
-      if [ -x "$ROOT/runtime/dingtalk-feishu-wecom/bin/cc-connect" ]; then
-        ok "$platform cc-connect binary"
+    dingtalk|feishu|wecom|weixin)
+      if bash "$ROOT/bootstrap/knot-runtime-check.sh" --root "$ROOT" --platform "$platform"; then
+        ok "$platform runtime check passed"
       else
-        fail "$platform cc-connect binary missing or not executable"
-      fi
-      if [ -f "$ROOT/runtime/dingtalk-feishu-wecom/config.$platform.toml" ]; then
-        ok "$platform config"
-      else
-        fail "$platform config missing"
-      fi
-      if [ -x "$ROOT/runtime/dingtalk-feishu-wecom/run-$platform.sh" ]; then
-        ok "$platform run script"
-      else
-        fail "$platform run script missing or not executable"
-      fi
-      ;;
-    weixin)
-      check_dir "$ROOT/runtime/weixin" "weixin runtime"
-      check_dir "$ROOT/runtime/weixin/bin" "weixin runtime bin"
-      if [ -x "$ROOT/runtime/weixin/bin/cc-connect" ]; then
-        ok "weixin cc-connect binary"
-      else
-        fail "weixin cc-connect binary missing or not executable"
-      fi
-      if [ -f "$ROOT/runtime/weixin/config.weixin.toml" ]; then
-        ok "weixin config"
-      else
-        fail "weixin config missing"
-      fi
-      if [ -x "$ROOT/runtime/weixin/run-weixin.sh" ]; then
-        ok "weixin run script"
-      else
-        fail "weixin run script missing or not executable"
+        fail "$platform runtime check failed"
       fi
       ;;
     "")
@@ -372,10 +341,12 @@ check_file_contains "$ROOT/.gitignore" "components/" ".gitignore"
 check_executable "$ROOT/bootstrap/knot-session.sh" "knot-session helper"
 check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
 check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
+check_executable "$ROOT/bootstrap/knot-runtime-check.sh" "knot-runtime-check helper"
 check_file_contains "$ROOT/AGENTS.md" "## Thin Glue Helpers" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-session.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-attachment.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-backup.sh" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-runtime-check.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Permissions" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Session Isolation" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Execution Discipline" "AGENTS.md"
@@ -407,12 +378,14 @@ check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Medium or large task
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-session.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-attachment.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-backup.sh" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-runtime-check.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "KNOT_ROOT=" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "CC_CONNECT_BIN=" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "components/cc-connect-local-main/cc-connect" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-session.sh" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-attachment.sh" "runtime config"
+check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-runtime-check.sh" "runtime config"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "\$KNOT_ROOT/workspace/deliverables/example" "runtime config"
 
 check_dir "$WORKSPACE/inbox" "inbox"
@@ -468,7 +441,7 @@ check_dir "$WORKSPACE/.state/tasks" ".state/tasks"
 
 if [ -n "$PLATFORMS" ]; then
   printf '\nPlatforms\n'
-  warn "platform checks validate files only; credentials and /whoami authorization require live IM verification"
+  warn "platform checks validate local files and required env presence only; credential validity and /whoami authorization require live IM verification"
   OLD_IFS="$IFS"
   IFS=","
   for platform in $PLATFORMS; do

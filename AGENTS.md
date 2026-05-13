@@ -80,10 +80,12 @@ Use deterministic helper scripts for high-frequency fixed work:
   block.
 - `bootstrap/knot-backup.sh`: daily rollback backup entrypoint for Codex app
   automation.
+- `bootstrap/knot-runtime-check.sh`: static preflight for selected IM runtime
+  files, credentials, `KNOT_ROOT`, and basic platform config matching.
 
-These scripts enforce file boundaries only. Codex still decides the task path,
-evidence strategy, knowledge maintenance action, and whether human approval is
-required.
+These scripts enforce deterministic filesystem, runtime, and backup boundaries
+only. Codex still decides the task path, evidence strategy, knowledge
+maintenance action, and whether human approval is required.
 
 ## Permissions
 

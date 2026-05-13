@@ -98,6 +98,14 @@ steps. The automation should call `bootstrap/knot-backup.sh`. If asked to
 verify backup health, inspect `workspace/admin/backup-policy.md` and the
 current git remote before claiming backup is active.
 
+## Runtime Boundary
+
+Before starting a selected IM gateway, run
+`bootstrap/knot-runtime-check.sh --platform <name>`. It checks local files,
+required `.env` values, `KNOT_ROOT`, writability, and basic platform config
+matching only. It does not start the gateway, call `/whoami`, or verify live IM
+authorization.
+
 ## Boundaries
 
 - The wiki is memory and reference material, not the boundary of what Codex can
