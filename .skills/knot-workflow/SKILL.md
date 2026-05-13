@@ -41,6 +41,8 @@ When matching a user, prefer `Session Key` when present, then
 
 ## Routing
 
+- IM session setup: use `bootstrap/knot-session.sh` before storing uploads,
+  drafts, deliverables, or task state for an IM-triggered request.
 - Raw document to knowledge: use `docling-skill` when conversion helps, write
   intermediates under `workspace/knowledge/processed/`, then use
   `wiki-ingest` for durable knowledge.
@@ -58,8 +60,9 @@ When matching a user, prefer `Session Key` when present, then
   needed, do the work directly and place drafts, inputs, and outputs in the
   matching `workspace/` location.
 - Medium or large execution: follow `AGENTS.md` execution discipline.
-- IM file/image delivery: use the cc-connect attachment block. Do not answer
-  with only a local path when the user asked to receive the file in IM.
+- IM file/image delivery: use `bootstrap/knot-attachment.sh` to validate the
+  file boundary and print the cc-connect attachment block. Do not answer with
+  only a local path when the user asked to receive the file in IM.
 - Knowledge feedback from members: append a row to
   `workspace/admin/knowledge-feedback.md`; admins decide whether to update
   durable knowledge.
@@ -72,7 +75,8 @@ When matching a user, prefer `Session Key` when present, then
 - Final user-facing files go under `workspace/deliverables/`.
 - Drafts and reusable working assets go under `workspace/work/`.
 - IM-triggered uploads, drafts, deliverables, and task state go under
-  `workspace/sessions/<platform>/<chat_id>/<user_id>/`.
+  `workspace/sessions/<platform>/<chat_id>/<user_id>/`; create it with
+  `bootstrap/knot-session.sh`.
 - Use filesystem-safe path segments for IM ids. Preserve original ids in task
   notes or feedback rows when folder names are normalized.
 - Do not put temporary work in the Knot root.
@@ -90,8 +94,9 @@ When matching a user, prefer `Session Key` when present, then
 ## Backup Boundary
 
 Daily rollback backup is handled by Codex app automation, not by ad hoc workflow
-steps. If asked to verify backup health, inspect `workspace/admin/backup-policy.md`
-and the current git remote before claiming backup is active.
+steps. The automation should call `bootstrap/knot-backup.sh`. If asked to
+verify backup health, inspect `workspace/admin/backup-policy.md` and the
+current git remote before claiming backup is active.
 
 ## Boundaries
 

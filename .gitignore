@@ -6,6 +6,9 @@
 # Local component repositories are installed by knot-setup.
 components/
 
+# Recoverable agent planning state.
+.state/
+
 # User, customer, and generated work data.
 workspace/
 

@@ -8,6 +8,7 @@ automation once per day.
 Back up durable data:
 
 - `AGENTS.md`
+- `bootstrap/`
 - `.skills/knot-setup/`
 - `.skills/knot-workflow/`
 - `workspace/knowledge/`
@@ -40,5 +41,6 @@ audit history in git.
 
 ## Automation
 
-Use `.skills/knot-setup/references/daily-backup-automation.template.md` as the
-Codex app automation prompt template.
+Codex app automation should call `bootstrap/knot-backup.sh`. Use
+`.skills/knot-setup/references/daily-backup-automation.template.md` as the
+automation prompt template.

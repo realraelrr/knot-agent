@@ -203,7 +203,12 @@ syntax.
 
 ## Attachments
 
-Use strict attachment blocks when Codex must send files through IM:
+Use `bootstrap/knot-session.sh` to create or resolve the current IM session
+workspace before storing uploads, drafts, deliverables, or task state.
+
+Use `bootstrap/knot-attachment.sh` when Codex must send files through IM. It
+validates that the file exists under the current session `deliverables/`
+directory and prints a strict attachment block:
 
 ````text
 ```cc-connect-attachments

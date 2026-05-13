@@ -69,6 +69,22 @@ Use `knot-workflow` before Knot tasks that involve knowledge, IM, attachments,
 generated files, or multi-step delivery. Let it choose the next skill or tool;
 do not duplicate detailed workflow rules here.
 
+## Thin Glue Helpers
+
+Use deterministic helper scripts for high-frequency fixed work:
+
+- `bootstrap/knot-session.sh`: create or resolve the current IM session
+  workspace before storing uploads, drafts, deliverables, or task state.
+- `bootstrap/knot-attachment.sh`: validate that an outbound file is inside the
+  current session `deliverables/` directory and print the cc-connect attachment
+  block.
+- `bootstrap/knot-backup.sh`: daily rollback backup entrypoint for Codex app
+  automation.
+
+These scripts enforce file boundaries only. Codex still decides the task path,
+evidence strategy, knowledge maintenance action, and whether human approval is
+required.
+
 ## Permissions
 
 Do not check permissions for every harmless IM request. Read
@@ -111,6 +127,8 @@ workspace/sessions/<platform>/<chat_id>/<user_id>/
 
 Use filesystem-safe path segments for IM ids. Preserve the original `chat_id`
 and `user_id` in task notes or feedback rows when they differ from folder names.
+Use `bootstrap/knot-session.sh` for this path creation instead of hand-rolling
+session folders.
 
 Shared durable knowledge remains under `workspace/knowledge/`. Non-admin users
 should not inspect or reuse other users' session files unless explicitly
@@ -121,11 +139,12 @@ authorized by `workspace/admin/permissions.md`.
 Key durable data must be committed and pushed once per day by a Codex app
 automation. See `workspace/admin/backup-policy.md`.
 
-Back up `AGENTS.md`, `.skills/knot-setup/`, `.skills/knot-workflow/`,
-`workspace/knowledge/`, and `workspace/admin/`. Do not back up `runtime/`,
-`components/`, logs, sockets, locks, local secrets, or caches. Use a
-customer-controlled git remote named `backup`; if no git repo or safe `backup`
-remote exists, report setup required instead of pretending a backup happened.
+Back up `AGENTS.md`, `bootstrap/`, `.skills/knot-setup/`,
+`.skills/knot-workflow/`, `workspace/knowledge/`, and `workspace/admin/`.
+Do not back up `runtime/`, `components/`, logs, sockets, locks, local secrets,
+or caches. Use a customer-controlled git remote named `backup`; if no git repo
+or safe `backup` remote exists, report setup required instead of pretending a
+backup happened. The automation should call `bootstrap/knot-backup.sh`.
 
 ## Knowledge Work
 
@@ -155,3 +174,5 @@ file: $KNOT_ROOT/workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables/
 ````
 
 Do not answer with only a local path when the user asked to send the file.
+Prefer `bootstrap/knot-attachment.sh` to validate the file boundary and generate
+the attachment block.

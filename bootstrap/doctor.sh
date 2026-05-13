@@ -87,6 +87,17 @@ check_file_exists() {
   return 1
 }
 
+check_executable() {
+  local path="$1"
+  local label="$2"
+
+  if [ -x "$path" ]; then
+    ok "$label: $path"
+  else
+    fail "$label missing or not executable: $path"
+  fi
+}
+
 check_file_not_contains() {
   local path="$1"
   local pattern="$2"
@@ -293,10 +304,18 @@ check_dir "$ROOT/components/guizang-ppt-skill" "guizang-ppt-skill source"
 printf '\nWorkspace\n'
 WORKSPACE="$ROOT/workspace"
 
+check_file_contains "$ROOT/.gitignore" ".state/" ".gitignore"
 check_file_contains "$ROOT/.gitignore" "workspace/" ".gitignore"
 check_file_contains "$ROOT/.gitignore" "runtime/" ".gitignore"
 check_file_contains "$ROOT/.gitignore" "components/" ".gitignore"
 
+check_executable "$ROOT/bootstrap/knot-session.sh" "knot-session helper"
+check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
+check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
+check_file_contains "$ROOT/AGENTS.md" "## Thin Glue Helpers" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-session.sh" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-attachment.sh" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-backup.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Permissions" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Session Isolation" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Execution Discipline" "AGENTS.md"
@@ -325,10 +344,15 @@ check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Do not check permiss
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "If a permission check is required and the user has no matching row" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "follow \`AGENTS.md\` execution discipline" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Medium or large task" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-session.sh" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-attachment.sh" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-backup.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "KNOT_ROOT=" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "CC_CONNECT_BIN=" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "components/cc-connect-local-main/cc-connect" "runtime config"
+check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-session.sh" "runtime config"
+check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-attachment.sh" "runtime config"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "\$KNOT_ROOT/workspace/deliverables/example" "runtime config"
 
 check_dir "$WORKSPACE/inbox" "inbox"
@@ -360,6 +384,8 @@ if check_file_exists "$WORKSPACE/admin/backup-policy.md" "backup policy"; then
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "realraelrr/knot-agent" "backup policy"
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "git add -f" "backup policy"
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "Never use broad \`git add -A\`" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "bootstrap/" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "bootstrap/knot-backup.sh" "backup policy"
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "runtime/" "backup policy"
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "components/" "backup policy"
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "local secrets" "backup policy"
@@ -368,10 +394,9 @@ if check_file_exists "$WORKSPACE/admin/backup-policy.md" "backup policy"; then
 fi
 check_file_not_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "legacy" "backup policy template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "- knowledge/" "backup policy template"
-check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "controlled \`git add -f\`" "backup automation template"
-check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "Do not use broad \`git add -A\`" "backup automation template"
-check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "remote \`backup\`" "backup automation template"
-check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "realraelrr/knot-agent" "backup automation template"
+check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "bootstrap/" "backup policy template"
+check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "bootstrap/knot-backup.sh" "backup policy template"
+check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "bash bootstrap/knot-backup.sh" "backup automation template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "legacy" "backup automation template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "- knowledge/" "backup automation template"
 check_backup_remote

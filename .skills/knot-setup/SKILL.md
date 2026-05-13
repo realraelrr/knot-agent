@@ -100,6 +100,12 @@ test -f workspace/admin/knowledge-feedback.md || cp .skills/knot-setup/reference
 test -f workspace/admin/backup-policy.md || cp .skills/knot-setup/references/backup-policy.template.md workspace/admin/backup-policy.md
 ```
 
+Ensure helper scripts are executable:
+
+```bash
+chmod +x bootstrap/knot-session.sh bootstrap/knot-attachment.sh bootstrap/knot-backup.sh bootstrap/doctor.sh
+```
+
 Configure the required customer backup remote:
 
 ```bash
@@ -200,11 +206,13 @@ defines:
 - IM-triggered session work is isolated under `workspace/sessions/<platform>/<chat_id>/<user_id>/`.
 - Three roles exist: `operator`, `admin`, and `member`.
 - Daily rollback backup uses Codex app automation and
-  `workspace/admin/backup-policy.md`.
+  `bootstrap/knot-backup.sh`.
 - Knowledge conversion and wiki ingest are decoupled.
 - Knot workflow routing uses `knot-workflow`.
 - IM attachments use `cc-connect-attachments`.
 - Material knowledge changes require human approval or a visible diff.
+- IM session work uses `bootstrap/knot-session.sh`.
+- IM attachments use `bootstrap/knot-attachment.sh`.
 
 7. Build `cc-connect`:
 
@@ -291,6 +299,8 @@ Report only:
 - `workspace/admin/permissions.md` and
   `workspace/admin/knowledge-feedback.md` created or preserved;
 - `workspace/admin/backup-policy.md` created or preserved;
+- thin helper scripts available: `knot-session`, `knot-attachment`, and
+  `knot-backup`;
 - backup remote and daily backup automation status;
 - `cc-connect` build/version result;
 - IM platforms configured;
