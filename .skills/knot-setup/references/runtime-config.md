@@ -27,13 +27,23 @@ by default.
 Copy the built gateway binary after `make build-noweb`:
 
 ```bash
+CC_CONNECT_BIN=""
+if [ -x components/cc-connect-local-main/cc-connect ]; then
+  CC_CONNECT_BIN="components/cc-connect-local-main/cc-connect"
+elif [ -x components/cc-connect-local-main/dist/cc-connect ]; then
+  CC_CONNECT_BIN="components/cc-connect-local-main/dist/cc-connect"
+else
+  echo "cc-connect binary not found; run make build-noweb in components/cc-connect-local-main" >&2
+  exit 1
+fi
+
 # dingtalk, feishu, or wecom
 mkdir -p runtime/dingtalk-feishu-wecom/bin
-cp components/cc-connect-local-main/dist/cc-connect runtime/dingtalk-feishu-wecom/bin/cc-connect
+cp "$CC_CONNECT_BIN" runtime/dingtalk-feishu-wecom/bin/cc-connect
 
 # weixin
 mkdir -p runtime/weixin/bin
-cp components/cc-connect-local-main/dist/cc-connect runtime/weixin/bin/cc-connect
+cp "$CC_CONNECT_BIN" runtime/weixin/bin/cc-connect
 ```
 
 Run only the block needed for the selected platform. Create config files and run

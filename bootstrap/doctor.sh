@@ -255,6 +255,16 @@ check_platform() {
   esac
 }
 
+check_cc_connect_build() {
+  if [ -x "$ROOT/components/cc-connect-local-main/cc-connect" ]; then
+    ok "cc-connect build: $ROOT/components/cc-connect-local-main/cc-connect"
+  elif [ -x "$ROOT/components/cc-connect-local-main/dist/cc-connect" ]; then
+    ok "cc-connect build: $ROOT/components/cc-connect-local-main/dist/cc-connect"
+  else
+    fail "cc-connect build missing; run make build-noweb in components/cc-connect-local-main"
+  fi
+}
+
 printf 'Knot doctor\n'
 printf 'Root: %s\n\n' "$ROOT"
 
@@ -276,6 +286,7 @@ printf '\nComponents\n'
 check_dir "$ROOT/components/docling-skill" "docling-skill source"
 check_dir "$ROOT/components/obsidian-wiki" "obsidian-wiki"
 check_dir "$ROOT/components/cc-connect-local-main" "cc-connect source"
+check_cc_connect_build
 check_dir "$ROOT/components/planning-with-files/.codex/skills/planning-with-files" "planning-with-files source"
 check_dir "$ROOT/components/guizang-ppt-skill" "guizang-ppt-skill source"
 
@@ -316,6 +327,8 @@ check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "follow \`AGENTS.md\`
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Medium or large task" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "KNOT_ROOT=" "runtime config"
+check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "CC_CONNECT_BIN=" "runtime config"
+check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "components/cc-connect-local-main/cc-connect" "runtime config"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "\$KNOT_ROOT/workspace/deliverables/example" "runtime config"
 
 check_dir "$WORKSPACE/inbox" "inbox"

@@ -211,7 +211,14 @@ defines:
 ```bash
 pushd components/cc-connect-local-main
 make build-noweb
-./dist/cc-connect --version
+if [ -x ./cc-connect ]; then
+  ./cc-connect --version
+elif [ -x ./dist/cc-connect ]; then
+  ./dist/cc-connect --version
+else
+  echo "cc-connect binary not found after make build-noweb" >&2
+  exit 1
+fi
 popd
 ```
 
@@ -230,8 +237,8 @@ For each chosen platform:
 
 - create or reuse the matching config under `runtime/`;
 - create `.env` placeholders when credentials are missing;
-- copy `components/cc-connect-local-main/dist/cc-connect` into the selected
-  runtime `bin/` directory;
+- copy the built `cc-connect` binary into the selected runtime `bin/`
+  directory, using the path detected after `make build-noweb`;
 - ask the human to fill platform credentials;
 - start only that platform gateway;
 - ask the human to send `/whoami` from every intended context.
