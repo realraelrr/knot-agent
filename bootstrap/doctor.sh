@@ -201,6 +201,7 @@ check_skill_link "planning-with-files" "$ROOT/components/planning-with-files/.co
 check_skill_link "docling-skill" "$ROOT/components/docling-skill"
 check_skill_link "guizang-ppt-skill" "$ROOT/components/guizang-ppt-skill"
 check_skill_link "knot-setup" "$ROOT/.skills/knot-setup"
+check_skill_link "knot-workflow" "$ROOT/.skills/knot-workflow"
 check_skill_link "wiki-ingest" "$ROOT/components/obsidian-wiki/.skills/wiki-ingest"
 check_skill_link "wiki-query" "$ROOT/components/obsidian-wiki/.skills/wiki-query"
 check_skill_link "wiki-status" "$ROOT/components/obsidian-wiki/.skills/wiki-status"

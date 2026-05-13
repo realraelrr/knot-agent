@@ -42,6 +42,12 @@ Use task ids like:
 YYYYMMDD-HHMMSS-channel-short-topic
 ```
 
+## Workflow Routing
+
+Use `knot-workflow` before Knot tasks that involve knowledge, IM, attachments,
+generated files, or multi-step delivery. Let it choose the next skill or tool;
+do not duplicate detailed workflow rules here.
+
 ## Knowledge Work
 
 - Use `docling-skill` for document conversion.

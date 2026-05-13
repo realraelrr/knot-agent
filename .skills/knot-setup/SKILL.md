@@ -18,7 +18,7 @@ https://github.com/realraelrr/knot-agent
 ```
 
 That repo should contain only the thin scaffold: `AGENTS.md`, `bootstrap/`,
-`.skills/knot-setup/`, and safe examples. It must not contain local runtime
+`.skills/`, and safe examples. It must not contain local runtime
 secrets, logs, sockets, or customer data.
 
 ## Layout
@@ -95,8 +95,9 @@ test -d components/planning-with-files || git clone https://github.com/realraelr
 test -d components/guizang-ppt-skill || git clone https://github.com/realraelrr/guizang-ppt-skill components/guizang-ppt-skill
 ```
 
-`components/` is the local source of truth for installed skills. `$HOME/.codex/skills`
-should contain links to these component copies, not independent editable copies.
+`components/` is the local source of truth for component-provided skills.
+Scaffold-owned skills live under `.skills/`. `$HOME/.codex/skills` should
+contain links to those source locations, not independent editable copies.
 
 5. Link required skills into Codex:
 
@@ -143,6 +144,7 @@ find components/obsidian-wiki/.skills -mindepth 1 -maxdepth 1 -type d -exec sh -
   for d do link_skill "$(basename "$d")" "$d"; done
 ' sh {} +
 test -d .skills/knot-setup && link_skill knot-setup .skills/knot-setup
+test -d .skills/knot-workflow && link_skill knot-workflow .skills/knot-workflow
 ```
 
 This intentionally backs up existing non-symlink skill directories before
@@ -159,6 +161,7 @@ present, create a concise `AGENTS.md` that defines:
 - User and agent work lives in `workspace/`.
 - Complex task state goes under `workspace/.state/tasks/<task_id>/`.
 - Knowledge conversion and wiki ingest are decoupled.
+- Knot workflow routing uses `knot-workflow`.
 - IM attachments use `cc-connect-attachments`.
 - Material knowledge changes require human approval or a visible diff.
 
@@ -230,7 +233,8 @@ Report only:
 
 - component repos installed or reused;
 - Codex CLI, Codex app, and Obsidian app detection result;
-- skills linked, including `planning-with-files` and `guizang-ppt-skill`;
+- skills linked, including `knot-workflow`, `planning-with-files`, and
+  `guizang-ppt-skill`;
 - `AGENTS.md` created or preserved;
 - `cc-connect` build/version result;
 - IM platforms configured;
