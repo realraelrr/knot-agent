@@ -167,6 +167,53 @@ run_helper_smoke_tests() {
     fail "knot-attachment rejected current session deliverable"
   fi
 
+  mkdir -p "$tmp_root/generated"
+  printf 'generated\n' > "$tmp_root/generated/image.png"
+  local deliver_output
+  if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --kind image --path "$tmp_root/generated/image.png")"; then
+    local expected_deliverable
+    expected_deliverable="$(perl -MCwd=realpath -e 'print realpath($ARGV[0])' "$session_dir/deliverables/image.png")"
+    if [ -f "$session_dir/deliverables/image.png" ] &&
+      printf '%s\n' "$deliver_output" | grep -Fq '```cc-connect-attachments' &&
+      printf '%s\n' "$deliver_output" | grep -Fq "image: $expected_deliverable"; then
+      ok "knot-deliver copies generated artifact and prints attachment block"
+    else
+      fail "knot-deliver did not copy generated artifact and print expected attachment block"
+    fi
+  else
+    fail "knot-deliver rejected generated artifact"
+  fi
+
+  ln -s "$tmp_root/escaped-delivery.png" "$session_dir/deliverables/symlink.png"
+  if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --kind image --path "$tmp_root/generated/image.png" --output-name "symlink.png")"; then
+    if [ ! -e "$tmp_root/escaped-delivery.png" ] &&
+      [ -f "$session_dir/deliverables/symlink-1.png" ] &&
+      printf '%s\n' "$deliver_output" | grep -Fq "image: $(perl -MCwd=realpath -e 'print realpath($ARGV[0])' "$session_dir/deliverables/symlink-1.png")"; then
+      ok "knot-deliver avoids writing through deliverables symlinks"
+    else
+      fail "knot-deliver wrote through or failed to avoid deliverables symlink"
+    fi
+  else
+    fail "knot-deliver rejected delivery when output name collided with symlink"
+  fi
+
+  local other_session_dir
+  other_session_dir="$(bash "$ROOT/bootstrap/knot-session.sh" --root "$tmp_root" --platform feishu --chat-id "other chat" --user-id "other user")"
+  printf 'private\n' > "$other_session_dir/deliverables/private.txt"
+  if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --kind file --path "$other_session_dir/deliverables/private.txt" >/dev/null 2>&1; then
+    fail "knot-deliver allowed artifact from another IM session"
+  else
+    ok "knot-deliver rejects artifact from another IM session"
+  fi
+
+  printf 'external\n' > "$tmp_root/generated/external.txt"
+  ln -s "$tmp_root/generated/external.txt" "$other_session_dir/deliverables/external-link.txt"
+  if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --kind file --path "$other_session_dir/deliverables/external-link.txt" >/dev/null 2>&1; then
+    fail "knot-deliver allowed symlink path from another IM session"
+  else
+    ok "knot-deliver rejects symlink path from another IM session"
+  fi
+
   printf 'outside\n' > "$tmp_root/outside.txt"
   if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --kind file --path "$tmp_root/outside.txt" >/dev/null 2>&1; then
     fail "knot-attachment allowed file outside current session"
@@ -340,11 +387,13 @@ check_file_contains "$ROOT/.gitignore" "components/" ".gitignore"
 
 check_executable "$ROOT/bootstrap/knot-session.sh" "knot-session helper"
 check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
+check_executable "$ROOT/bootstrap/knot-deliver.sh" "knot-deliver helper"
 check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
 check_executable "$ROOT/bootstrap/knot-runtime-check.sh" "knot-runtime-check helper"
 check_file_contains "$ROOT/AGENTS.md" "## Thin Glue Helpers" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-session.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-attachment.sh" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-deliver.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-backup.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-runtime-check.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Permissions" "AGENTS.md"
@@ -377,6 +426,7 @@ check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "follow \`AGENTS.md\`
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Medium or large task" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-session.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-attachment.sh" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-deliver.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-backup.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-runtime-check.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables" "runtime config"

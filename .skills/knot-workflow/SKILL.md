@@ -60,9 +60,12 @@ When matching a user, prefer `Session Key` when present, then
   needed, do the work directly and place drafts, inputs, and outputs in the
   matching `workspace/` location.
 - Medium or large execution: follow `AGENTS.md` execution discipline.
-- IM file/image delivery: use `bootstrap/knot-attachment.sh` to validate the
-  file boundary and print the cc-connect attachment block. Do not answer with
-  only a local path when the user asked to receive the file in IM.
+- IM file/image delivery: generation is not delivery. For generated or local
+  artifacts, use `bootstrap/knot-deliver.sh` to copy the file into the current
+  session `deliverables/` directory, then delegate to
+  `bootstrap/knot-attachment.sh` to validate the boundary and print the
+  cc-connect attachment block. Do not answer with only a local path when the
+  user asked to receive the file in IM.
 - Knowledge feedback from members: append a row to
   `workspace/admin/knowledge-feedback.md`; admins decide whether to update
   durable knowledge.

@@ -78,6 +78,9 @@ Use deterministic helper scripts for high-frequency fixed work:
 - `bootstrap/knot-attachment.sh`: validate that an outbound file is inside the
   current session `deliverables/` directory and print the cc-connect attachment
   block.
+- `bootstrap/knot-deliver.sh`: copy a generated or local artifact into the
+  current session `deliverables/` directory, validate it, and print the
+  cc-connect attachment block.
 - `bootstrap/knot-backup.sh`: daily rollback backup entrypoint for Codex app
   automation.
 - `bootstrap/knot-runtime-check.sh`: static preflight for selected IM runtime
@@ -166,6 +169,13 @@ backup happened. The automation should call `bootstrap/knot-backup.sh`.
 ## IM Attachments
 
 Text replies are delivered by `cc-connect`.
+
+For IM-triggered image or file generation, generation is not delivery. The
+artifact must be placed under the current session `deliverables/` directory,
+validated, and returned as a `cc-connect-attachments` block. Prefer
+`bootstrap/knot-deliver.sh` for this handoff. Do not claim the user received a
+generated image, file, PPT, HTML, PDF, video, or archive unless the attachment
+block was produced.
 
 When sending a local file or image through IM, use:
 
