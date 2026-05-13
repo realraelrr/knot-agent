@@ -111,8 +111,8 @@ automation. See `workspace/admin/backup-policy.md`.
 Back up `AGENTS.md`, `.skills/knot-setup/`, `.skills/knot-workflow/`,
 `workspace/knowledge/`, and `workspace/admin/`. Do not back up `runtime/`,
 `components/`, logs, sockets, locks, local secrets, or caches. Use a
-customer-controlled git remote; if no git repo or remote exists, report setup
-required instead of pretending a backup happened.
+customer-controlled git remote named `backup`; if no git repo or safe `backup`
+remote exists, report setup required instead of pretending a backup happened.
 
 ## Knowledge Work
 

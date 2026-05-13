@@ -88,6 +88,8 @@ expanded install root into the generated config file at install time.
 Put secrets in `.env`, not in committed config.
 
 ```bash
+KNOT_ROOT=
+
 # DingTalk
 DINGTALK_CLIENT_ID=
 DINGTALK_CLIENT_SECRET=

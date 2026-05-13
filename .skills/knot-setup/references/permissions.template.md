@@ -5,7 +5,13 @@ and explicit.
 
 | Platform | Chat ID | User ID | Session Key | Name | Role | Scope | Notes |
 |---|---|---|---|---|---|---|---|
-| example | example-chat-id | example-user-id | example:chat:user | Example Admin | admin | knowledge | Replace this row after `/whoami` verification. |
+|  |  |  |  |  |  |  |  |
+
+Example row:
+
+```text
+| dingtalk | cidxxx | 452965504126566038 | dingtalk:g:cidxxx:452965504126566038 | Example Admin | admin | knowledge | Replace with verified /whoami values. |
+```
 
 ## Roles
 
@@ -24,6 +30,8 @@ and explicit.
 - Only `operator` and `admin` may edit this file.
 - Match users by `Session Key` when present, then `Platform + Chat ID + User ID`,
   then platform-specific fallback ids.
+- `Scope` is a human-readable boundary. Use `all`, `system`, `knowledge`,
+  `session`, or a department label such as `dept:after_sales`.
 - Members must not modify durable knowledge directly.
 - Members may append feedback to `knowledge-feedback.md`.
 - Admins review, edit, resolve, or delete feedback entries.

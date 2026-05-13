@@ -59,6 +59,9 @@ missing, clone the scaffold into it:
 ```bash
 git clone https://github.com/realraelrr/knot-agent "$INSTALL_ROOT"
 cd "$INSTALL_ROOT"
+if git remote get-url origin 2>/dev/null | grep -q 'realraelrr/knot-agent'; then
+  git remote rename origin scaffold
+fi
 ```
 
 If the directory already exists, inspect it first. If it already appears to be a
@@ -96,6 +99,22 @@ test -f workspace/admin/permissions.md || cp .skills/knot-setup/references/permi
 test -f workspace/admin/knowledge-feedback.md || cp .skills/knot-setup/references/knowledge-feedback.template.md workspace/admin/knowledge-feedback.md
 test -f workspace/admin/backup-policy.md || cp .skills/knot-setup/references/backup-policy.template.md workspace/admin/backup-policy.md
 ```
+
+Configure the required customer backup remote:
+
+```bash
+git remote -v
+```
+
+Ask the human for a customer-controlled backup git remote URL. Add it as
+`backup`:
+
+```bash
+git remote add backup "$BACKUP_REMOTE_URL"
+```
+
+Do not use the Knot scaffold remote as the backup remote. If no backup remote is
+available, report that daily rollback backup is not ready.
 
 4. Ensure component repos exist:
 
@@ -245,6 +264,10 @@ each configured IM with:
 - `/whoami` returns the expected identity;
 - a normal message receives a Codex reply;
 - image/file send-receive works if the platform is expected to support it.
+- `git remote get-url backup` is configured and does not point to the scaffold
+  repository;
+- the Codex app daily backup automation is created from
+  `./.skills/knot-setup/references/daily-backup-automation.template.md`.
 
 ## Completion Report
 
@@ -258,6 +281,7 @@ Report only:
 - `workspace/admin/permissions.md` and
   `workspace/admin/knowledge-feedback.md` created or preserved;
 - `workspace/admin/backup-policy.md` created or preserved;
+- backup remote and daily backup automation status;
 - `cc-connect` build/version result;
 - IM platforms configured;
 - `/whoami` contexts authorized;

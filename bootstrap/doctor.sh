@@ -74,6 +74,19 @@ check_file_contains() {
   fi
 }
 
+check_file_exists() {
+  local path="$1"
+  local label="$2"
+
+  if [ -f "$path" ]; then
+    ok "$label: $path"
+    return 0
+  fi
+
+  fail "$label missing: $path"
+  return 1
+}
+
 check_file_not_contains() {
   local path="$1"
   local pattern="$2"
@@ -88,6 +101,25 @@ check_file_not_contains() {
     fail "$label contains stale text: $pattern"
   else
     ok "$label does not contain stale text: $pattern"
+  fi
+}
+
+check_backup_remote() {
+  if [ ! -d "$ROOT/.git" ]; then
+    fail "backup git repository missing: $ROOT/.git"
+    return
+  fi
+
+  local backup_url
+  backup_url="$(git -C "$ROOT" remote get-url backup 2>/dev/null)" || {
+    fail "backup remote missing; configure customer-controlled remote named backup"
+    return
+  }
+
+  if printf '%s\n' "$backup_url" | grep -qi 'realraelrr/knot-agent'; then
+    fail "backup remote points to scaffold repository: $backup_url"
+  else
+    ok "backup remote: $backup_url"
   fi
 }
 
@@ -272,6 +304,7 @@ check_file_contains "$ROOT/AGENTS.md" "workspace/sessions/<platform>/<chat_id>/<
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Do not check permissions for every harmless IM request" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "If a permission check is required and the user has no matching row" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables" "runtime config"
+check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "KNOT_ROOT=" "runtime config"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "\$KNOT_ROOT/workspace/deliverables/example" "runtime config"
 
 check_dir "$WORKSPACE/inbox" "inbox"
@@ -282,24 +315,36 @@ check_dir "$WORKSPACE/work" "work"
 check_dir "$WORKSPACE/deliverables" "deliverables"
 check_dir "$WORKSPACE/admin" "admin"
 check_dir "$WORKSPACE/sessions" "sessions"
-check_file_contains "$WORKSPACE/admin/permissions.md" "| Platform | Chat ID | User ID | Session Key | Name | Role | Scope | Notes |" "permissions"
-check_file_contains "$WORKSPACE/admin/permissions.md" "agent operating contract, not a security sandbox" "permissions"
-check_file_contains "$WORKSPACE/admin/permissions.md" "\`operator\`" "permissions"
-check_file_contains "$WORKSPACE/admin/permissions.md" "\`admin\`" "permissions"
-check_file_contains "$WORKSPACE/admin/permissions.md" "\`member\`" "permissions"
+if check_file_exists "$WORKSPACE/admin/permissions.md" "permissions"; then
+  check_file_contains "$WORKSPACE/admin/permissions.md" "| Platform | Chat ID | User ID | Session Key | Name | Role | Scope | Notes |" "permissions"
+  check_file_contains "$WORKSPACE/admin/permissions.md" "agent operating contract, not a security sandbox" "permissions"
+  check_file_contains "$WORKSPACE/admin/permissions.md" "\`operator\`" "permissions"
+  check_file_contains "$WORKSPACE/admin/permissions.md" "\`admin\`" "permissions"
+  check_file_contains "$WORKSPACE/admin/permissions.md" "\`member\`" "permissions"
+fi
 check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "| Platform | Chat ID | User ID | Session Key | Name | Role | Scope | Notes |" "permissions template"
 check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "Only \`operator\` and \`admin\` may edit this file" "permissions template"
-check_file_contains "$WORKSPACE/admin/knowledge-feedback.md" "| Time | Platform | Chat ID | User ID | Session Key | Name | Topic | Feedback | Evidence | Status | Admin Notes |" "knowledge feedback"
+check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "\`Scope\` is a human-readable boundary" "permissions template"
+if check_file_exists "$WORKSPACE/admin/knowledge-feedback.md" "knowledge feedback"; then
+  check_file_contains "$WORKSPACE/admin/knowledge-feedback.md" "| Time | Platform | Chat ID | User ID | Session Key | Name | Topic | Feedback | Evidence | Status | Admin Notes |" "knowledge feedback"
+fi
 check_file_contains "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "| Time | Platform | Chat ID | User ID | Session Key | Name | Topic | Feedback | Evidence | Status | Admin Notes |" "knowledge feedback template"
-check_file_contains "$WORKSPACE/admin/backup-policy.md" "committed and pushed by a Codex app" "backup policy"
-check_file_contains "$WORKSPACE/admin/backup-policy.md" "customer-controlled git remote" "backup policy"
-check_file_contains "$WORKSPACE/admin/backup-policy.md" "git add -f" "backup policy"
-check_file_contains "$WORKSPACE/admin/backup-policy.md" "Never use broad \`git add -A\`" "backup policy"
-check_file_contains "$WORKSPACE/admin/backup-policy.md" "runtime/" "backup policy"
-check_file_contains "$WORKSPACE/admin/backup-policy.md" "components/" "backup policy"
-check_file_contains "$WORKSPACE/admin/backup-policy.md" "local secrets" "backup policy"
+if check_file_exists "$WORKSPACE/admin/backup-policy.md" "backup policy"; then
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "committed and pushed by a Codex app" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "customer-controlled git remote" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "remote \`backup\`" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "realraelrr/knot-agent" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "git add -f" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "Never use broad \`git add -A\`" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "runtime/" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "components/" "backup policy"
+  check_file_contains "$WORKSPACE/admin/backup-policy.md" "local secrets" "backup policy"
+fi
 check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "controlled \`git add -f\`" "backup automation template"
 check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "Do not use broad \`git add -A\`" "backup automation template"
+check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "remote \`backup\`" "backup automation template"
+check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "realraelrr/knot-agent" "backup automation template"
+check_backup_remote
 check_dir "$ROOT/runtime" "runtime"
 check_dir "$WORKSPACE/.state/tasks" ".state/tasks"
 

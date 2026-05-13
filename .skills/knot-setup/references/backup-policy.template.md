@@ -13,6 +13,9 @@ Back up durable data:
 - `workspace/knowledge/`
 - `workspace/admin/`
 
+Legacy workspaces may use `knowledge/` instead of `workspace/knowledge/`; the
+daily automation may back up that path when `workspace/` is absent.
+
 Do not back up runtime or dependency data:
 
 - `runtime/`
@@ -25,15 +28,17 @@ audit history in git.
 
 ## Rules
 
-- Use a customer-controlled git remote, not the scaffold repository.
-- If the backup root is not a git repository, or has no remote, report setup
-  required instead of creating an unreviewed remote.
+- Use a customer-controlled git remote named `backup`.
+- Do not use `origin`, `scaffold`, or any remote pointing to
+  `realraelrr/knot-agent` for durable data backup.
+- If the backup root is not a git repository, or remote `backup` is missing,
+  report setup required instead of creating an unreviewed remote.
 - Stage only the durable backup scope.
 - Because the scaffold `.gitignore` intentionally ignores local `workspace/`
   data, use controlled `git add -f` only for the allowlisted durable paths.
   Never use broad `git add -A` for backup.
 - Commit only when there are changes.
-- Push the current branch after a successful commit.
+- Push the current branch to remote `backup` after a successful commit.
 - Report the commit hash, pushed branch, or the reason no backup was created.
 
 ## Automation
