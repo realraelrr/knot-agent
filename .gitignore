@@ -1,0 +1,25 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Local component repositories are installed by knot-setup.
+components/
+
+# User, customer, and generated work data.
+workspace/
+
+# IM gateway secrets, logs, sockets, locks, and local runtime files.
+runtime/**/.env
+runtime/**/*.env
+runtime/**/*.log
+runtime/**/*.lock
+runtime/**/api.sock
+runtime/**/bin/
+
+# Common generated/cache output.
+**/.cache/
+**/node_modules/
+**/__pycache__/
+**/.pytest_cache/
+
