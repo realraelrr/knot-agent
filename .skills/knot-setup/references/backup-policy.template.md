@@ -13,9 +13,6 @@ Back up durable data:
 - `workspace/knowledge/`
 - `workspace/admin/`
 
-Legacy workspaces may use `knowledge/` instead of `workspace/knowledge/`; the
-daily automation may back up that path when `workspace/` is absent.
-
 Do not back up runtime or dependency data:
 
 - `runtime/`

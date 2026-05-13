@@ -16,7 +16,8 @@ Classify the request before acting:
 - **Knowledge query**: the user asks what the organization knows or what a source says.
 - **Execution task**: the user wants analysis, drafting, PPT, HTML, file generation, research, automation, or operations work.
 - **IM delivery**: the user wants a local file or image sent back through chat.
-- **Complex task**: the task needs recovery, multiple steps, or cross-file work.
+- **Medium or large task**: the task needs planning, confirmation, review,
+  recovery, multiple steps, or cross-file work.
 
 ## Permission Check
 
@@ -56,10 +57,7 @@ When matching a user, prefer `Session Key` when present, then
 - Simple execution: if no specialized skill or recoverable task state is
   needed, do the work directly and place drafts, inputs, and outputs in the
   matching `workspace/` location.
-- Complex execution: use `planning-with-files`; use
-  `workspace/.state/tasks/<task_id>/` for local/global work and
-  `workspace/sessions/<platform>/<chat_id>/<user_id>/.state/tasks/<task_id>/`
-  for IM-triggered work.
+- Medium or large execution: follow `AGENTS.md` execution discipline.
 - IM file/image delivery: use the cc-connect attachment block. Do not answer
   with only a local path when the user asked to receive the file in IM.
 - Knowledge feedback from members: append a row to

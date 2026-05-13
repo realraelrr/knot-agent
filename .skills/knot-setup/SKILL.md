@@ -193,7 +193,10 @@ defines:
 - Codex starts from the Knot root.
 - Code lives in `components/`.
 - User and agent work lives in `workspace/`.
-- Complex task state goes under `workspace/.state/tasks/<task_id>/`.
+- Small tasks execute directly; medium tasks use `planning-with-files` and
+  plan -> human confirmation -> execute -> review -> delivery; large tasks add
+  independent subagent review.
+- Task state goes under `workspace/.state/tasks/<task_id>/`.
 - IM-triggered session work is isolated under `workspace/sessions/<platform>/<chat_id>/<user_id>/`.
 - Three roles exist: `operator`, `admin`, and `member`.
 - Daily rollback backup uses Codex app automation and

@@ -16,12 +16,6 @@ Use this scope when present:
 - workspace/knowledge/
 - workspace/admin/
 
-Also support legacy Knot layouts by using these paths when workspace/ is absent:
-- AGENTS.md
-- .skills/knot-setup/
-- .skills/knot-workflow/
-- knowledge/
-
 Never stage or commit runtime/, components/, logs, sockets, locks, local
 secrets, caches, node_modules, or dependency checkouts. Do not commit IM runtime
 credentials.

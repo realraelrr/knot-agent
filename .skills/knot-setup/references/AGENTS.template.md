@@ -26,9 +26,21 @@ workspace/.state/tasks/          recoverable task/session state
 
 Do not put temporary plans, generated files, downloads, or outputs in the root.
 
-## Task State
+## Execution Discipline
 
-Use `planning-with-files` for complex work. Isolate each task under:
+- Small tasks: answer or execute directly when the request is clear, low-risk,
+  and reversible. Verify before claiming completion.
+- Medium tasks: use `planning-with-files`; write the plan under task state, get
+  human confirmation, execute, review the result, then deliver with verification.
+- Large tasks: follow the medium-task process and use an independent subagent
+  review before delivery.
+
+Classify as medium when the task changes durable knowledge, creates meaningful
+deliverables, touches multiple files, affects shared configuration, or needs
+more than a few steps. Classify as large when it crosses system boundaries,
+changes operating rules, affects multiple users, or has high recovery cost.
+
+Use this task state shape:
 
 ```text
 workspace/.state/tasks/<task_id>/
@@ -38,7 +50,8 @@ workspace/.state/tasks/<task_id>/
   files/
 ```
 
-For IM-triggered complex work, use the session-local state directory instead:
+For IM-triggered medium or large work, use the session-local state directory
+instead:
 
 ```text
 workspace/sessions/<platform>/<chat_id>/<user_id>/.state/tasks/<task_id>/
