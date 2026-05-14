@@ -16,6 +16,7 @@ workspace/
 # Runtime files are generated locally by knot-setup. Keep reusable templates in
 # .skills/knot-setup/references/ instead of committing live runtime config.
 runtime/
+.cc-connect/
 
 # Common generated/cache output.
 **/.cache/

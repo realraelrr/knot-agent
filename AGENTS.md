@@ -26,21 +26,28 @@ workspace/.state/tasks/          recoverable task/session state
 
 Do not put temporary plans, generated files, downloads, or outputs in the root.
 
-## Execution Discipline
+## Execution Modes
 
-- Small tasks: answer or execute directly when the request is clear, low-risk,
-  and reversible. Verify before claiming completion.
-- Medium tasks: use `planning-with-files`; write the plan under task state, get
-  human confirmation, execute, review the result, then deliver with verification.
-- Large tasks: follow the medium-task process and use an independent subagent
-  review before delivery.
+Choose the thinnest mode that can produce a reliable user result.
 
-Classify as medium when the task changes durable knowledge, creates meaningful
-deliverables, touches multiple files, affects shared configuration, or needs
-more than a few steps. Classify as large when it crosses system boundaries,
-changes operating rules, affects multiple users, or has high recovery cost.
+- `quick`: pure Q&A, lightweight analysis, or single-file low-risk text
+  handling. Execute directly, follow core safety rules, and verify only what is
+  necessary before claiming completion.
+- `durable`: creates a deliverable, writes `.state`, or involves
+  knowledge or IM work. Use a lightweight plan and delivery record when they
+  help recovery or handoff.
+- `risky`: changes code behavior, config, permissions, runtime,
+  cross-system behavior, public interfaces, or long-running work. Plan, get
+  confirmation when boundaries may change, verify the result, and use
+  independent review when the risk justifies it.
 
-Use this task state shape:
+Force `planning-with-files` only for high recovery cost, cross-system or
+cross-repo work, public interface/config/permission/runtime changes, long
+tasks, explicit user requests for planning, or unclear risk where continuing
+would change a behavior boundary. Ordinary deliverables and small multi-step
+tasks do not automatically require the heavy plan flow.
+
+When task state is needed, use this shape:
 
 ```text
 workspace/.state/tasks/<task_id>/
@@ -50,7 +57,7 @@ workspace/.state/tasks/<task_id>/
   files/
 ```
 
-For IM-triggered medium or large work, use the session-local state directory
+For IM-triggered durable or risky work, use the session-local state directory
 instead:
 
 ```text
@@ -67,7 +74,9 @@ YYYYMMDD-HHMMSS-channel-short-topic
 
 Use `knot-workflow` before Knot tasks that involve knowledge, IM, attachments,
 generated files, or multi-step delivery. Let it choose the next skill or tool;
-do not duplicate detailed workflow rules here.
+do not duplicate detailed workflow rules here. Default user-facing replies
+should describe the result, not the internal process; `knot-workflow` owns the
+detailed reply and tool routing protocol.
 
 ## Thin Glue Helpers
 
@@ -112,10 +121,11 @@ Roles:
   workspace, receive files generated in that session, read approved knowledge,
   and append knowledge feedback.
 
-Only `operator` and `admin` may edit `workspace/admin/permissions.md`. This
-permissions file is an agent operating contract, not a security sandbox.
+Only `operator` and `admin` may edit `workspace/admin/permissions.md`. These
+permissions are an agent operating contract, not a complex sandbox or runtime
+security boundary.
 When matching a user, prefer `Session Key` when present, then
-`Platform + Chat ID + User ID`, then platform-specific fallback ids.
+`Platform + Chat ID + User ID`.
 
 ## Session Isolation
 

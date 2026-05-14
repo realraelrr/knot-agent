@@ -28,8 +28,8 @@ Example row:
 - If a permission check is required and no row matches the user, tell them to
   contact an admin for authorization.
 - Only `operator` and `admin` may edit this file.
-- Match users by `Session Key` when present, then `Platform + Chat ID + User ID`,
-  then platform-specific fallback ids.
+- Match users by `Session Key` when present, otherwise by
+  `Platform + Chat ID + User ID`.
 - `Scope` is a human-readable boundary. Use `all`, `system`, `knowledge`,
   `session`, or a department label such as `dept:after_sales`.
 - Members must not modify durable knowledge directly.

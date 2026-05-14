@@ -16,28 +16,19 @@ Classify the request before acting:
 - **Knowledge query**: the user asks what the organization knows or what a source says.
 - **Execution task**: the user wants analysis, drafting, PPT, HTML, file generation, research, automation, or operations work.
 - **IM delivery**: the user wants a local file or image sent back through chat.
-- **Medium or large task**: the task needs planning, confirmation, review,
-  recovery, multiple steps, or cross-file work.
+- **Execution mode**: apply `AGENTS.md` `quick` / `durable` / `risky` rules.
+
+## User-Facing Replies And Internal Protocol
+
+Default to the user-visible result. Keep helper names, session internals,
+`.state`, local paths, and verification detail out of normal replies unless the
+request is admin/ops work, the user asks for debugging, the detail is needed for
+a decision, or file delivery requires a location or attachment block.
 
 ## Permission Check
 
-Do not check permissions for every harmless IM request. Consult
-`workspace/admin/permissions.md` only before modifying system files, modifying
-durable knowledge, editing the permissions table, accessing another session, or
-sending files outside the user's own session.
-
-If a permission check is required and the user has no matching row, explain that
-the action requires authorization and ask them to contact an admin.
-
-- `operator`: system config, code, `AGENTS.md`, skills, runtime, and IM gateway.
-- `admin`: durable knowledge, permissions, and knowledge feedback.
-- `member`: own session workspace, session-generated files, approved knowledge
-  reading, and feedback.
-
-Only `operator` and `admin` may edit `workspace/admin/permissions.md`. The
-permissions file is an operating contract for Codex, not a security sandbox.
-When matching a user, prefer `Session Key` when present, then
-`Platform + Chat ID + User ID`, then platform-specific fallback ids.
+Apply the permissions contract in `AGENTS.md`; do not duplicate role or matching
+rules here.
 
 ## Routing
 
@@ -56,10 +47,8 @@ When matching a user, prefer `Session Key` when present, then
 - Presentation deliverable: use `guizang-ppt-skill`; write local/global final
   outputs under `workspace/deliverables/` and IM-triggered outputs under the
   session `deliverables/` directory.
-- Simple execution: if no specialized skill or recoverable task state is
-  needed, do the work directly and place drafts, inputs, and outputs in the
-  matching `workspace/` location.
-- Medium or large execution: follow `AGENTS.md` execution discipline.
+- General execution: follow `AGENTS.md` execution modes; create workspace files
+  only when the task needs them.
 - IM file/image delivery: generation is not delivery. For generated or local
   artifacts, use `bootstrap/knot-deliver.sh` to copy the file into the current
   session `deliverables/` directory, then delegate to

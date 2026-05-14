@@ -103,7 +103,7 @@ test -f workspace/admin/backup-policy.md || cp .skills/knot-setup/references/bac
 Ensure helper scripts are executable:
 
 ```bash
-chmod +x bootstrap/knot-session.sh bootstrap/knot-attachment.sh bootstrap/knot-backup.sh bootstrap/knot-runtime-check.sh bootstrap/doctor.sh
+chmod +x bootstrap/knot-session.sh bootstrap/knot-attachment.sh bootstrap/knot-deliver.sh bootstrap/knot-backup.sh bootstrap/knot-runtime-check.sh bootstrap/doctor.sh
 ```
 
 Configure the required customer backup remote:
@@ -199,9 +199,16 @@ defines:
 - Codex starts from the Knot root.
 - Code lives in `components/`.
 - User and agent work lives in `workspace/`.
-- Small tasks execute directly; medium tasks use `planning-with-files` and
-  plan -> human confirmation -> execute -> review -> delivery; large tasks add
-  independent subagent review.
+- `quick` tasks execute directly with core safety rules and necessary
+  verification.
+- `durable` tasks may use lightweight planning and delivery records when
+  recovery or handoff benefits.
+- `risky` tasks plan, confirm boundary-changing choices, verify, and use
+  independent review when justified.
+- `planning-with-files` is forced only for high recovery cost, cross-system or
+  cross-repo work, public interface/config/permission/runtime changes, long
+  tasks, explicit planning requests, or unclear risk where continuing would
+  change a behavior boundary.
 - Task state goes under `workspace/.state/tasks/<task_id>/`.
 - IM-triggered session work is isolated under `workspace/sessions/<platform>/<chat_id>/<user_id>/`.
 - Three roles exist: `operator`, `admin`, and `member`.
@@ -302,8 +309,8 @@ Report only:
 - `workspace/admin/permissions.md` and
   `workspace/admin/knowledge-feedback.md` created or preserved;
 - `workspace/admin/backup-policy.md` created or preserved;
-- thin helper scripts available: `knot-session`, `knot-attachment`, and
-  `knot-backup`, and `knot-runtime-check`;
+- thin helper scripts available: `knot-session`, `knot-attachment`,
+  `knot-deliver`, `knot-backup`, and `knot-runtime-check`;
 - backup remote and daily backup automation status;
 - `cc-connect` build/version result;
 - IM platforms configured;
