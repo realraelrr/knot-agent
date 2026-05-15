@@ -139,12 +139,13 @@ contain links to those source locations, not independent editable copies.
 5. Link required skills into Codex:
 
 ```bash
-mkdir -p "$HOME/.codex/skills"
+SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
+mkdir -p "$SKILLS_DIR"
 
 link_skill() {
   name="$1"
   target="$(cd "$2" && pwd)"
-  dest="$HOME/.codex/skills/$name"
+  dest="$SKILLS_DIR/$name"
 
   if [ -e "$dest" ] || [ -L "$dest" ]; then
     if [ -L "$dest" ]; then
@@ -161,14 +162,13 @@ link_skill() {
 
 link_skill docling-skill components/docling-skill
 link_skill planning-with-files components/planning-with-files/.codex/skills/planning-with-files
-for d in components/knot-skills/skills/*; do
-  test -d "$d" && link_skill "$(basename "$d")" "$d"
-done
+bash components/knot-skills/scripts/install-codex-skills.sh
 find components/obsidian-wiki/.skills -mindepth 1 -maxdepth 1 -type d -exec sh -c '
+  SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
   link_skill() {
     name="$1"
     target="$(cd "$2" && pwd)"
-    dest="$HOME/.codex/skills/$name"
+    dest="$SKILLS_DIR/$name"
     if [ -e "$dest" ] || [ -L "$dest" ]; then
       if [ -L "$dest" ]; then
         rm "$dest"
