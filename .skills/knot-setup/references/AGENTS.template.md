@@ -166,8 +166,16 @@ backup happened. The automation should call `bootstrap/knot-backup.sh`.
 
 - Use `docling-skill` for document conversion.
 - Use `obsidian-wiki` skills for ingest, query, status, lint, and update.
-- Use `guizang-ppt-skill` when creating magazine-style or e-ink HTML/PPT
+- Use `web-ppt` when creating magazine-style or e-ink HTML/PPT
   presentation deliverables.
+- Use the Office Pack skills for native office-file deliverables:
+  `office-xlsx` for spreadsheets, `office-pptx` for PPTX, `office-docx` for
+  DOCX, and `office-pdf` for polished PDFs.
+- Route document work by intent: use `docling-skill` for extraction,
+  conversion, sidecars, and knowledge ingestion; use Office Pack for creating,
+  editing, filling, formatting, or delivering office files; use lightweight
+  `doc` or `pdf` skills only for quick local inspection or simple edits that
+  do not need durable sidecars or high-fidelity delivery.
 - Keep conversion and wiki ingest decoupled.
 - Treat feedback as a signal, not verified fact.
 - Require human approval or a visible diff before material knowledge changes.

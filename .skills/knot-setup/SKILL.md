@@ -32,7 +32,7 @@ Keep code and agent work separate:
   obsidian-wiki/
   cc-connect-local-main/
   planning-with-files/
-  guizang-ppt-skill/
+  knot-skills/
 ./workspace/
   inbox/
   knowledge/raw/
@@ -129,7 +129,7 @@ test -d components/docling-skill || git clone https://github.com/realraelrr/docl
 test -d components/obsidian-wiki || git clone https://github.com/Ar9av/obsidian-wiki components/obsidian-wiki
 test -d components/cc-connect-local-main || git clone https://github.com/realraelrr/cc-connect components/cc-connect-local-main
 test -d components/planning-with-files || git clone https://github.com/realraelrr/planning-with-files components/planning-with-files
-test -d components/guizang-ppt-skill || git clone https://github.com/realraelrr/guizang-ppt-skill components/guizang-ppt-skill
+test -d components/knot-skills || git clone https://github.com/realraelrr/knot-skills components/knot-skills
 ```
 
 `components/` is the local source of truth for component-provided skills.
@@ -161,7 +161,9 @@ link_skill() {
 
 link_skill docling-skill components/docling-skill
 link_skill planning-with-files components/planning-with-files/.codex/skills/planning-with-files
-link_skill guizang-ppt-skill components/guizang-ppt-skill
+for d in components/knot-skills/skills/*; do
+  test -d "$d" && link_skill "$(basename "$d")" "$d"
+done
 find components/obsidian-wiki/.skills -mindepth 1 -maxdepth 1 -type d -exec sh -c '
   link_skill() {
     name="$1"
@@ -304,7 +306,7 @@ Report only:
 - component repos installed or reused;
 - Codex CLI, Codex app, and Obsidian app detection result;
 - skills linked, including `knot-workflow`, `planning-with-files`, and
-  `guizang-ppt-skill`;
+  the default skills from `knot-skills`;
 - `AGENTS.md` created or preserved;
 - `workspace/admin/permissions.md` and
   `workspace/admin/knowledge-feedback.md` created or preserved;
