@@ -133,12 +133,13 @@ test -d components/knot-skills || git clone https://github.com/realraelrr/knot-s
 ```
 
 `components/` is the local source of truth for component-provided skills.
-Scaffold-owned skills live under `.skills/`. `$HOME/.codex/skills` should
-contain links to those source locations, not independent editable copies.
+Scaffold-owned skills live under `.skills/`. `${CODEX_HOME:-$HOME/.codex}/skills`
+should contain links to those source locations, not independent editable copies.
 
 5. Link required skills into Codex:
 
 ```bash
+set -e
 SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
 mkdir -p "$SKILLS_DIR"
 
@@ -162,6 +163,10 @@ link_skill() {
 
 link_skill docling-skill components/docling-skill
 link_skill planning-with-files components/planning-with-files/.codex/skills/planning-with-files
+test -x components/knot-skills/scripts/install-codex-skills.sh
+for skill in office-xlsx office-pptx office-docx office-pdf web-ppt handoff; do
+  test -f "components/knot-skills/skills/$skill/SKILL.md"
+done
 bash components/knot-skills/scripts/install-codex-skills.sh
 find components/obsidian-wiki/.skills -mindepth 1 -maxdepth 1 -type d -exec sh -c '
   SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"

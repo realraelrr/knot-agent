@@ -2,6 +2,7 @@
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
 PLATFORMS=""
 FAILURES=0
 
@@ -301,7 +302,7 @@ resolve_symlink() {
 check_skill_link() {
   local name="$1"
   local expected="$2"
-  local dest="$HOME/.codex/skills/$name"
+  local dest="$SKILLS_DIR/$name"
   local resolved
 
   check_skill_file "$dest" "$name skill" || return
@@ -380,12 +381,14 @@ check_dir "$ROOT/components/obsidian-wiki" "obsidian-wiki"
 check_dir "$ROOT/components/cc-connect-local-main" "cc-connect source"
 check_cc_connect_build
 check_dir "$ROOT/components/planning-with-files/.codex/skills/planning-with-files" "planning-with-files source"
+check_executable "$ROOT/components/knot-skills/scripts/install-codex-skills.sh" "knot-skills installer"
 check_dir "$ROOT/components/knot-skills/skills/office-xlsx" "office-xlsx source"
 check_dir "$ROOT/components/knot-skills/skills/office-pptx" "office-pptx source"
 check_dir "$ROOT/components/knot-skills/skills/office-docx" "office-docx source"
 check_dir "$ROOT/components/knot-skills/skills/office-pdf" "office-pdf source"
 check_dir "$ROOT/components/knot-skills/skills/web-ppt" "web-ppt source"
 check_dir "$ROOT/components/knot-skills/skills/handoff" "handoff source"
+check_file_exists "$ROOT/components/knot-skills/skills/office-docx/scripts/dotnet/OfficeDocx.Cli/OfficeDocx.Cli.csproj" "office-docx CLI project"
 
 printf '\nWorkspace\n'
 WORKSPACE="$ROOT/workspace"
@@ -415,6 +418,10 @@ check_file_contains "$ROOT/AGENTS.md" "\`risky\`" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "planning-with-files" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "Office Pack" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "office-xlsx" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "office-pptx" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "office-docx" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "office-pdf" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "web-ppt" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "Force \`planning-with-files\` only" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "Ordinary deliverables and small multi-step" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "independent review" "AGENTS.md"
@@ -439,6 +446,11 @@ check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-attac
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-deliver.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-backup.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-runtime-check.sh" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-xlsx" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-pptx" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-docx" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-pdf" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "web-ppt" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "KNOT_ROOT=" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "CC_CONNECT_BIN=" "runtime config"
