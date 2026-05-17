@@ -44,15 +44,14 @@ rules here.
 - Wiki maintenance: use obsidian-wiki skills such as `wiki-status`,
   `wiki-lint`, `wiki-update`, or `wiki-digest` only when the task calls for
   them.
-- Native office-file deliverables: use Office Pack skills when the user wants
-  to create, edit, fill, format, or deliver office files: `office-xlsx` for
-  XLSX/CSV spreadsheets, `office-pptx` for PPTX, `office-docx` for DOCX,
-  and `office-pdf` for polished PDFs or PDF forms. Use `docling-skill`
-  instead when the goal is extraction, conversion sidecars, or knowledge ingest.
-- Presentation deliverable: use `web-ppt`; write local/global final
-  outputs under `workspace/deliverables/` and IM-triggered outputs under the
-  session `deliverables/` directory. Use `office-pptx` instead when the
-  requested final artifact is a native PowerPoint file.
+- Office Pack deliverables: use Office Pack skills when the user wants to
+  create, edit, fill, format, or deliver office files or presentations:
+  `office-xlsx` for XLSX/CSV spreadsheets, `office-pptx` for native PPTX,
+  `web-ppt` for browser HTML decks, `office-docx` for DOCX, and `office-pdf`
+  for polished PDFs or PDF forms. Use `docling-skill` instead when the goal is
+  extraction, conversion sidecars, or knowledge ingest.
+- Markdown-to-human deliverable: use `md-for-human` when Markdown source should
+  remain the durable source of truth but the user needs a readable HTML site.
 - General execution: follow `AGENTS.md` execution modes; create workspace files
   only when the task needs them.
 - IM file/image delivery: generation is not delivery. For generated or local

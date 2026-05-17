@@ -162,15 +162,22 @@ or caches. Use a customer-controlled git remote named `backup`; if no git repo
 or safe `backup` remote exists, report setup required instead of pretending a
 backup happened. The automation should call `bootstrap/knot-backup.sh`.
 
+## Skill Packs
+
+- Office Pack covers user-facing office and presentation deliverables:
+  `office-xlsx` for spreadsheets, `office-pptx` for native PowerPoint,
+  `web-ppt` for browser HTML decks, `office-docx` for Word documents, and
+  `office-pdf` for polished PDFs.
+- Agent Workbench covers agent self-use tools: `planning-with-files` for
+  recoverable planning, `docling-skill` for local document conversion
+  sidecars, `md-for-human` for rendering Markdown deliverables into
+  human-readable HTML, and `handoff` for session handoff.
+
 ## Knowledge Work
 
 - Use `docling-skill` for document conversion.
 - Use `obsidian-wiki` skills for ingest, query, status, lint, and update.
-- Use `web-ppt` when creating magazine-style or e-ink HTML/PPT
-  presentation deliverables.
-- Use the Office Pack skills for native office-file deliverables:
-  `office-xlsx` for spreadsheets, `office-pptx` for PPTX, `office-docx` for
-  DOCX, and `office-pdf` for polished PDFs.
+- Use Office Pack skills for office-file and presentation deliverables.
 - Route document work by intent: use `docling-skill` for extraction,
   conversion, sidecars, and knowledge ingestion; use Office Pack for creating,
   editing, filling, formatting, or delivering office files; use lightweight

@@ -29,6 +29,8 @@ Keep code and agent work separate:
 ./AGENTS.md
 ./components/
   docling-skill/
+  md-for-human/
+  codex-handoff-skill/
   obsidian-wiki/
   cc-connect-local-main/
   planning-with-files/
@@ -126,6 +128,8 @@ available, report that daily rollback backup is not ready.
 
 ```bash
 test -d components/docling-skill || git clone https://github.com/realraelrr/docling-skill components/docling-skill
+test -d components/md-for-human || git clone https://github.com/realraelrr/md-for-human components/md-for-human
+test -d components/codex-handoff-skill || git clone https://github.com/realraelrr/codex-handoff-skill components/codex-handoff-skill
 test -d components/obsidian-wiki || git clone https://github.com/Ar9av/obsidian-wiki components/obsidian-wiki
 test -d components/cc-connect-local-main || git clone https://github.com/realraelrr/cc-connect components/cc-connect-local-main
 test -d components/planning-with-files || git clone https://github.com/realraelrr/planning-with-files components/planning-with-files
@@ -161,11 +165,16 @@ link_skill() {
   ln -s "$target" "$dest"
 }
 
-link_skill docling-skill components/docling-skill
-link_skill planning-with-files components/planning-with-files/.codex/skills/planning-with-files
 test -x components/knot-skills/scripts/install-codex-skills.sh
-for skill in office-xlsx office-pptx office-docx office-pdf web-ppt handoff; do
+for skill in office-xlsx office-pptx office-docx office-pdf web-ppt; do
   test -f "components/knot-skills/skills/$skill/SKILL.md"
+done
+for target in \
+  components/planning-with-files/.codex/skills/planning-with-files \
+  components/docling-skill \
+  components/md-for-human/.codex/skills/md-for-human \
+  components/codex-handoff-skill; do
+  test -f "$target/SKILL.md"
 done
 bash components/knot-skills/scripts/install-codex-skills.sh
 find components/obsidian-wiki/.skills -mindepth 1 -maxdepth 1 -type d -exec sh -c '
@@ -310,8 +319,7 @@ Report only:
 
 - component repos installed or reused;
 - Codex CLI, Codex app, and Obsidian app detection result;
-- skills linked, including `knot-workflow`, `planning-with-files`, and
-  the default skills from `knot-skills`;
+- skills linked, including `knot-workflow`, Office Pack, and Agent Workbench;
 - `AGENTS.md` created or preserved;
 - `workspace/admin/permissions.md` and
   `workspace/admin/knowledge-feedback.md` created or preserved;
