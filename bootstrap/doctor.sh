@@ -362,14 +362,14 @@ check_macos_app Obsidian
 
 printf '\nSkills\n'
 check_skill_link "planning-with-files" "$ROOT/components/planning-with-files/.codex/skills/planning-with-files"
-check_skill_link "docling-skill" "$ROOT/components/docling-skill"
+check_skill_link "docling-skill" "$ROOT/components/docling-skill/.codex/skills/docling-skill"
 check_skill_link "md-for-human" "$ROOT/components/md-for-human/.codex/skills/md-for-human"
 check_skill_link "office-xlsx" "$ROOT/components/knot-skills/skills/office-xlsx"
 check_skill_link "office-pptx" "$ROOT/components/knot-skills/skills/office-pptx"
 check_skill_link "office-docx" "$ROOT/components/knot-skills/skills/office-docx"
 check_skill_link "office-pdf" "$ROOT/components/knot-skills/skills/office-pdf"
 check_skill_link "web-ppt" "$ROOT/components/knot-skills/skills/web-ppt"
-check_skill_link "handoff" "$ROOT/components/codex-handoff-skill"
+check_skill_link "handoff" "$ROOT/components/handoff-skill/.codex/skills/handoff"
 check_skill_link "knot-setup" "$ROOT/.skills/knot-setup"
 check_skill_link "knot-workflow" "$ROOT/.skills/knot-workflow"
 check_skill_link "wiki-ingest" "$ROOT/components/obsidian-wiki/.skills/wiki-ingest"
@@ -377,9 +377,9 @@ check_skill_link "wiki-query" "$ROOT/components/obsidian-wiki/.skills/wiki-query
 check_skill_link "wiki-status" "$ROOT/components/obsidian-wiki/.skills/wiki-status"
 
 printf '\nComponents\n'
-check_dir "$ROOT/components/docling-skill" "docling-skill source"
+check_dir "$ROOT/components/docling-skill/.codex/skills/docling-skill" "docling-skill source"
 check_dir "$ROOT/components/md-for-human/.codex/skills/md-for-human" "md-for-human source"
-check_dir "$ROOT/components/codex-handoff-skill" "handoff source"
+check_dir "$ROOT/components/handoff-skill/.codex/skills/handoff" "handoff source"
 check_dir "$ROOT/components/obsidian-wiki" "obsidian-wiki"
 check_dir "$ROOT/components/cc-connect-local-main" "cc-connect source"
 check_cc_connect_build
