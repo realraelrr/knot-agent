@@ -37,7 +37,17 @@ EOF
 }
 
 hash_value() {
-  printf '%s' "$1" | shasum -a 256 | awk '{print substr($1, 1, 12)}'
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "$1" | sha256sum | awk '{print substr($1, 1, 12)}'
+    return
+  fi
+
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$1" | shasum -a 256 | awk '{print substr($1, 1, 12)}'
+    return
+  fi
+
+  die "sha256sum or shasum is required"
 }
 
 safe_id_segment() {

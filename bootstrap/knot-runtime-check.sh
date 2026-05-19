@@ -236,21 +236,21 @@ config_has_kv() {
   local key="$2"
   local value="$3"
 
-  grep -Eq "^[[:space:]]*$key[[:space:]]*=[[:space:]]*[\"']$value[\"'][[:space:]]*($|#)" "$path"
+  grep -Eq "^[[:space:]]*${key}[[:space:]]*=[[:space:]]*[\"']${value}[\"'][[:space:]]*($|#)" "$path"
 }
 
 config_has_key() {
   local path="$1"
   local key="$2"
 
-  grep -Eq "^[[:space:]]*$key[[:space:]]*=" "$path"
+  grep -Eq "^[[:space:]]*${key}[[:space:]]*=" "$path"
 }
 
 config_has_bool_true() {
   local path="$1"
   local key="$2"
 
-  grep -Eq "^[[:space:]]*$key[[:space:]]*=[[:space:]]*true[[:space:]]*($|#)" "$path"
+  grep -Eq "^[[:space:]]*${key}[[:space:]]*=[[:space:]]*true[[:space:]]*($|#)" "$path"
 }
 
 config_value_for() {
@@ -259,7 +259,7 @@ config_value_for() {
   local line
   local value
 
-  line="$(grep -E "^[[:space:]]*$key[[:space:]]*=" "$path" | head -1)" || return 0
+  line="$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "$path" | head -1)" || return 0
   value="${line#*=}"
   value="${value%%#*}"
   value="${value#"${value%%[![:space:]]*}"}"
