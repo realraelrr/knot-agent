@@ -13,14 +13,13 @@ workspace/    user files, knowledge, drafts, deliverables, task state
 Use `workspace/` for agent work:
 
 ```text
-workspace/inbox/                 user-supplied inputs
 workspace/knowledge/raw/         approved long-term sources
 workspace/knowledge/processed/   sidecars, OCR, extracted intermediates
 workspace/knowledge/vault/       Obsidian vault
-workspace/work/                  drafts and reusable working assets
-workspace/deliverables/          final files for users
+workspace/users/                 per-user Codex working directories
+workspace/groups/                explicit shared group workspaces
+workspace/conversations/         IM source and audit metadata
 workspace/admin/                 permissions and knowledge feedback
-workspace/sessions/              IM-scoped user workspaces
 workspace/.state/tasks/          recoverable task/session state
 ```
 
@@ -57,11 +56,11 @@ workspace/.state/tasks/<task_id>/
   files/
 ```
 
-For IM-triggered durable or risky work, use the session-local state directory
-instead:
+For IM-triggered durable or risky work, use the active user workspace state
+directory instead:
 
 ```text
-workspace/sessions/<platform>/<chat_id>/<user_id>/.state/tasks/<task_id>/
+workspace/users/<user_slug>/.state/tasks/<task_id>/
 ```
 
 Use task ids like:
@@ -82,14 +81,15 @@ detailed reply and tool routing protocol.
 
 Use deterministic helper scripts for high-frequency fixed work:
 
-- `bootstrap/knot-session.sh`: create or resolve the current IM session
-  workspace before storing uploads, drafts, deliverables, or task state.
+- `bootstrap/knot-workspace.sh`: resolve the actor user workspace, optional
+  source group workspace, and source conversation metadata before launching
+  Codex from the user workspace.
 - `bootstrap/knot-attachment.sh`: validate that an outbound file is inside the
-  current session `deliverables/` directory and print the cc-connect attachment
-  block.
-- `bootstrap/knot-deliver.sh`: copy a generated or local artifact into the
-  current session `deliverables/` directory, validate it, and print the
+  current user or current group `deliverables/` directory and print the
   cc-connect attachment block.
+- `bootstrap/knot-deliver.sh`: copy a generated or local artifact into the
+  current user or explicit current group `deliverables/` directory, validate it,
+  and print the cc-connect attachment block.
 - `bootstrap/knot-backup.sh`: daily rollback backup entrypoint for Codex app
   automation.
 - `bootstrap/knot-runtime-check.sh`: static preflight for selected IM runtime
@@ -104,8 +104,9 @@ maintenance action, and whether human approval is required.
 Do not check permissions for every harmless IM request. Read
 `workspace/admin/permissions.md` only before actions that modify system files,
 modify durable knowledge, edit the permissions table, access another user's
-session files, or send files outside the user's own session. Reading approved
-shared knowledge does not require a permissions check.
+workspace, access a group workspace, or send files outside the current user or
+current group deliverables. Reading approved shared knowledge does not require a
+permissions check.
 
 If a permission check is required and the user has no matching row, explain that
 the action requires authorization and ask them to contact an admin.
@@ -117,38 +118,49 @@ Roles:
 - `admin`: may ingest, edit, delete, approve, and organize knowledge; may
   maintain `workspace/admin/permissions.md` and
   `workspace/admin/knowledge-feedback.md`.
-- `member`: may ask questions, use agent capabilities in their own session
-  workspace, receive files generated in that session, read approved knowledge,
+- `member`: may ask questions, use agent capabilities in their own user
+  workspace, receive files generated in that workspace, read approved knowledge,
   and append knowledge feedback.
 
 Only `operator` and `admin` may edit `workspace/admin/permissions.md`. These
 permissions are an agent operating contract, not a complex sandbox or runtime
 security boundary.
-When matching a user, prefer `Session Key` when present, then
-`Platform + Chat ID + User ID`.
+Match users through admin-maintained identity rows. The `User` and `Workspace`
+columns define the real user and directory slug; `Identity Key`,
+`Platform User ID`, and optional `Chat ID` are matching evidence, not workspace
+owners.
 
-## Session Isolation
+## User And Group Workspaces
 
-For IM-triggered work, store user uploads, drafts, deliverables, and task state
-under:
+For IM-triggered work, start Codex with exactly one working directory:
 
 ```text
-workspace/sessions/<platform>/<chat_id>/<user_id>/
+workspace/users/<user_slug>/
   inbox/
   work/
   deliverables/
   .state/tasks/
 ```
 
-Use filesystem-safe path segments for IM ids. Preserve the original `chat_id`
-and `user_id` in task notes or feedback rows when they differ from folder names.
-Use `bootstrap/knot-session.sh` for this path creation instead of hand-rolling
-session folders. The helper prints the actual normalized path, which may differ
-from the conceptual `<chat_id>/<user_id>` shape shown here.
+The IM glue layer resolves the real user from `workspace/admin/permissions.md`,
+then calls `bootstrap/knot-workspace.sh` with parsed metadata. The helper prints
+source-safe shell exports such as `KNOT_ACTIVE_WORKSPACE`,
+`KNOT_USER_WORKSPACE`, optional `KNOT_GROUP_WORKSPACE`, and optional
+`KNOT_CONVERSATION_DIR`. The gateway should launch Codex from
+`KNOT_ACTIVE_WORKSPACE`.
+
+For group chats, keep the actor user's workspace as the only Codex cwd. Expose
+the current group through `KNOT_GROUP_WORKSPACE` when the group is authorized.
+Write to the user workspace by default. Write to the group workspace only for
+explicit shared group assets.
+
+Use `workspace/conversations/<platform>/<chat_id>/` only for source and audit
+metadata. It is never a Codex cwd, task-state root, work directory, or
+deliverables directory.
 
 Shared durable knowledge remains under `workspace/knowledge/`. Non-admin users
-should not inspect or reuse other users' session files unless explicitly
-authorized by `workspace/admin/permissions.md`.
+should not inspect or reuse other users' workspaces or group workspaces unless
+explicitly authorized by `workspace/admin/permissions.md`.
 
 ## Backup Automation
 
@@ -156,11 +168,14 @@ Key durable data must be committed and pushed once per day by a Codex app
 automation. See `workspace/admin/backup-policy.md`.
 
 Back up `AGENTS.md`, `bootstrap/`, `.skills/knot-setup/`,
-`.skills/knot-workflow/`, `workspace/knowledge/`, and `workspace/admin/`.
-Do not back up `runtime/`, `components/`, logs, sockets, locks, local secrets,
-or caches. Use a customer-controlled git remote named `backup`; if no git repo
-or safe `backup` remote exists, report setup required instead of pretending a
-backup happened. The automation should call `bootstrap/knot-backup.sh`.
+`.skills/knot-workflow/`, `workspace/knowledge/`, `workspace/admin/`, and
+workspace identity metadata files such as `profile.tsv`, `identities.tsv`,
+`members.tsv`, and conversation `metadata.tsv`. Do not back up user inboxes,
+work files, deliverables, task state, `runtime/`, `components/`, logs, sockets,
+locks, local secrets, or caches. Use a customer-controlled git remote named
+`backup`; if no git repo or safe `backup` remote exists, report setup required
+instead of pretending a backup happened. The automation should call
+`bootstrap/knot-backup.sh`.
 
 ## Skill Packs
 
@@ -196,8 +211,9 @@ backup happened. The automation should call `bootstrap/knot-backup.sh`.
 Text replies are delivered by `cc-connect`.
 
 For IM-triggered image or file generation, generation is not delivery. The
-artifact must be placed under the current session `deliverables/` directory,
-validated, and returned as a `cc-connect-attachments` block. Prefer
+artifact must be placed under the current user or explicit current group
+`deliverables/` directory, validated, and returned as a `cc-connect-attachments`
+block. Prefer
 `bootstrap/knot-deliver.sh` for this handoff. Do not claim the user received a
 generated image, file, PPT, HTML, PDF, video, or archive unless the attachment
 block was produced.
@@ -206,8 +222,8 @@ When sending a local file or image through IM, use:
 
 ````text
 ```cc-connect-attachments
-image: $KNOT_ROOT/workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables/example.png
-file: $KNOT_ROOT/workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables/example.pdf
+image: $KNOT_ROOT/workspace/users/<user_slug>/deliverables/example.png
+file: $KNOT_ROOT/workspace/groups/<group_slug>/deliverables/example.pdf
 ```
 ````
 

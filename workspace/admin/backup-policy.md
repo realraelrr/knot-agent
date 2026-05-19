@@ -13,16 +13,23 @@ Back up durable data:
 - `.skills/knot-workflow/`
 - `workspace/knowledge/`
 - `workspace/admin/`
+- workspace identity metadata:
+  - `workspace/users/*/profile.tsv`
+  - `workspace/users/*/identities.tsv`
+  - `workspace/groups/*/profile.tsv`
+  - `workspace/groups/*/members.tsv`
+  - `workspace/conversations/*/*/metadata.tsv`
 
-Do not back up runtime or dependency data:
+Do not back up runtime, dependency, or user content data:
 
 - `runtime/`
 - `components/`
+- user inboxes, work files, deliverables, and task state
 - logs, sockets, locks, local secrets, caches
 
-Session workspaces are not backed up by default. Add
-`workspace/sessions/` only when the organization explicitly wants session-level
-audit history in git.
+User and group workspace content is not backed up by default. Only the
+allowlisted identity and conversation metadata files are staged from those
+trees.
 
 ## Rules
 

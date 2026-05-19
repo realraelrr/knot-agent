@@ -205,6 +205,11 @@ parse_env_file() {
       continue
     fi
 
+    if [ "$key" = "KNOT_ACTIVE_WORKSPACE" ]; then
+      fail ".env must not set KNOT_ACTIVE_WORKSPACE; Knot resolves it per message"
+      continue
+    fi
+
     if ! is_allowed_env_name "$key"; then
       continue
     fi
@@ -239,6 +244,13 @@ config_has_key() {
   local key="$2"
 
   grep -Eq "^[[:space:]]*$key[[:space:]]*=" "$path"
+}
+
+config_has_bool_true() {
+  local path="$1"
+  local key="$2"
+
+  grep -Eq "^[[:space:]]*$key[[:space:]]*=[[:space:]]*true[[:space:]]*($|#)" "$path"
 }
 
 config_value_for() {
@@ -334,13 +346,20 @@ if [ -f "$CONFIG_FILE" ]; then
     fail "config missing platform type: type = \"$PLATFORM\""
   fi
 
-  WORK_DIR_VALUE="$(config_value_for "$CONFIG_FILE" "work_dir")"
-  if [ "$WORK_DIR_VALUE" = "$ROOT" ] || [ "$WORK_DIR_VALUE" = '${KNOT_ROOT}' ]; then
-    ok "config work_dir targets current root"
-  elif config_has_key "$CONFIG_FILE" "work_dir"; then
-    fail "config work_dir does not target current root or \${KNOT_ROOT}: $WORK_DIR_VALUE"
+  if grep -Eq '^[[:space:]]*\[projects\.knot_workspace\][[:space:]]*$' "$CONFIG_FILE" &&
+    config_has_bool_true "$CONFIG_FILE" "enabled" &&
+    grep -Fq 'helper = "${KNOT_ROOT}/bootstrap/knot-workspace.sh"' "$CONFIG_FILE" &&
+    grep -Fq 'root = "${KNOT_ROOT}"' "$CONFIG_FILE"; then
+    ok "config enables Knot per-message workspace resolver"
   else
-    fail "config missing work_dir"
+    fail "config missing [projects.knot_workspace] resolver for per-message workspaces"
+  fi
+
+  WORK_DIR_VALUE="$(config_value_for "$CONFIG_FILE" "work_dir")"
+  if config_has_key "$CONFIG_FILE" "work_dir"; then
+    fail "config must not use static agent work_dir with Knot workspace resolver: $WORK_DIR_VALUE"
+  else
+    ok "config does not pin a static agent work_dir"
   fi
 fi
 

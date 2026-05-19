@@ -40,10 +40,10 @@ Keep code and agent work separate:
   knowledge/raw/
   knowledge/processed/
   knowledge/vault/
-  work/
-  deliverables/
+  users/
+  groups/
+  conversations/
   admin/
-  sessions/
   .state/tasks/
 ./runtime/
 ```
@@ -83,14 +83,13 @@ mdfind "kMDItemFSName == 'Obsidian.app'" | head -1 || true
 
 ```bash
 mkdir -p components runtime \
-  workspace/inbox \
   workspace/knowledge/raw \
   workspace/knowledge/processed \
   workspace/knowledge/vault \
-  workspace/work \
-  workspace/deliverables \
+  workspace/users \
+  workspace/groups \
+  workspace/conversations \
   workspace/admin \
-  workspace/sessions \
   workspace/.state/tasks
 ```
 
@@ -105,7 +104,7 @@ test -f workspace/admin/backup-policy.md || cp .skills/knot-setup/references/bac
 Ensure helper scripts are executable:
 
 ```bash
-chmod +x bootstrap/knot-session.sh bootstrap/knot-attachment.sh bootstrap/knot-deliver.sh bootstrap/knot-backup.sh bootstrap/knot-runtime-check.sh bootstrap/doctor.sh
+chmod +x bootstrap/knot-workspace.sh bootstrap/knot-attachment.sh bootstrap/knot-deliver.sh bootstrap/knot-backup.sh bootstrap/knot-runtime-check.sh bootstrap/doctor.sh
 ```
 
 Configure the required customer backup remote:
@@ -207,7 +206,7 @@ linking. The component copy should be the active source of truth.
 
 If `AGENTS.md` is missing, create it from
 `./.skills/knot-setup/references/AGENTS.template.md`. If `AGENTS.md` already
-exists, inspect it. When it lacks the current permissions, session isolation,
+exists, inspect it. When it lacks the current permissions, user/group workspace,
 or workflow routing sections, show a visible diff and ask before replacing or
 patching it. If the template is not present, create a concise `AGENTS.md` that
 defines:
@@ -225,8 +224,14 @@ defines:
   cross-repo work, public interface/config/permission/runtime changes, long
   tasks, explicit planning requests, or unclear risk where continuing would
   change a behavior boundary.
-- Task state goes under `workspace/.state/tasks/<task_id>/`.
-- IM-triggered session work is isolated under `workspace/sessions/<platform>/<chat_id>/<user_id>/`.
+- Task state goes under `workspace/.state/tasks/<task_id>/` for root-scoped
+  work and `workspace/users/<user_slug>/.state/tasks/<task_id>/` for
+  IM-triggered user work.
+- IM-triggered work starts Codex from exactly one cwd:
+  `workspace/users/<user_slug>/`.
+- Group chats may expose `workspace/groups/<group_slug>/` through
+  `KNOT_GROUP_WORKSPACE`; group workspace is not a second cwd.
+- `workspace/conversations/<platform>/<chat_id>/` is source/audit metadata only.
 - Three roles exist: `operator`, `admin`, and `member`.
 - Daily rollback backup uses Codex app automation and
   `bootstrap/knot-backup.sh`.
@@ -234,7 +239,7 @@ defines:
 - Knot workflow routing uses `knot-workflow`.
 - IM attachments use `cc-connect-attachments`.
 - Material knowledge changes require human approval or a visible diff.
-- IM session work uses `bootstrap/knot-session.sh`.
+- IM workspace setup uses `bootstrap/knot-workspace.sh`.
 - IM attachments use `bootstrap/knot-attachment.sh`.
 - IM runtime preflight uses `bootstrap/knot-runtime-check.sh`.
 
@@ -289,7 +294,7 @@ User ID
 Name
 Platform
 Chat ID
-Session Key
+Identity Key
 ```
 
 Update the relevant allow/admin config, restart the gateway, and ask the human
@@ -324,7 +329,7 @@ Report only:
 - `workspace/admin/permissions.md` and
   `workspace/admin/knowledge-feedback.md` created or preserved;
 - `workspace/admin/backup-policy.md` created or preserved;
-- thin helper scripts available: `knot-session`, `knot-attachment`,
+- thin helper scripts available: `knot-workspace`, `knot-attachment`,
   `knot-deliver`, `knot-backup`, and `knot-runtime-check`;
 - backup remote and daily backup automation status;
 - `cc-connect` build/version result;

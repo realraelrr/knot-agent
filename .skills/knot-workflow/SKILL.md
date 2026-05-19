@@ -32,8 +32,10 @@ rules here.
 
 ## Routing
 
-- IM session setup: use `bootstrap/knot-session.sh` before storing uploads,
-  drafts, deliverables, or task state for an IM-triggered request.
+- IM workspace setup: the IM glue layer should call
+  `bootstrap/knot-workspace.sh` with parsed platform/user/group metadata before
+  launching Codex. Codex should run from `KNOT_ACTIVE_WORKSPACE`, which must be
+  the actor's `workspace/users/<user_slug>` directory.
 - Raw document to knowledge: use `docling-skill` when conversion helps, write
   intermediates under `workspace/knowledge/processed/`, then use
   `wiki-ingest` for durable knowledge.
@@ -56,7 +58,8 @@ rules here.
   only when the task needs them.
 - IM file/image delivery: generation is not delivery. For generated or local
   artifacts, use `bootstrap/knot-deliver.sh` to copy the file into the current
-  session `deliverables/` directory, then delegate to
+  user deliverables directory, or into the current group deliverables directory
+  only when the output is explicitly a shared group asset. Then delegate to
   `bootstrap/knot-attachment.sh` to validate the boundary and print the
   cc-connect attachment block. Do not answer with only a local path when the
   user asked to receive the file in IM.
@@ -66,16 +69,20 @@ rules here.
 
 ## Storage Rules
 
-- User inputs go under `workspace/inbox/` unless they are already in place.
+- User inputs go under the active user workspace `inbox/` unless they are
+  already in place.
 - Approved long-term sources go under `workspace/knowledge/raw/`.
 - Extracted sidecars and OCR outputs go under `workspace/knowledge/processed/`.
-- Final user-facing files go under `workspace/deliverables/`.
-- Drafts and reusable working assets go under `workspace/work/`.
-- IM-triggered uploads, drafts, deliverables, and task state go under
-  `workspace/sessions/<platform>/<chat_id>/<user_id>/`; create it with
-  `bootstrap/knot-session.sh`.
-- Use filesystem-safe path segments for IM ids. Preserve original ids in task
-  notes or feedback rows when folder names are normalized.
+- Final user-facing files go under the active user workspace `deliverables/`,
+  or the current group `deliverables/` only for explicit shared group assets.
+- Drafts and reusable working assets go under the active user workspace `work/`.
+- IM-triggered uploads, drafts, deliverables, and task state go under the actor
+  user's `workspace/users/<user_slug>/` workspace. For group chats, use
+  `KNOT_GROUP_WORKSPACE` only for explicitly shared group assets.
+- Conversation source and audit metadata goes under
+  `workspace/conversations/<platform>/<chat_id>/`. Do not use conversation
+  directories as a Codex cwd, work directory, deliverables directory, or task
+  state root.
 - Do not put temporary work in the Knot root.
 
 ## Evidence Priority

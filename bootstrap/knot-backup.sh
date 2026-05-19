@@ -61,12 +61,40 @@ stage_if_exists() {
   fi
 }
 
+stage_pathspec_update() {
+  local pathspec="$1"
+  git -C "$ROOT" add -u -- "$pathspec" 2>/dev/null || true
+}
+
+stage_found_files() {
+  local base="$1"
+  shift
+
+  [ -d "$ROOT/$base" ] || return 0
+  while IFS= read -r -d '' file; do
+    git -C "$ROOT" add -f -- "${file#"$ROOT/"}"
+  done < <(find "$ROOT/$base" "$@" -print0)
+}
+
+stage_workspace_metadata() {
+  stage_pathspec_update "workspace/users/*/profile.tsv"
+  stage_pathspec_update "workspace/users/*/identities.tsv"
+  stage_pathspec_update "workspace/groups/*/profile.tsv"
+  stage_pathspec_update "workspace/groups/*/members.tsv"
+  stage_pathspec_update "workspace/conversations/*/*/metadata.tsv"
+
+  stage_found_files "workspace/users" -mindepth 2 -maxdepth 2 \( -name profile.tsv -o -name identities.tsv \)
+  stage_found_files "workspace/groups" -mindepth 2 -maxdepth 2 \( -name profile.tsv -o -name members.tsv \)
+  stage_found_files "workspace/conversations" -mindepth 3 -maxdepth 3 -name metadata.tsv
+}
+
 stage_if_exists "AGENTS.md"
 stage_if_exists "bootstrap"
 stage_if_exists ".skills/knot-setup"
 stage_if_exists ".skills/knot-workflow"
 stage_if_exists "workspace/knowledge"
 stage_if_exists "workspace/admin"
+stage_workspace_metadata
 
 if git -C "$ROOT" diff --cached --quiet; then
   printf 'No backup commit needed; durable rollback data has no staged changes.\n'

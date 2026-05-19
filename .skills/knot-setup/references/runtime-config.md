@@ -52,8 +52,11 @@ scripts only for selected platforms.
 
 ## Shared Config Skeleton
 
-Use the Knot root as the gateway working directory. Use expanded absolute paths
-inside cc-connect config files when required by cc-connect.
+Use the Knot root as the gateway install/runtime root. Enable cc-connect's
+Knot resolver so each incoming message calls `bootstrap/knot-workspace.sh`
+before agent startup. Do not set a static agent `work_dir`; the resolver starts
+Codex from the returned `KNOT_ACTIVE_WORKSPACE` and injects the other `KNOT_*`
+context exports into the agent process.
 
 ```toml
 data_dir = "${HOME}/.cc-connect/knot-PLATFORM"
@@ -80,8 +83,13 @@ name = "knot"
 [projects.agent]
 type = "codex"
 
+[projects.knot_workspace]
+enabled = true
+helper = "${KNOT_ROOT}/bootstrap/knot-workspace.sh"
+root = "${KNOT_ROOT}"
+
 [projects.agent.options]
-work_dir = "${KNOT_ROOT}"
+backend = "app_server"
 app_server_url = "stdio"
 mode = "suggest"
 
@@ -90,9 +98,9 @@ name = "PLATFORM"
 type = "PLATFORM"
 ```
 
-Set `KNOT_ROOT` in the runtime environment to the install root. If cc-connect
-does not expand `KNOT_ROOT` in a field, the installing agent should write the
-expanded install root into the generated config file at install time.
+Set `KNOT_ROOT` in the runtime environment to the install root. The helper
+produces `KNOT_ACTIVE_WORKSPACE` per message; it should not be written into
+`.env` or used as a static cc-connect config placeholder.
 
 ## Platform Credentials
 
@@ -195,7 +203,7 @@ or verify live IM authorization.
 - Do not assume one user ID authorizes every context.
 - Collect `/whoami` separately for each direct chat or group that should use
   the agent.
-- Add only the required `User ID`, `Chat ID`, or `Session Key` entries.
+- Add only the required `User ID`, `Chat ID`, or `Identity Key` entries.
 - Restart the selected gateway after config changes.
 
 Field mapping:
@@ -212,19 +220,39 @@ removing existing approved contexts. If the config requires a different format,
 inspect the local cc-connect docs/source and preserve the platform's expected
 syntax.
 
-## Attachments
+## Workspace And Attachments
 
-Use `bootstrap/knot-session.sh` to create or resolve the current IM session
-workspace before storing uploads, drafts, deliverables, or task state.
+Use `bootstrap/knot-workspace.sh` as a preflight helper after cc-connect or
+another IM glue layer has parsed platform, user, and optional group metadata.
+The helper prints source-safe shell exports. Start Codex with cwd set to
+`KNOT_ACTIVE_WORKSPACE`, which must be the actor's user workspace:
+
+```bash
+eval "$(bash bootstrap/knot-workspace.sh \
+  --platform PLATFORM \
+  --user-id USER_ID \
+  --user-slug USER_SLUG \
+  --chat-id CHAT_ID \
+  --identity-key IDENTITY_KEY)"
+cd "$KNOT_ACTIVE_WORKSPACE"
+```
+
+Add `--group-slug GROUP_SLUG` and `--group-name GROUP_NAME` only for authorized
+group chat contexts.
+
+For group chats, `KNOT_GROUP_WORKSPACE` exposes the shared group workspace by
+path. It is not a second Codex cwd. `KNOT_CONVERSATION_DIR` is source/audit
+metadata only and must not be used as a work or deliverables directory.
 
 Use `bootstrap/knot-attachment.sh` when Codex must send files through IM. It
-validates that the file exists under the current session `deliverables/`
-directory and prints a strict attachment block:
+validates that the file exists under the current user `deliverables/` directory,
+or under the current group `deliverables/` directory for explicit shared group
+assets, and prints a strict attachment block:
 
 ````text
 ```cc-connect-attachments
-image: $KNOT_ROOT/workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables/example.png
-file: $KNOT_ROOT/workspace/sessions/<platform>/<chat_id>/<user_id>/deliverables/example.pdf
+image: $KNOT_ROOT/workspace/users/<user_slug>/deliverables/example.png
+file: $KNOT_ROOT/workspace/groups/<group_slug>/deliverables/example.pdf
 ```
 ````
 
