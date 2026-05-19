@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+. "$SCRIPT_DIR/lib.sh"
 PLATFORM=""
 CHAT_ID=""
 USER_ID=""
@@ -34,76 +35,6 @@ Options:
 Copies FILE into the selected current deliverables directory when needed,
 validates the boundary, then prints a cc-connect attachment block.
 EOF
-}
-
-die() {
-  printf 'ERROR %s\n' "$1" >&2
-  exit 1
-}
-
-resolve_path() {
-  local path="$1"
-
-  perl -MCwd=realpath -e '
-    my $path = realpath($ARGV[0]);
-    exit 1 unless defined $path;
-    print "$path\n";
-  ' "$path"
-}
-
-absolute_path() {
-  local path="$1"
-
-  local dir
-  local base
-
-  dir="$(cd "$(dirname "$path")" && pwd -P)" || return 1
-  base="$(basename "$path")"
-  printf '%s/%s\n' "$dir" "$base"
-}
-
-workspace_export() {
-  local key="$1"
-  local data="$2"
-
-  printf '%s\n' "$data" | sed -n "s/^export ${key}='\\(.*\\)'$/\\1/p" | sed "s/'\\\\''/'/g" | tail -1
-}
-
-unique_path() {
-  local dir="$1"
-  local name="$2"
-  local base="$name"
-  local ext=""
-  local i=1
-  local candidate
-
-  if [[ "$name" == *.* && "$name" != .* ]]; then
-    base="${name%.*}"
-    ext=".${name##*.}"
-  fi
-
-  candidate="$dir/$name"
-  while [ -e "$candidate" ] || [ -L "$candidate" ]; do
-    candidate="$dir/${base}-${i}${ext}"
-    i=$((i + 1))
-  done
-
-  printf '%s\n' "$candidate"
-}
-
-path_is_under() {
-  local path="$1"
-  local dir="$2"
-
-  [ -n "$dir" ] || return 1
-  case "$path" in
-    "$dir"/*)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
 }
 
 reject_non_current_workspace_source() {

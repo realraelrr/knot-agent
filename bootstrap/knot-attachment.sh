@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+. "$SCRIPT_DIR/lib.sh"
 PLATFORM=""
 CHAT_ID=""
 USER_ID=""
@@ -25,28 +26,6 @@ Validates that FILE exists under the current user deliverables directory, or
 under the current group deliverables directory when --group-slug is provided,
 then prints a cc-connect attachment block.
 EOF
-}
-
-die() {
-  printf 'ERROR %s\n' "$1" >&2
-  exit 1
-}
-
-resolve_path() {
-  local path="$1"
-
-  perl -MCwd=realpath -e '
-    my $path = realpath($ARGV[0]);
-    exit 1 unless defined $path;
-    print "$path\n";
-  ' "$path"
-}
-
-workspace_export() {
-  local key="$1"
-  local data="$2"
-
-  printf '%s\n' "$data" | sed -n "s/^export ${key}='\\(.*\\)'$/\\1/p" | sed "s/'\\\\''/'/g" | tail -1
 }
 
 while [ "$#" -gt 0 ]; do

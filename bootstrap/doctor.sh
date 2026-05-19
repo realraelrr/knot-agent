@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+. "$SCRIPT_DIR/lib.sh"
 SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
 PLATFORMS=""
 FAILURES=0
@@ -114,16 +116,6 @@ check_file_not_contains() {
   else
     ok "$label does not contain stale text: $pattern"
   fi
-}
-
-realpath_for_test() {
-  local path="$1"
-  local dir
-  local base
-
-  dir="$(cd "$(dirname "$path")" && pwd -P)" || return 1
-  base="$(basename "$path")"
-  printf '%s/%s\n' "$dir" "$base"
 }
 
 check_backup_remote() {
@@ -254,7 +246,7 @@ EOF
   local deliver_output
   if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png")"; then
     local expected_deliverable
-    expected_deliverable="$(realpath_for_test "$user_workspace/deliverables/image.png")"
+    expected_deliverable="$(resolve_path "$user_workspace/deliverables/image.png")"
     if [ -f "$user_workspace/deliverables/image.png" ] &&
       printf '%s\n' "$deliver_output" | grep -Fq '```cc-connect-attachments' &&
       printf '%s\n' "$deliver_output" | grep -Fq "image: $expected_deliverable"; then
@@ -268,7 +260,7 @@ EOF
 
   if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png" --target group --output-name "shared.png")"; then
     if [ -f "$group_workspace/deliverables/shared.png" ] &&
-      printf '%s\n' "$deliver_output" | grep -Fq "image: $(realpath_for_test "$group_workspace/deliverables/shared.png")"; then
+      printf '%s\n' "$deliver_output" | grep -Fq "image: $(resolve_path "$group_workspace/deliverables/shared.png")"; then
       ok "knot-deliver can target current group deliverables explicitly"
     else
       fail "knot-deliver did not copy generated artifact to group deliverables"
@@ -279,7 +271,7 @@ EOF
 
   if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" --target group --output-name "result-shared.txt")"; then
     if [ -f "$group_workspace/deliverables/result-shared.txt" ] &&
-      printf '%s\n' "$deliver_output" | grep -Fq "file: $(realpath_for_test "$group_workspace/deliverables/result-shared.txt")"; then
+      printf '%s\n' "$deliver_output" | grep -Fq "file: $(resolve_path "$group_workspace/deliverables/result-shared.txt")"; then
       ok "knot-deliver copies user deliverable into group deliverables when target is group"
     else
       fail "knot-deliver did not copy user deliverable into group deliverables"
@@ -292,7 +284,7 @@ EOF
   if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png" --output-name "symlink.png")"; then
     if [ ! -e "$tmp_root/escaped-delivery.png" ] &&
       [ -f "$user_workspace/deliverables/symlink-1.png" ] &&
-      printf '%s\n' "$deliver_output" | grep -Fq "image: $(realpath_for_test "$user_workspace/deliverables/symlink-1.png")"; then
+      printf '%s\n' "$deliver_output" | grep -Fq "image: $(resolve_path "$user_workspace/deliverables/symlink-1.png")"; then
       ok "knot-deliver avoids writing through deliverables symlinks"
     else
       fail "knot-deliver wrote through or failed to avoid deliverables symlink"
@@ -592,12 +584,14 @@ check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
 check_executable "$ROOT/bootstrap/knot-deliver.sh" "knot-deliver helper"
 check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
 check_executable "$ROOT/bootstrap/knot-runtime-check.sh" "knot-runtime-check helper"
+check_file_exists "$ROOT/bootstrap/lib.sh" "bootstrap shell library"
 check_file_contains "$ROOT/AGENTS.md" "## Thin Glue Helpers" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-workspace.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-attachment.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-deliver.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-backup.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-runtime-check.sh" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/lib.sh" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Permissions" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## User And Group Workspaces" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "## Execution Modes" "AGENTS.md"

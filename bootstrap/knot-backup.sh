@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+. "$SCRIPT_DIR/lib.sh"
 REMOTE="backup"
 
 usage() {
@@ -11,11 +13,6 @@ Usage: bash bootstrap/knot-backup.sh [--root DIR]
 Commits and pushes Knot durable rollback data to the customer-controlled
 git remote named "backup".
 EOF
-}
-
-die() {
-  printf 'ERROR %s\n' "$1" >&2
-  exit 1
 }
 
 while [ "$#" -gt 0 ]; do

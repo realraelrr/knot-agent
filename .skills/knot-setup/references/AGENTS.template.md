@@ -94,6 +94,8 @@ Use deterministic helper scripts for high-frequency fixed work:
   automation.
 - `bootstrap/knot-runtime-check.sh`: static preflight for selected IM runtime
   files, credentials, `KNOT_ROOT`, and basic platform config matching.
+- `bootstrap/lib.sh`: shared shell helpers for deterministic path, quoting,
+  export, slug, and deliverable boundary checks.
 
 These scripts enforce deterministic filesystem, runtime, and backup boundaries
 only. Codex still decides the task path, evidence strategy, knowledge

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+. "$SCRIPT_DIR/lib.sh"
 PLATFORM=""
 CHAT_ID=""
 USER_ID=""
@@ -32,11 +34,6 @@ workspace/admin/permissions.md, then falls back to a deterministic safe slug.
 Prints source-safe shell exports. The caller should start Codex with cwd set to
 KNOT_ACTIVE_WORKSPACE.
 EOF
-}
-
-die() {
-  printf 'ERROR %s\n' "$1" >&2
-  exit 1
 }
 
 hash_value() {
@@ -121,21 +118,6 @@ permissions_lookup() {
   ' "$permissions_file"
 }
 
-validate_slug() {
-  local label="$1"
-  local slug="$2"
-
-  case "$slug" in
-    ""|"."|".."|*/*|*$'\n'*)
-      die "$label must be a single path segment"
-      ;;
-  esac
-
-  if ! printf '%s' "$slug" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$'; then
-    die "$label must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
-  fi
-}
-
 validate_metadata_value() {
   local label="$1"
   local value="$2"
@@ -145,40 +127,6 @@ validate_metadata_value() {
       die "$label cannot contain tabs or newlines"
       ;;
   esac
-}
-
-ensure_dir_no_symlink() {
-  local path="$1"
-  local label="$2"
-
-  if [ -L "$path" ]; then
-    die "$label must not be a symlink: $path"
-  fi
-
-  if [ -e "$path" ] && [ ! -d "$path" ]; then
-    die "$label exists but is not a directory: $path"
-  fi
-
-  mkdir -p "$path"
-
-  if [ -L "$path" ]; then
-    die "$label must not be a symlink: $path"
-  fi
-}
-
-shell_quote() {
-  local value="$1"
-  printf "'"
-  printf '%s' "$value" | sed "s/'/'\\\\''/g"
-  printf "'"
-}
-
-print_export() {
-  local key="$1"
-  local value="$2"
-  printf 'export %s=' "$key"
-  shell_quote "$value"
-  printf '\n'
 }
 
 emit_exports() {
