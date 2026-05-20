@@ -4,9 +4,10 @@ Public scaffold for a local Knot Codex agent workspace.
 
 [中文 README](README.zh-CN.md)
 
-Knot Agent is for people building local-first LLM agent operations: Codex
-workspaces, reusable skills, IM routing, durable knowledge, runtime checks, and
-clear filesystem boundaries.
+Knot Agent is a local-first runtime scaffold for enterprise digital workers. It
+gives a Codex-powered agent the workspace, knowledge layout, permission
+contract, IM routing, deliverable boundaries, runtime checks, and setup flow it
+needs to operate as a durable business role across users and channels.
 
 This repository is the thin starting point for Codex. It contains the operating
 guide, setup skills, runtime checks, and workspace layout rules. Component

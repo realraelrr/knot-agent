@@ -1,8 +1,10 @@
 # Knot Agent
 
-**本地 Knot Codex agent workspace 的公开脚手架。**
+**面向企业数字员工的本地优先运行脚手架。**
 
 [English README](README.md)
+
+Knot Agent 为 Codex 驱动的 agent 提供 workspace、知识布局、权限契约、IM 路由、交付边界、runtime 检查和 setup 流程。目标不是做一个聊天入口，而是让 agent 能够跨用户、跨渠道作为可持续的业务角色运行。
 
 这个仓库是 Codex 的轻量起点，只保存运行指南、setup skills、runtime 检查和 workspace 布局规则。组件仓库、运行时凭证、日志、客户数据和工作文件都保留在本地，不属于这个 scaffold。
 
