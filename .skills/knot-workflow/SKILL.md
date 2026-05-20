@@ -16,7 +16,15 @@ Classify the request before acting:
 - **Knowledge query**: the user asks what the organization knows or what a source says.
 - **Execution task**: the user wants analysis, drafting, PPT, HTML, file generation, research, automation, or operations work.
 - **IM delivery**: the user wants a local file or image sent back through chat.
-- **Execution mode**: apply `AGENTS.md` `quick` / `durable` / `risky` rules.
+
+Use the lightest execution weight that fits:
+
+- **quick**: answer or make a small local edit directly; no task state.
+- **durable**: create a deliverable, durable knowledge change, IM artifact, or
+  multi-step result; use task state only when it helps recovery or handoff.
+- **risky**: change code behavior, config, permissions, runtime, public
+  interfaces, schemas, deployment, or cross-system behavior; plan the work and
+  confirm boundary-changing choices.
 
 ## User-Facing Replies And Internal Protocol
 
@@ -27,8 +35,9 @@ a decision, or file delivery requires a location or attachment block.
 
 ## Permission Check
 
-Apply the permissions contract in `AGENTS.md`; do not duplicate role or matching
-rules here.
+Normal workspace routing is handled before launch by `bootstrap/knot-workspace.sh`.
+For role and identity rules, read `workspace/admin/permissions.md` only when the
+task crosses an authorization boundary.
 
 ## Routing
 
@@ -36,25 +45,20 @@ rules here.
   `bootstrap/knot-workspace.sh` with parsed platform/user/group metadata before
   launching Codex. Codex should run from `KNOT_ACTIVE_WORKSPACE`, which must be
   the actor's `workspace/users/<user_slug>` directory.
-- Raw document to knowledge: use `docling-skill` when conversion helps, write
-  intermediates under `workspace/knowledge/processed/`, then use
-  `wiki-ingest` for durable knowledge.
-- Direct knowledge ingest: use `wiki-ingest` when the source is already clean
-  text or Markdown. Do not force a docling step.
-- Knowledge query: use `wiki-query` first. If evidence is missing or stale,
-  say so and, when allowed, propose a feedback or update path.
-- Wiki maintenance: use obsidian-wiki skills such as `wiki-status`,
-  `wiki-lint`, `wiki-update`, or `wiki-digest` only when the task calls for
-  them.
-- Office Pack deliverables: use Office Pack skills when the user wants to
-  create, edit, fill, format, or deliver office files or presentations:
-  `office-xlsx` for XLSX/CSV spreadsheets, `office-pptx` for native PPTX,
-  `web-ppt` for browser HTML decks, `office-docx` for DOCX, and `office-pdf`
-  for polished PDFs or PDF forms. Use `docling-skill` instead when the goal is
-  extraction, conversion sidecars, or knowledge ingest.
-- Markdown-to-human deliverable: use `md-for-human` when Markdown source should
-  remain the durable source of truth but the user needs a readable HTML site.
-- General execution: follow `AGENTS.md` execution modes; create workspace files
+- Raw document to knowledge: use an available conversion skill when conversion
+  helps, write intermediates under `workspace/knowledge/processed/`, then use an
+  available knowledge-ingest skill for durable knowledge.
+- Direct knowledge ingest: use an available knowledge-ingest skill when the
+  source is already clean text or Markdown. Do not force a conversion step.
+- Knowledge query: use an available knowledge-query skill first. If evidence is
+  missing or stale, say so and, when allowed, propose a feedback or update path.
+- Wiki maintenance: use available wiki maintenance skills only when the task
+  calls for them.
+- User-facing deliverables: use the available spreadsheet, document,
+  presentation, PDF, web deck, or Markdown-rendering skill that matches the
+  requested output. Use conversion skills instead when the goal is extraction,
+  sidecars, or knowledge ingest.
+- General execution: use the execution weights above; create workspace files
   only when the task needs them.
 - IM file/image delivery: generation is not delivery. For generated or local
   artifacts, use `bootstrap/knot-deliver.sh` to copy the file into the current

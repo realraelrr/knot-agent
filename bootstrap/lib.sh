@@ -141,3 +141,55 @@ path_is_under() {
       ;;
   esac
 }
+
+permissions_group_authorized() {
+  local root="$1"
+  local platform="$2"
+  local user_id="$3"
+  local chat_id="$4"
+  local identity_key="$5"
+  local group_slug="$6"
+  local permissions_file="$root/workspace/admin/permissions.md"
+
+  [ -n "$group_slug" ] || return 0
+  [ -n "$chat_id" ] || return 1
+  [ -f "$permissions_file" ] || return 1
+
+  awk -F'|' \
+    -v platform="$platform" \
+    -v user_id="$user_id" \
+    -v chat_id="$chat_id" \
+    -v identity_key="$identity_key" \
+    -v group_slug="$group_slug" '
+    function trim(s) {
+      gsub(/^[ \t]+|[ \t]+$/, "", s)
+      return s
+    }
+    NR < 3 || $0 !~ /^\|/ { next }
+    {
+      workspace = trim($3)
+      row_platform = trim($4)
+      row_user_id = trim($5)
+      row_group = trim($6)
+      row_chat_id = trim($7)
+      row_identity_key = trim($8)
+
+      if (workspace == "Workspace" || workspace == "---" || row_group == "") {
+        next
+      }
+
+      if (identity_key != "") {
+        actor_match = (row_identity_key == identity_key)
+      } else {
+        actor_match = (row_platform == platform && row_user_id == user_id)
+      }
+      chat_match = (chat_id != "" && row_chat_id == chat_id)
+
+      if (row_platform == platform && row_group == group_slug && chat_match && actor_match) {
+        found = 1
+        exit
+      }
+    }
+    END { exit found ? 0 : 1 }
+  ' "$permissions_file"
+}

@@ -12,7 +12,7 @@ Knot Agent 为 Codex 驱动的 agent 提供 workspace、知识布局、权限契
 
 1. 在 Knot 根目录启动 Codex。
 2. 先读 `AGENTS.md`；它是 workspace 的操作指南。
-3. 使用 `knot-setup` skill 安装或修复 workspace。
+3. 使用 `knot-setup` skill 安装或修复 Codex 默认配置、skills 和 workspace。
 4. setup 完成后，使用 `knot-workflow` 路由知识、IM、附件和交付物任务。
 
 ## 边界

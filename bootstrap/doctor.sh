@@ -4,7 +4,8 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 . "$SCRIPT_DIR/lib.sh"
-SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
+SKILLS_DIR="$CODEX_HOME_DIR/skills"
 PLATFORMS=""
 FAILURES=0
 
@@ -201,6 +202,7 @@ run_helper_smoke_tests() {
   cat > "$tmp_root/workspace/admin/permissions.md" <<'EOF'
 | User | Workspace | Platform | Platform User ID | Group | Chat ID | Identity Key | Name | Role | Scope | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
+| Example User | example-user | feishu | ou/test user | example-group | oc/test group | feishu:user:ou-test | Smoke Test | member | session | smoke |
 | Jane Example | jane-example | feishu | ou/jane | product-room | oc/product | feishu:user:ou/jane | Jane Example | member | session | smoke |
 EOF
   local resolved_exports
@@ -267,6 +269,58 @@ EOF
     fi
   else
     fail "knot-deliver rejected explicit group delivery"
+  fi
+
+  printf 'env-generated\n' > "$tmp_root/generated/env.png"
+  if deliver_output="$(env \
+    KNOT_ROOT="$tmp_root" \
+    KNOT_PLATFORM=feishu \
+    KNOT_PLATFORM_USER_ID="ou/test user" \
+    KNOT_ACTOR_USER=example-user \
+    KNOT_SOURCE_GROUP=example-group \
+    KNOT_CHAT_ID="oc/test group" \
+    KNOT_IDENTITY_KEY="feishu:user:ou-test" \
+    bash "$ROOT/bootstrap/knot-deliver.sh" --kind image --path "$tmp_root/generated/env.png" --target group --output-name "env-shared.png")"; then
+    if [ -f "$group_workspace/deliverables/env-shared.png" ] &&
+      printf '%s\n' "$deliver_output" | grep -Fq "image: $(resolve_path "$group_workspace/deliverables/env-shared.png")"; then
+      ok "knot-deliver reads current context from KNOT_* environment"
+    else
+      fail "knot-deliver env-context delivery did not create expected group deliverable"
+    fi
+  else
+    fail "knot-deliver did not accept KNOT_* environment context"
+  fi
+
+  if attach_output="$(env \
+    KNOT_ROOT="$tmp_root" \
+    KNOT_PLATFORM=feishu \
+    KNOT_PLATFORM_USER_ID="ou/test user" \
+    KNOT_ACTOR_USER=example-user \
+    KNOT_SOURCE_GROUP=example-group \
+    KNOT_CHAT_ID="oc/test group" \
+    KNOT_IDENTITY_KEY="feishu:user:ou-test" \
+    bash "$ROOT/bootstrap/knot-attachment.sh" --kind image --path "$group_workspace/deliverables/env-shared.png")" &&
+    printf '%s\n' "$attach_output" | grep -Fq "image: $(resolve_path "$group_workspace/deliverables/env-shared.png")"; then
+    ok "knot-attachment reads current context from KNOT_* environment"
+  else
+    fail "knot-attachment did not accept KNOT_* environment context"
+  fi
+
+  local unauthorized_output
+  if unauthorized_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "unauthorized-group" --kind image --path "$tmp_root/generated/image.png" --target group 2>&1)"; then
+    fail "knot-deliver allowed unauthorized explicit group delivery"
+  elif printf '%s\n' "$unauthorized_output" | grep -Fq "not authorized"; then
+    ok "knot-deliver rejects unauthorized explicit group delivery"
+  else
+    fail "knot-deliver unauthorized group rejection had wrong error: $unauthorized_output"
+  fi
+
+  if unauthorized_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --identity-key "feishu:user:wrong" --kind image --path "$tmp_root/generated/image.png" --target group 2>&1)"; then
+    fail "knot-deliver allowed group delivery with mismatched identity key"
+  elif printf '%s\n' "$unauthorized_output" | grep -Fq "not authorized"; then
+    ok "knot-deliver rejects mismatched identity key for group delivery"
+  else
+    fail "knot-deliver identity mismatch rejection had wrong error: $unauthorized_output"
   fi
 
   if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" --target group --output-name "result-shared.txt")"; then
@@ -410,6 +464,77 @@ EOF
     ok "knot-runtime-check rejects static KNOT_ACTIVE_WORKSPACE in .env"
   fi
 
+  local install_root
+  install_root="$tmp_parent/install-root"
+  mkdir -p "$install_root/.skills/knot-setup" "$install_root/.skills/knot-workflow"
+  cp -R "$ROOT/bootstrap" "$install_root/bootstrap"
+  cp -R "$ROOT/.skills/knot-setup/references" "$install_root/.skills/knot-setup/references"
+  cp "$ROOT/AGENTS.md" "$install_root/AGENTS.md"
+  cp "$ROOT/.gitignore" "$install_root/.gitignore"
+  printf '%s\n' 'name: knot-workflow' > "$install_root/.skills/knot-workflow/SKILL.md"
+  if CODEX_HOME="$install_root/codex-home" bash "$install_root/bootstrap/knot-install.sh" \
+    --root "$install_root" \
+    --skip-components \
+    --skip-build \
+    --skip-backup-remote \
+    --skip-doctor >/dev/null; then
+    if [ -d "$install_root/workspace/users" ] &&
+      [ -d "$install_root/runtime" ] &&
+      [ -f "$install_root/workspace/admin/permissions.md" ] &&
+      [ -f "$install_root/codex-home/AGENTS.md" ] &&
+      [ -x "$install_root/bootstrap/knot-workspace.sh" ]; then
+      ok "knot-install smoke test creates deterministic local scaffold"
+    else
+      fail "knot-install smoke test missed expected scaffold files"
+    fi
+  else
+    fail "knot-install smoke test failed"
+  fi
+
+  local repair_root
+  repair_root="$tmp_parent/repair-root"
+  mkdir -p "$repair_root/.skills/knot-setup" \
+    "$repair_root/.skills/knot-workflow" \
+    "$repair_root/workspace/admin" \
+    "$repair_root/codex-home"
+  cp -R "$ROOT/bootstrap" "$repair_root/bootstrap"
+  cp -R "$ROOT/.skills/knot-setup/references" "$repair_root/.skills/knot-setup/references"
+  cp "$ROOT/AGENTS.md" "$repair_root/AGENTS.md"
+  cp "$ROOT/.gitignore" "$repair_root/.gitignore"
+  printf '%s\n' 'name: knot-workflow' > "$repair_root/.skills/knot-workflow/SKILL.md"
+  printf '%s\n' 'custom global instructions' > "$repair_root/codex-home/AGENTS.md"
+  printf '%s\n' 'custom permissions' > "$repair_root/workspace/admin/permissions.md"
+  printf '%s\n' 'custom feedback' > "$repair_root/workspace/admin/knowledge-feedback.md"
+  printf '%s\n' 'custom backup policy' > "$repair_root/workspace/admin/backup-policy.md"
+
+  if CODEX_HOME="$repair_root/codex-home" bash "$repair_root/bootstrap/knot-install.sh" \
+    --root "$repair_root" \
+    --skip-components \
+    --skip-build \
+    --skip-backup-remote \
+    --skip-doctor >/dev/null &&
+    grep -Fq 'custom global instructions' "$repair_root/codex-home/AGENTS.md" &&
+    grep -Fq 'custom permissions' "$repair_root/workspace/admin/permissions.md" &&
+    grep -Fq 'custom feedback' "$repair_root/workspace/admin/knowledge-feedback.md" &&
+    grep -Fq 'custom backup policy' "$repair_root/workspace/admin/backup-policy.md"; then
+    ok "knot-install preserves existing global instructions and admin files"
+  else
+    fail "knot-install overwrote existing global instructions or admin files"
+  fi
+
+  : > "$repair_root/codex-home/AGENTS.md"
+  if CODEX_HOME="$repair_root/codex-home" bash "$repair_root/bootstrap/knot-install.sh" \
+    --root "$repair_root" \
+    --skip-components \
+    --skip-build \
+    --skip-backup-remote \
+    --skip-doctor >/dev/null &&
+    [ ! -s "$repair_root/codex-home/AGENTS.md" ]; then
+    ok "knot-install preserves existing empty global instructions file"
+  else
+    fail "knot-install overwrote existing empty global instructions file"
+  fi
+
   rm -rf "$tmp_parent" "$unsafe_root"
 }
 
@@ -530,6 +655,13 @@ printf 'Root: %s\n\n' "$ROOT"
 check_cmd codex
 check_macos_app Codex
 check_macos_app Obsidian
+check_file_exists "$ROOT/.skills/knot-setup/references/codex-agents.template.md" "Codex global AGENTS template"
+check_file_exists "$CODEX_HOME_DIR/AGENTS.md" "Codex global AGENTS.md"
+if [ -f "$CODEX_HOME_DIR/AGENTS.override.md" ]; then
+  warn "Codex global AGENTS.override.md exists and overrides AGENTS.md: $CODEX_HOME_DIR/AGENTS.override.md"
+else
+  ok "Codex global AGENTS.override.md absent"
+fi
 
 printf '\nSkills\n'
 check_skill_link "planning-with-files" "$ROOT/components/planning-with-files/.codex/skills/planning-with-files"
@@ -580,57 +712,48 @@ else
   ok "legacy knot-session helper removed"
 fi
 check_executable "$ROOT/bootstrap/knot-workspace.sh" "knot-workspace helper"
+check_executable "$ROOT/bootstrap/knot-install.sh" "knot-install helper"
 check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
 check_executable "$ROOT/bootstrap/knot-deliver.sh" "knot-deliver helper"
 check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
 check_executable "$ROOT/bootstrap/knot-runtime-check.sh" "knot-runtime-check helper"
 check_file_exists "$ROOT/bootstrap/lib.sh" "bootstrap shell library"
-check_file_contains "$ROOT/AGENTS.md" "## Thin Glue Helpers" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-workspace.sh" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-attachment.sh" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-deliver.sh" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-backup.sh" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-runtime-check.sh" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "bootstrap/lib.sh" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "## Permissions" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "## User And Group Workspaces" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "## Execution Modes" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "\`quick\`" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "\`durable\`" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "\`risky\`" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "planning-with-files" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "Office Pack" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "Agent Workbench" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "office-xlsx" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "office-pptx" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "office-docx" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "office-pdf" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "web-ppt" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "docling-skill" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "md-for-human" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "handoff" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "Force \`planning-with-files\` only" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "Ordinary deliverables and small multi-step" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "independent review" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "## Layout" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "components/" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "runtime/" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "workspace/" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "## Workflow" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "knot-workflow" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "operator" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "admin" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "member" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "Do not check permissions for every harmless IM request" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "modify system files" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "modify durable knowledge" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "edit the permissions table" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "access another user's" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "send files outside the current user or" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "current group deliverables. Reading approved shared knowledge does not require a" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "Only \`operator\` and \`admin\` may edit" "AGENTS.md"
-check_file_contains "$ROOT/AGENTS.md" "workspace/users/<user_slug>/deliverables" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "workspace/.state/tasks/<task_id>/" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "## Active Workspaces" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-workspace.sh" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "KNOT_ACTIVE_WORKSPACE" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "KNOT_GROUP_WORKSPACE" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "workspace/conversations/<platform>/<chat_id>/" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "## Authorization" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "workspace/admin/permissions.md" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "access another user's workspace" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "## Knowledge" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "workspace/knowledge/" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "visible diff" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "## Delivery" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-attachment.sh" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "bootstrap/knot-deliver.sh" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "workspace/users/<user_slug>/deliverables" "AGENTS.md"
+check_file_contains "$ROOT/AGENTS.md" "cc-connect-attachments" "AGENTS.md"
+check_file_not_contains "$ROOT/AGENTS.md" "## Execution Modes" "AGENTS.md"
+check_file_not_contains "$ROOT/AGENTS.md" "## Backup Automation" "AGENTS.md"
+check_file_not_contains "$ROOT/AGENTS.md" "## Skill Packs" "AGENTS.md"
+check_file_not_contains "$ROOT/AGENTS.md" "Office Pack" "AGENTS.md"
+check_file_not_contains "$ROOT/AGENTS.md" "Agent Workbench" "AGENTS.md"
+check_file_not_contains "$ROOT/AGENTS.md" "Roles:" "AGENTS.md"
 check_file_not_contains "$ROOT/AGENTS.md" "bootstrap/knot-session.sh" "AGENTS.md"
 check_file_not_contains "$ROOT/AGENTS.md" "workspace/sessions" "AGENTS.md"
-check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Apply the permissions contract in \`AGENTS.md\`" "knot-workflow"
-check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "apply \`AGENTS.md\` \`quick\` / \`durable\` / \`risky\` rules" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Use the lightest execution weight" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "**quick**" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "**durable**" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "**risky**" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "workspace/admin/permissions.md" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Default to the user-visible result" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-workspace.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-attachment.sh" "knot-workflow"
@@ -641,12 +764,18 @@ check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "KNOT_ACTIVE_WORKSPAC
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "workspace/conversations/<platform>/<chat_id>/" "knot-workflow"
 check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-session.sh" "knot-workflow"
 check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "workspace/sessions" "knot-workflow"
-check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-xlsx" "knot-workflow"
-check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-pptx" "knot-workflow"
-check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-docx" "knot-workflow"
-check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-pdf" "knot-workflow"
-check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "web-ppt" "knot-workflow"
-check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "md-for-human" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "available knowledge-ingest skill" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "available knowledge-query skill" "knot-workflow"
+check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "available spreadsheet, document" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-xlsx" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-pptx" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-docx" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "office-pdf" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "web-ppt" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "md-for-human" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "docling-skill" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "wiki-ingest" "knot-workflow"
+check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "wiki-query" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/users/<user_slug>/deliverables" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/groups/<group_slug>/deliverables" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "KNOT_ROOT=" "runtime config"

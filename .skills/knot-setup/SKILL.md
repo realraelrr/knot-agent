@@ -1,15 +1,15 @@
 ---
 name: knot-setup
-description: Set up or repair a Knot Codex agent workspace, including component repos, planning-with-files, Codex/Obsidian checks, separated workspace layout, selected IM gateway config, /whoami authorization, and final verification.
+description: Set up or repair a Knot Codex agent workspace with the deterministic installer, global Codex defaults, project boundaries, selected IM runtime config, /whoami authorization, and final verification.
 ---
 
 # Knot Setup
 
 Use this when a Codex agent needs to install, repair, or initialize Knot.
-First ask the human for the Knot install root. Do not assume the current
-directory is the intended install location.
+This skill is a thin human-decision wrapper around deterministic helper
+scripts. Do not duplicate install logic here when a helper already owns it.
 
-## Bootstrap Source
+## Source
 
 Install from the Knot scaffold repository:
 
@@ -17,46 +17,16 @@ Install from the Knot scaffold repository:
 https://github.com/realraelrr/knot-agent
 ```
 
-That repo should contain only the thin scaffold: `AGENTS.md`, `bootstrap/`,
-`.skills/`, and safe examples. It must not contain local runtime
-secrets, logs, sockets, or customer data.
-
-## Layout
-
-Keep code and agent work separate:
-
-```text
-./AGENTS.md
-./components/
-  docling-skill/
-  md-for-human/
-  handoff-skill/
-  obsidian-wiki/
-  cc-connect-local-main/
-  planning-with-files/
-  knot-skills/
-./workspace/
-  inbox/
-  knowledge/raw/
-  knowledge/processed/
-  knowledge/vault/
-  users/
-  groups/
-  conversations/
-  admin/
-  .state/tasks/
-./runtime/
-```
-
-Do not hard-code machine-specific absolute paths in generated docs or configs
-unless a target tool requires an expanded path.
+The scaffold should contain only safe project source and setup templates:
+`AGENTS.md`, `bootstrap/`, `.skills/`, docs, and examples. It must not contain
+runtime secrets, logs, sockets, or customer data.
 
 ## Workflow
 
 1. Ask for the install root.
 
-Wait for the human to provide a target directory. If the directory is empty or
-missing, clone the scaffold into it:
+Do not assume the current directory is the intended root. If the directory is
+missing or empty, clone the scaffold into it:
 
 ```bash
 git clone https://github.com/realraelrr/knot-agent "$INSTALL_ROOT"
@@ -66,202 +36,40 @@ if git remote get-url origin 2>/dev/null | grep -q 'realraelrr/knot-agent'; then
 fi
 ```
 
-If the directory already exists, inspect it first. If it already appears to be a
-Knot root, confirm that the human wants to reuse it. Do not overwrite an
-existing non-empty directory without explicit approval.
+If the directory already exists, inspect it first. Reuse it only when it is a
+Knot root or the human explicitly confirms reuse. Do not overwrite a non-empty
+unrelated directory.
 
-2. Check prerequisites:
+2. Decide backup remote.
 
-```bash
-pwd
-command -v codex || true
-mdfind "kMDItemFSName == 'Codex.app'" | head -1 || true
-mdfind "kMDItemFSName == 'Obsidian.app'" | head -1 || true
-```
+Ask for a customer-controlled git remote URL or local bare repo path to use as
+the `backup` remote. Do not use the Knot scaffold remote as backup. If no
+backup remote is available, continue only with `--skip-backup-remote` and
+report that daily rollback backup is not ready.
 
-3. Create directories:
+3. Run the deterministic installer.
 
-```bash
-mkdir -p components runtime \
-  workspace/knowledge/raw \
-  workspace/knowledge/processed \
-  workspace/knowledge/vault \
-  workspace/users \
-  workspace/groups \
-  workspace/conversations \
-  workspace/admin \
-  workspace/.state/tasks
-```
-
-Create admin templates if missing:
+The installer owns directory creation, admin templates, global Codex defaults,
+project `AGENTS.md`, component repos, skill links, helper permissions,
+`cc-connect` build, and the base doctor check.
 
 ```bash
-test -f workspace/admin/permissions.md || cp .skills/knot-setup/references/permissions.template.md workspace/admin/permissions.md
-test -f workspace/admin/knowledge-feedback.md || cp .skills/knot-setup/references/knowledge-feedback.template.md workspace/admin/knowledge-feedback.md
-test -f workspace/admin/backup-policy.md || cp .skills/knot-setup/references/backup-policy.template.md workspace/admin/backup-policy.md
+bash bootstrap/knot-install.sh --backup-remote "$BACKUP_REMOTE_URL"
 ```
 
-Ensure helper scripts are executable:
+When intentionally proceeding without backup setup:
 
 ```bash
-chmod +x bootstrap/knot-workspace.sh bootstrap/knot-attachment.sh bootstrap/knot-deliver.sh bootstrap/knot-backup.sh bootstrap/knot-runtime-check.sh bootstrap/doctor.sh
+bash bootstrap/knot-install.sh --skip-backup-remote
 ```
 
-Configure the required customer backup remote:
+For repair work, use the same installer. It should preserve existing global
+Codex instructions and local admin files unless a file is missing.
 
-```bash
-git remote -v
-```
+4. Configure selected IM platforms.
 
-Ask the human for a customer-controlled backup git remote URL. Add it as
-`backup`:
-
-```bash
-git remote add backup "$BACKUP_REMOTE_URL"
-```
-
-Do not use the Knot scaffold remote as the backup remote. If no backup remote is
-available, report that daily rollback backup is not ready.
-
-4. Ensure component repos exist:
-
-```bash
-test -d components/docling-skill || git clone https://github.com/realraelrr/docling-skill components/docling-skill
-test -d components/md-for-human || git clone https://github.com/realraelrr/md-for-human components/md-for-human
-test -d components/handoff-skill || git clone https://github.com/realraelrr/handoff-skill components/handoff-skill
-test -d components/obsidian-wiki || git clone https://github.com/Ar9av/obsidian-wiki components/obsidian-wiki
-test -d components/cc-connect-local-main || git clone https://github.com/realraelrr/cc-connect components/cc-connect-local-main
-test -d components/planning-with-files || git clone https://github.com/realraelrr/planning-with-files components/planning-with-files
-test -d components/knot-skills || git clone https://github.com/realraelrr/knot-skills components/knot-skills
-```
-
-`components/` is the local source of truth for component-provided skills.
-Scaffold-owned skills live under `.skills/`. `${CODEX_HOME:-$HOME/.codex}/skills`
-should contain links to those source locations, not independent editable copies.
-
-5. Link required skills into Codex:
-
-```bash
-set -e
-SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
-mkdir -p "$SKILLS_DIR"
-
-link_skill() {
-  name="$1"
-  target="$(cd "$2" && pwd)"
-  dest="$SKILLS_DIR/$name"
-
-  if [ -e "$dest" ] || [ -L "$dest" ]; then
-    if [ -L "$dest" ]; then
-      rm "$dest"
-    else
-      backup="$dest.backup.$(date +%Y%m%d%H%M%S)"
-      mv "$dest" "$backup"
-      printf 'Backed up existing skill directory: %s -> %s\n' "$dest" "$backup"
-    fi
-  fi
-
-  ln -s "$target" "$dest"
-}
-
-test -x components/knot-skills/scripts/install-codex-skills.sh
-for skill in office-xlsx office-pptx office-docx office-pdf web-ppt; do
-  test -f "components/knot-skills/skills/$skill/SKILL.md"
-done
-for target in \
-  components/planning-with-files/.codex/skills/planning-with-files \
-  components/docling-skill/.codex/skills/docling-skill \
-  components/md-for-human/.codex/skills/md-for-human \
-  components/handoff-skill/.codex/skills/handoff; do
-  test -f "$target/SKILL.md"
-done
-bash components/knot-skills/scripts/install-codex-skills.sh
-find components/obsidian-wiki/.skills -mindepth 1 -maxdepth 1 -type d -exec sh -c '
-  SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
-  link_skill() {
-    name="$1"
-    target="$(cd "$2" && pwd)"
-    dest="$SKILLS_DIR/$name"
-    if [ -e "$dest" ] || [ -L "$dest" ]; then
-      if [ -L "$dest" ]; then
-        rm "$dest"
-      else
-        backup="$dest.backup.$(date +%Y%m%d%H%M%S)"
-        mv "$dest" "$backup"
-        printf "Backed up existing skill directory: %s -> %s\n" "$dest" "$backup"
-      fi
-    fi
-    ln -s "$target" "$dest"
-  }
-  for d do link_skill "$(basename "$d")" "$d"; done
-' sh {} +
-test -d .skills/knot-setup && link_skill knot-setup .skills/knot-setup
-test -d .skills/knot-workflow && link_skill knot-workflow .skills/knot-workflow
-```
-
-This intentionally backs up existing non-symlink skill directories before
-linking. The component copy should be the active source of truth.
-
-6. Configure `AGENTS.md`.
-
-If `AGENTS.md` is missing, create it from
-`./.skills/knot-setup/references/AGENTS.template.md`. If `AGENTS.md` already
-exists, inspect it. When it lacks the current permissions, user/group workspace,
-or workflow routing sections, show a visible diff and ask before replacing or
-patching it. If the template is not present, create a concise `AGENTS.md` that
-defines:
-
-- Codex starts from the Knot root.
-- Code lives in `components/`.
-- User and agent work lives in `workspace/`.
-- `quick` tasks execute directly with core safety rules and necessary
-  verification.
-- `durable` tasks may use lightweight planning and delivery records when
-  recovery or handoff benefits.
-- `risky` tasks plan, confirm boundary-changing choices, verify, and use
-  independent review when justified.
-- `planning-with-files` is forced only for high recovery cost, cross-system or
-  cross-repo work, public interface/config/permission/runtime changes, long
-  tasks, explicit planning requests, or unclear risk where continuing would
-  change a behavior boundary.
-- Task state goes under `workspace/.state/tasks/<task_id>/` for root-scoped
-  work and `workspace/users/<user_slug>/.state/tasks/<task_id>/` for
-  IM-triggered user work.
-- IM-triggered work starts Codex from exactly one cwd:
-  `workspace/users/<user_slug>/`.
-- Group chats may expose `workspace/groups/<group_slug>/` through
-  `KNOT_GROUP_WORKSPACE`; group workspace is not a second cwd.
-- `workspace/conversations/<platform>/<chat_id>/` is source/audit metadata only.
-- Three roles exist: `operator`, `admin`, and `member`.
-- Daily rollback backup uses Codex app automation and
-  `bootstrap/knot-backup.sh`.
-- Knowledge conversion and wiki ingest are decoupled.
-- Knot workflow routing uses `knot-workflow`.
-- IM attachments use `cc-connect-attachments`.
-- Material knowledge changes require human approval or a visible diff.
-- IM workspace setup uses `bootstrap/knot-workspace.sh`.
-- IM attachments use `bootstrap/knot-attachment.sh`.
-- IM runtime preflight uses `bootstrap/knot-runtime-check.sh`.
-
-7. Build `cc-connect`:
-
-```bash
-pushd components/cc-connect-local-main
-make build-noweb
-if [ -x ./cc-connect ]; then
-  ./cc-connect --version
-elif [ -x ./dist/cc-connect ]; then
-  ./dist/cc-connect --version
-else
-  echo "cc-connect binary not found after make build-noweb" >&2
-  exit 1
-fi
-popd
-```
-
-8. Ask which IM platforms to configure.
-
-Do not configure every platform by default. Ask the human to choose one or more:
+Do not configure every platform by default. Ask the human which platforms to
+enable:
 
 ```text
 dingtalk
@@ -270,22 +78,17 @@ wecom
 weixin
 ```
 
-For each chosen platform:
+For each selected platform, read only the relevant section of
+`./.skills/knot-setup/references/runtime-config.md`, then:
 
 - create or reuse the matching config under `runtime/`;
-- create `.env` placeholders when credentials are missing;
-- copy the built `cc-connect` binary into the selected runtime `bin/`
-  directory, using the path detected after `make build-noweb`;
-- ask the human to fill platform credentials;
-- run `bash bootstrap/knot-runtime-check.sh --platform PLATFORM` before
-  starting the gateway;
+- create credential placeholders when credentials are missing;
+- point the platform config at the built `cc-connect` binary;
+- run `bash bootstrap/knot-runtime-check.sh --platform PLATFORM`;
 - start only that platform gateway;
-- ask the human to send `/whoami` from every intended context.
+- ask the human to send `/whoami` from each intended direct or group context.
 
-Read `./.skills/knot-setup/references/runtime-config.md` for platform config
-templates, credential keys, run scripts, and `/whoami` field mapping.
-
-9. Complete `/whoami` authorization.
+5. Complete `/whoami` authorization.
 
 For each intended direct chat or group, collect the full `/whoami` response:
 
@@ -297,24 +100,31 @@ Chat ID
 Identity Key
 ```
 
-Update the relevant allow/admin config, restart the gateway, and ask the human
-to verify from that exact context. Repeat until every intended context passes.
+Update only the relevant authorization/admin config, restart the gateway, and
+ask the human to verify from that exact context. Repeat until every intended
+context passes.
 
-10. Final verification:
+6. Final verification.
+
+Always run:
 
 ```bash
 bash bootstrap/doctor.sh
+```
+
+For each configured platform, also run:
+
+```bash
 bash bootstrap/doctor.sh --platform <configured-platform>
 ```
 
-Run the platform-specific doctor once for each configured platform. Also verify
-each configured IM with:
+Verify each configured IM context with:
 
 - `/whoami` returns the expected identity;
 - a normal message receives a Codex reply;
-- image/file send-receive works if the platform is expected to support it.
-- `git remote get-url backup` is configured and does not point to the scaffold
-  repository;
+- image or file send-receive works when the platform is expected to support it;
+- `git remote get-url backup` is configured and does not point to the scaffold,
+  unless setup intentionally used `--skip-backup-remote`;
 - the Codex app daily backup automation is created from
   `./.skills/knot-setup/references/daily-backup-automation.template.md`.
 
@@ -322,17 +132,13 @@ each configured IM with:
 
 Report only:
 
-- component repos installed or reused;
-- Codex CLI, Codex app, and Obsidian app detection result;
-- skills linked, including `knot-workflow`, Office Pack, and Agent Workbench;
-- `AGENTS.md` created or preserved;
-- `workspace/admin/permissions.md` and
-  `workspace/admin/knowledge-feedback.md` created or preserved;
-- `workspace/admin/backup-policy.md` created or preserved;
-- thin helper scripts available: `knot-workspace`, `knot-attachment`,
-  `knot-deliver`, `knot-backup`, and `knot-runtime-check`;
+- install root and whether it was cloned, reused, or repaired;
+- installer command and pass/fail result;
 - backup remote and daily backup automation status;
-- `cc-connect` build/version result;
+- global Codex `AGENTS.md` installed, matched, or preserved;
+- project `AGENTS.md` created or preserved;
+- admin templates created or preserved;
+- component, skill-link, and `cc-connect` build status from the installer;
 - IM platforms configured;
 - `/whoami` contexts authorized;
-- verification commands and pass/fail status.
+- final verification commands and pass/fail status.

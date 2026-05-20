@@ -2,20 +2,23 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEFAULT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT="${KNOT_ROOT:-$DEFAULT_ROOT}"
 . "$SCRIPT_DIR/lib.sh"
-PLATFORM=""
-CHAT_ID=""
-USER_ID=""
-USER_SLUG=""
-GROUP_SLUG=""
-IDENTITY_KEY=""
-NAME=""
-GROUP_NAME=""
+PLATFORM="${KNOT_PLATFORM:-}"
+CHAT_ID="${KNOT_CHAT_ID:-}"
+USER_ID="${KNOT_PLATFORM_USER_ID:-}"
+USER_SLUG="${KNOT_ACTOR_USER:-}"
+GROUP_SLUG="${KNOT_SOURCE_GROUP:-}"
+IDENTITY_KEY="${KNOT_IDENTITY_KEY:-}"
+NAME="${KNOT_ACTOR_NAME:-}"
+GROUP_NAME="${KNOT_SOURCE_GROUP_NAME:-}"
 KIND=""
 SOURCE_PATH=""
 OUTPUT_NAME=""
 TARGET="user"
+EXPLICIT_CONTEXT=0
+EXPLICIT_IDENTITY_KEY=0
 
 usage() {
   cat <<'EOF'
@@ -63,36 +66,43 @@ while [ "$#" -gt 0 ]; do
       shift
       [ "$#" -gt 0 ] || die "--root requires a value"
       ROOT="$1"
+      EXPLICIT_CONTEXT=1
       ;;
     --platform)
       shift
       [ "$#" -gt 0 ] || die "--platform requires a value"
       PLATFORM="$1"
+      EXPLICIT_CONTEXT=1
       ;;
     --chat-id)
       shift
       [ "$#" -gt 0 ] || die "--chat-id requires a value"
       CHAT_ID="$1"
+      EXPLICIT_CONTEXT=1
       ;;
     --user-id)
       shift
       [ "$#" -gt 0 ] || die "--user-id requires a value"
       USER_ID="$1"
+      EXPLICIT_CONTEXT=1
       ;;
     --user-slug)
       shift
       [ "$#" -gt 0 ] || die "--user-slug requires a value"
       USER_SLUG="$1"
+      EXPLICIT_CONTEXT=1
       ;;
     --group-slug)
       shift
       [ "$#" -gt 0 ] || die "--group-slug requires a value"
       GROUP_SLUG="$1"
+      EXPLICIT_CONTEXT=1
       ;;
     --identity-key)
       shift
       [ "$#" -gt 0 ] || die "--identity-key requires a value"
       IDENTITY_KEY="$1"
+      EXPLICIT_IDENTITY_KEY=1
       ;;
     --name)
       shift
@@ -140,6 +150,9 @@ done
 [ -n "$USER_SLUG" ] || die "--user-slug is required"
 [ -n "$KIND" ] || die "--kind is required"
 [ -n "$SOURCE_PATH" ] || die "--path is required"
+if [ "$EXPLICIT_CONTEXT" -eq 1 ] && [ "$EXPLICIT_IDENTITY_KEY" -eq 0 ]; then
+  IDENTITY_KEY=""
+fi
 
 case "$KIND" in
   image|file)
@@ -161,6 +174,9 @@ esac
 [ -f "$SOURCE_PATH" ] || die "file not found: $SOURCE_PATH"
 
 ROOT="$(cd "$ROOT" && pwd)"
+if [ -n "$GROUP_SLUG" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
+  die "group workspace is not authorized for this actor/context: $GROUP_SLUG"
+fi
 SOURCE_ABS="$(resolve_path "$SOURCE_PATH")" || die "cannot resolve file path: $SOURCE_PATH"
 SOURCE_LOCATION_ABS="$(absolute_path "$SOURCE_PATH")" || die "cannot resolve source path location: $SOURCE_PATH"
 

@@ -18,7 +18,8 @@ local and are not part of this scaffold.
 
 1. Open Codex from the Knot root.
 2. Read `AGENTS.md`; it is the workspace operating guide.
-3. Use the `knot-setup` skill to install or repair the workspace.
+3. Use the `knot-setup` skill to install or repair Codex defaults, skills, and
+   the workspace.
 4. After setup, use `knot-workflow` to route knowledge, IM, attachment, and
    deliverable tasks.
 
