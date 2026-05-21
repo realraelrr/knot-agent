@@ -159,6 +159,7 @@ path_is_under() {
 
 # Call as parse_knot_context_arg "$@". The shifts below only affect this
 # function's argument copy; callers consume their "$@" via KNOT_ARG_CONSUMED.
+# shellcheck disable=SC2034
 parse_knot_context_arg() {
   local arg="$1"
   local value
@@ -243,6 +244,7 @@ parse_knot_context_arg() {
   esac
 }
 
+# shellcheck disable=SC2034
 clear_implicit_identity_key() {
   if [ "${EXPLICIT_CONTEXT:-0}" -eq 1 ] && [ "${EXPLICIT_IDENTITY_KEY:-0}" -eq 0 ]; then
     IDENTITY_KEY=""

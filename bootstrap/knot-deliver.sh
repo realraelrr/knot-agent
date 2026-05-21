@@ -17,8 +17,12 @@ KIND=""
 SOURCE_PATH=""
 OUTPUT_NAME=""
 TARGET="user"
+# Set by this script and read by parser helpers sourced from lib.sh.
+# shellcheck disable=SC2034
 EXPLICIT_CONTEXT=0
+# shellcheck disable=SC2034
 EXPLICIT_IDENTITY_KEY=0
+# shellcheck disable=SC2034
 KNOT_PARSE_NAMES=1
 
 usage() {
