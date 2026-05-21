@@ -3,6 +3,7 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=bootstrap/lib.sh
 . "$SCRIPT_DIR/lib.sh"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 SKILLS_DIR="$CODEX_HOME_DIR/skills"

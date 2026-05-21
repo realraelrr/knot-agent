@@ -346,6 +346,8 @@ if [ -f "$CONFIG_FILE" ]; then
     fail "config missing platform type: type = \"$PLATFORM\""
   fi
 
+  # The config should contain literal ${KNOT_ROOT} placeholders for runtime expansion.
+  # shellcheck disable=SC2016
   if grep -Eq '^[[:space:]]*\[projects\.knot_workspace\][[:space:]]*$' "$CONFIG_FILE" &&
     config_has_bool_true "$CONFIG_FILE" "enabled" &&
     grep -Fq 'helper = "${KNOT_ROOT}/bootstrap/knot-workspace.sh"' "$CONFIG_FILE" &&

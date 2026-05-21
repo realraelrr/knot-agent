@@ -41,7 +41,7 @@ ROOT="$(cd "$ROOT" && pwd)" || {
   printf 'MISS root directory does not exist: %s\n' "$ROOT"
   exit 1
 }
-# shellcheck source=../bootstrap/lib.sh
+# shellcheck source=bootstrap/lib.sh
 . "$ROOT/bootstrap/lib.sh"
 
 ok() { printf 'OK   %s\n' "$1"; }
