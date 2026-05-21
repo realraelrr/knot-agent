@@ -90,7 +90,7 @@ root = "${KNOT_ROOT}"
 
 [projects.agent.options]
 backend = "app_server"
-app_server_url = "stdio"
+app_server_url = "stdio://"
 mode = "suggest"
 
 [[projects.platforms]]

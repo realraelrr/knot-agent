@@ -304,6 +304,8 @@ run_scaffold_only_checks() {
   check_executable "$ROOT/bootstrap/knot-deliver.sh" "knot-deliver helper"
   check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
   check_executable "$ROOT/bootstrap/knot-runtime-check.sh" "knot-runtime-check helper"
+  check_executable "$ROOT/bootstrap/knot-im-smoke-plan.sh" "IM smoke plan helper"
+  check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
 
   check_file_contains "$ROOT/.gitignore" ".state/" ".gitignore"
   check_file_contains "$ROOT/.gitignore" "workspace/" ".gitignore"
@@ -334,6 +336,8 @@ run_scaffold_only_checks() {
   check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "| User | Workspace | Platform | Platform User ID | Group | Chat ID | Identity Key | Name | Role | Scope | Notes |" "permissions template"
   check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "bootstrap/knot-backup.sh" "backup policy template"
   check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "bash bootstrap/knot-backup.sh" "backup automation template"
+  check_file_contains "$ROOT/docs/im-smoke-sop.md" "Pairwise Matrix" "IM smoke SOP"
+  check_file_contains "$ROOT/docs/im-smoke-sop.md" "High-risk checks must pass on every platform" "IM smoke SOP"
 
   printf '\nSmoke tests\n'
   run_helper_smoke_tests
@@ -424,8 +428,10 @@ check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
 check_executable "$ROOT/bootstrap/knot-deliver.sh" "knot-deliver helper"
 check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
 check_executable "$ROOT/bootstrap/knot-runtime-check.sh" "knot-runtime-check helper"
+check_executable "$ROOT/bootstrap/knot-im-smoke-plan.sh" "IM smoke plan helper"
 check_file_exists "$ROOT/bootstrap/lib.sh" "bootstrap shell library"
 check_executable "$ROOT/tests/integration.sh" "integration smoke tests"
+check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
 check_file_contains "$ROOT/AGENTS.md" "## Layout" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "components/" "AGENTS.md"
 check_file_contains "$ROOT/AGENTS.md" "runtime/" "AGENTS.md"
@@ -550,6 +556,8 @@ check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation
 check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "duplicate origin/scaffold remote" "backup automation template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "legacy" "backup automation template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "- knowledge/" "backup automation template"
+check_file_contains "$ROOT/docs/im-smoke-sop.md" "Pairwise Matrix" "IM smoke SOP"
+check_file_contains "$ROOT/docs/im-smoke-sop.md" "High-risk checks must pass on every platform" "IM smoke SOP"
 check_backup_remote
 run_helper_smoke_tests
 check_dir "$ROOT/runtime" "runtime"
