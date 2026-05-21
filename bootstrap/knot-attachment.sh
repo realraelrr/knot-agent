@@ -33,49 +33,12 @@ EOF
 }
 
 while [ "$#" -gt 0 ]; do
+  if parse_knot_context_arg "$@"; then
+    shift "$KNOT_ARG_CONSUMED"
+    continue
+  fi
+
   case "$1" in
-    --root)
-      shift
-      [ "$#" -gt 0 ] || die "--root requires a value"
-      ROOT="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --platform)
-      shift
-      [ "$#" -gt 0 ] || die "--platform requires a value"
-      PLATFORM="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --chat-id)
-      shift
-      [ "$#" -gt 0 ] || die "--chat-id requires a value"
-      CHAT_ID="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --user-id)
-      shift
-      [ "$#" -gt 0 ] || die "--user-id requires a value"
-      USER_ID="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --user-slug)
-      shift
-      [ "$#" -gt 0 ] || die "--user-slug requires a value"
-      USER_SLUG="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --group-slug)
-      shift
-      [ "$#" -gt 0 ] || die "--group-slug requires a value"
-      GROUP_SLUG="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --identity-key)
-      shift
-      [ "$#" -gt 0 ] || die "--identity-key requires a value"
-      IDENTITY_KEY="$1"
-      EXPLICIT_IDENTITY_KEY=1
-      ;;
     --kind)
       shift
       [ "$#" -gt 0 ] || die "--kind requires a value"
@@ -97,14 +60,10 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-[ -n "$PLATFORM" ] || die "--platform is required"
-[ -n "$USER_ID" ] || die "--user-id is required"
-[ -n "$USER_SLUG" ] || die "--user-slug is required"
+require_knot_context
 [ -n "$KIND" ] || die "--kind is required"
 [ -n "$FILE_PATH" ] || die "--path is required"
-if [ "$EXPLICIT_CONTEXT" -eq 1 ] && [ "$EXPLICIT_IDENTITY_KEY" -eq 0 ]; then
-  IDENTITY_KEY=""
-fi
+clear_implicit_identity_key
 
 case "$KIND" in
   image|file)
@@ -152,16 +111,13 @@ if [ -n "$CONVERSATIONS_DIR" ]; then
   esac
 fi
 
-case "$ABS_FILE" in
-  "$USER_DELIVERABLES_DIR"/*)
-    ;;
-  "$GROUP_DELIVERABLES_DIR"/*)
-    [ -n "$GROUP_DELIVERABLES_DIR" ] || die "attachments cannot be sent from another workspace"
-    ;;
-  *)
-    die "attachment must be inside the current user or group deliverables directory"
-    ;;
-esac
+if path_is_under "$ABS_FILE" "$USER_DELIVERABLES_DIR"; then
+  :
+elif [ -n "$GROUP_DELIVERABLES_DIR" ] && path_is_under "$ABS_FILE" "$GROUP_DELIVERABLES_DIR"; then
+  :
+else
+  die "attachment must be inside the current user or group deliverables directory"
+fi
 
 printf '```cc-connect-attachments\n'
 printf '%s: %s\n' "$KIND" "$ABS_FILE"

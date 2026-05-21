@@ -50,8 +50,19 @@ report that daily rollback backup is not ready.
 3. Run the deterministic installer.
 
 The installer owns directory creation, admin templates, global Codex defaults,
-project `AGENTS.md`, component repos, skill links, helper permissions,
+project `AGENTS.md`, pinned component repos, skill links, helper permissions,
 `cc-connect` build, and the base doctor check.
+Pinned component revisions are defined in `bootstrap/knot-install.sh`. Repair
+updates clean existing component checkouts to those revisions and stops if a
+component has tracked local changes.
+
+To update component pins:
+
+1. Change only the relevant `*_REF` values in `bootstrap/knot-install.sh`.
+2. Run the installer from a clean checkout; it must stop instead of overwriting
+   tracked local component changes.
+3. Run `bash bootstrap/doctor.sh` and confirm each component reports the new
+   pinned revision.
 
 ```bash
 bash bootstrap/knot-install.sh --backup-remote "$BACKUP_REMOTE_URL"

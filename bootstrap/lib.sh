@@ -49,6 +49,21 @@ resolve_path() {
   absolute_path "$path"
 }
 
+resolve_symlink() {
+  local path="$1"
+  local target
+
+  target="$(readlink "$path")" || return 1
+  case "$target" in
+    /*)
+      printf '%s\n' "$target"
+      ;;
+    *)
+      (cd "$(dirname "$path")/$target" 2>/dev/null && pwd)
+      ;;
+  esac
+}
+
 workspace_export() {
   local key="$1"
   local data="$2"
@@ -140,6 +155,104 @@ path_is_under() {
       return 1
       ;;
   esac
+}
+
+# Call as parse_knot_context_arg "$@". The shifts below only affect this
+# function's argument copy; callers consume their "$@" via KNOT_ARG_CONSUMED.
+parse_knot_context_arg() {
+  local arg="$1"
+  local value
+
+  KNOT_ARG_CONSUMED=0
+  case "$arg" in
+    --root)
+      shift
+      [ "$#" -gt 0 ] || die "--root requires a value"
+      value="$1"
+      ROOT="$value"
+      EXPLICIT_CONTEXT=1
+      KNOT_ARG_CONSUMED=2
+      ;;
+    --platform)
+      shift
+      [ "$#" -gt 0 ] || die "--platform requires a value"
+      value="$1"
+      PLATFORM="$value"
+      EXPLICIT_CONTEXT=1
+      KNOT_ARG_CONSUMED=2
+      ;;
+    --chat-id)
+      shift
+      [ "$#" -gt 0 ] || die "--chat-id requires a value"
+      value="$1"
+      CHAT_ID="$value"
+      EXPLICIT_CONTEXT=1
+      KNOT_ARG_CONSUMED=2
+      ;;
+    --user-id)
+      shift
+      [ "$#" -gt 0 ] || die "--user-id requires a value"
+      value="$1"
+      USER_ID="$value"
+      EXPLICIT_CONTEXT=1
+      KNOT_ARG_CONSUMED=2
+      ;;
+    --user-slug)
+      shift
+      [ "$#" -gt 0 ] || die "--user-slug requires a value"
+      value="$1"
+      USER_SLUG="$value"
+      EXPLICIT_CONTEXT=1
+      KNOT_ARG_CONSUMED=2
+      ;;
+    --group-slug)
+      shift
+      [ "$#" -gt 0 ] || die "--group-slug requires a value"
+      value="$1"
+      GROUP_SLUG="$value"
+      EXPLICIT_CONTEXT=1
+      KNOT_ARG_CONSUMED=2
+      ;;
+    --identity-key)
+      shift
+      [ "$#" -gt 0 ] || die "--identity-key requires a value"
+      value="$1"
+      IDENTITY_KEY="$value"
+      EXPLICIT_IDENTITY_KEY=1
+      KNOT_ARG_CONSUMED=2
+      ;;
+    --name)
+      [ "${KNOT_PARSE_NAMES:-0}" -eq 1 ] || return 1
+      shift
+      [ "$#" -gt 0 ] || die "--name requires a value"
+      value="$1"
+      NAME="$value"
+      KNOT_ARG_CONSUMED=2
+      ;;
+    --group-name)
+      [ "${KNOT_PARSE_NAMES:-0}" -eq 1 ] || return 1
+      shift
+      [ "$#" -gt 0 ] || die "--group-name requires a value"
+      value="$1"
+      GROUP_NAME="$value"
+      KNOT_ARG_CONSUMED=2
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+clear_implicit_identity_key() {
+  if [ "${EXPLICIT_CONTEXT:-0}" -eq 1 ] && [ "${EXPLICIT_IDENTITY_KEY:-0}" -eq 0 ]; then
+    IDENTITY_KEY=""
+  fi
+}
+
+require_knot_context() {
+  [ -n "$PLATFORM" ] || die "--platform is required"
+  [ -n "$USER_ID" ] || die "--user-id is required"
+  [ -n "$USER_SLUG" ] || die "--user-slug is required"
 }
 
 permissions_group_authorized() {

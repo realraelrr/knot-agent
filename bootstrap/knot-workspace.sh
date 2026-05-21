@@ -50,27 +50,14 @@ hash_value() {
   die "sha256sum or shasum is required"
 }
 
-safe_id_segment() {
-  local raw="$1"
-  local safe
-  local hash
-
-  safe="$(printf '%s' "$raw" | LC_ALL=C tr -c 'A-Za-z0-9._-' '_' | sed 's/^_*//; s/_*$//; s/__*/_/g' | cut -c 1-80)"
-  if [ -z "$safe" ]; then
-    safe="id"
-  fi
-
-  hash="$(hash_value "$raw")"
-  printf '%s-%s\n' "$safe" "$hash"
-}
-
-safe_name_segment() {
+safe_segment() {
   local raw="$1"
   local fallback="$2"
+  local max_length="$3"
   local safe
   local hash
 
-  safe="$(printf '%s' "$raw" | LC_ALL=C tr -c 'A-Za-z0-9._-' '_' | sed 's/^_*//; s/_*$//; s/__*/_/g' | cut -c 1-60)"
+  safe="$(printf '%s' "$raw" | LC_ALL=C tr -c 'A-Za-z0-9._-' '_' | sed 's/^_*//; s/_*$//; s/__*/_/g' | cut -c "1-$max_length")"
   if [ -z "$safe" ]; then
     safe="$fallback"
   fi
@@ -264,13 +251,13 @@ if [ -z "$GROUP_SLUG" ] && [ -n "$CHAT_ID" ]; then
 fi
 if [ -z "$USER_SLUG" ]; then
   if [ -n "$NAME" ]; then
-    USER_SLUG="$(safe_name_segment "$NAME" "user")"
+    USER_SLUG="$(safe_segment "$NAME" "user" 60)"
   else
-    USER_SLUG="$(safe_name_segment "$PLATFORM-$USER_ID" "user")"
+    USER_SLUG="$(safe_segment "$PLATFORM-$USER_ID" "user" 60)"
   fi
 fi
 if [ -z "$GROUP_SLUG" ] && [ -n "$GROUP_NAME" ] && [ ! -f "$PERMISSIONS_FILE" ]; then
-  GROUP_SLUG="$(safe_name_segment "$GROUP_NAME" "group")"
+  GROUP_SLUG="$(safe_segment "$GROUP_NAME" "group" 60)"
 fi
 
 validate_slug "--user-slug" "$USER_SLUG"
@@ -287,7 +274,7 @@ if [ -n "$GROUP_SLUG" ]; then
 fi
 
 if [ -n "$CHAT_ID" ]; then
-  CONVERSATION_SEGMENT="$(safe_id_segment "$CHAT_ID")"
+  CONVERSATION_SEGMENT="$(safe_segment "$CHAT_ID" "id" 80)"
   CONVERSATION_DIR="$ROOT/workspace/conversations/$PLATFORM/$CONVERSATION_SEGMENT"
 fi
 

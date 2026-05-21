@@ -19,6 +19,7 @@ OUTPUT_NAME=""
 TARGET="user"
 EXPLICIT_CONTEXT=0
 EXPLICIT_IDENTITY_KEY=0
+KNOT_PARSE_NAMES=1
 
 usage() {
   cat <<'EOF'
@@ -61,59 +62,12 @@ reject_non_current_workspace_source() {
 }
 
 while [ "$#" -gt 0 ]; do
+  if parse_knot_context_arg "$@"; then
+    shift "$KNOT_ARG_CONSUMED"
+    continue
+  fi
+
   case "$1" in
-    --root)
-      shift
-      [ "$#" -gt 0 ] || die "--root requires a value"
-      ROOT="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --platform)
-      shift
-      [ "$#" -gt 0 ] || die "--platform requires a value"
-      PLATFORM="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --chat-id)
-      shift
-      [ "$#" -gt 0 ] || die "--chat-id requires a value"
-      CHAT_ID="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --user-id)
-      shift
-      [ "$#" -gt 0 ] || die "--user-id requires a value"
-      USER_ID="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --user-slug)
-      shift
-      [ "$#" -gt 0 ] || die "--user-slug requires a value"
-      USER_SLUG="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --group-slug)
-      shift
-      [ "$#" -gt 0 ] || die "--group-slug requires a value"
-      GROUP_SLUG="$1"
-      EXPLICIT_CONTEXT=1
-      ;;
-    --identity-key)
-      shift
-      [ "$#" -gt 0 ] || die "--identity-key requires a value"
-      IDENTITY_KEY="$1"
-      EXPLICIT_IDENTITY_KEY=1
-      ;;
-    --name)
-      shift
-      [ "$#" -gt 0 ] || die "--name requires a value"
-      NAME="$1"
-      ;;
-    --group-name)
-      shift
-      [ "$#" -gt 0 ] || die "--group-name requires a value"
-      GROUP_NAME="$1"
-      ;;
     --kind)
       shift
       [ "$#" -gt 0 ] || die "--kind requires a value"
@@ -145,14 +99,10 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-[ -n "$PLATFORM" ] || die "--platform is required"
-[ -n "$USER_ID" ] || die "--user-id is required"
-[ -n "$USER_SLUG" ] || die "--user-slug is required"
+require_knot_context
 [ -n "$KIND" ] || die "--kind is required"
 [ -n "$SOURCE_PATH" ] || die "--path is required"
-if [ "$EXPLICIT_CONTEXT" -eq 1 ] && [ "$EXPLICIT_IDENTITY_KEY" -eq 0 ]; then
-  IDENTITY_KEY=""
-fi
+clear_implicit_identity_key
 
 case "$KIND" in
   image|file)

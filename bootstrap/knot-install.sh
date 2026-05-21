@@ -3,11 +3,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+. "$SCRIPT_DIR/lib.sh"
 BACKUP_REMOTE_URL=""
 SKIP_BACKUP_REMOTE=0
 SKIP_COMPONENTS=0
 SKIP_BUILD=0
 SKIP_DOCTOR=0
+# Update these pins with the component pin workflow in .skills/knot-setup/SKILL.md.
+DOCLING_SKILL_REF="02a9659fdb09312f8abe844b97a97ad9a782bb9d"
+MD_FOR_HUMAN_REF="d329bc8b8a22c081d19e0b849418faef013881b3"
+HANDOFF_SKILL_REF="744fa700203fcdcab31127fccfb6b5c15b07abbe"
+OBSIDIAN_WIKI_REF="6f20faaa0f3b53fa8917816baf5ccbb36f93da72"
+CC_CONNECT_REF="2a05067ac621358cfbb8d3b712d6a0eb3cb35758"
+PLANNING_WITH_FILES_REF="0587a48d102ae53821668188a12555b167483aaa"
+KNOT_SKILLS_REF="d8094f2f9277045b0f3a857a8c9a26dcf38cd810"
 
 usage() {
   cat <<'EOF'
@@ -28,12 +37,12 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --root)
       shift
-      [ "$#" -gt 0 ] || { printf 'ERROR --root requires a value\n' >&2; exit 1; }
+      [ "$#" -gt 0 ] || die "--root requires a value"
       ROOT="$1"
       ;;
     --backup-remote)
       shift
-      [ "$#" -gt 0 ] || { printf 'ERROR --backup-remote requires a value\n' >&2; exit 1; }
+      [ "$#" -gt 0 ] || die "--backup-remote requires a value"
       BACKUP_REMOTE_URL="$1"
       ;;
     --skip-backup-remote)
@@ -53,8 +62,7 @@ while [ "$#" -gt 0 ]; do
       exit 0
       ;;
     *)
-      printf 'ERROR unknown argument: %s\n' "$1" >&2
-      exit 1
+      die "unknown argument: $1"
       ;;
   esac
   shift
@@ -66,15 +74,51 @@ cd "$ROOT"
 
 require_file() {
   local path="$1"
-  [ -f "$path" ] || { printf 'ERROR required file missing: %s\n' "$path" >&2; exit 1; }
+  [ -f "$path" ] || die "required file missing: $path"
 }
 
-clone_if_missing() {
+fetch_component_ref() {
+  local dir="$1"
+  local url="$2"
+  local ref="$3"
+
+  git -C "$dir" fetch --depth 1 --no-tags "$url" "$ref"
+  git -C "$dir" checkout -q --detach FETCH_HEAD
+}
+
+clone_component() {
   local url="$1"
   local dir="$2"
-  if [ ! -d "$dir" ]; then
-    git clone "$url" "$dir"
+  local ref="$3"
+  local current
+  local tmp_dir
+
+  if [ ! -e "$dir" ] && [ ! -L "$dir" ]; then
+    tmp_dir="$dir.tmp.$$"
+    rm -rf "$tmp_dir"
+    git init -q "$tmp_dir"
+    if fetch_component_ref "$tmp_dir" "$url" "$ref"; then
+      mv "$tmp_dir" "$dir"
+    else
+      rm -rf "$tmp_dir"
+      die "failed to fetch component revision: $url $ref"
+    fi
+    return
   fi
+
+  [ -d "$dir/.git" ] || die "component exists but is not a git repository: $dir"
+
+  current="$(git -C "$dir" rev-parse --verify HEAD 2>/dev/null || true)"
+  if [ "$current" = "$ref" ]; then
+    return 0
+  fi
+
+  if ! git -C "$dir" diff --quiet --ignore-submodules -- ||
+    ! git -C "$dir" diff --cached --quiet --ignore-submodules --; then
+    die "component has tracked local changes; refusing to checkout pinned revision: $dir"
+  fi
+
+  fetch_component_ref "$dir" "$url" "$ref"
 }
 
 link_skill() {
@@ -122,6 +166,7 @@ test -f AGENTS.md || cp .skills/knot-setup/references/AGENTS.template.md AGENTS.
 
 for helper in bootstrap/*.sh; do
   [ -f "$helper" ] || continue
+  [ "$(basename "$helper")" != "lib.sh" ] || continue
   chmod +x "$helper"
 done
 
@@ -159,17 +204,17 @@ if [ "$SKIP_BACKUP_REMOTE" -eq 0 ]; then
 fi
 
 if [ "$SKIP_COMPONENTS" -eq 0 ]; then
-  clone_if_missing https://github.com/realraelrr/docling-skill components/docling-skill
-  clone_if_missing https://github.com/realraelrr/md-for-human components/md-for-human
-  clone_if_missing https://github.com/realraelrr/handoff-skill components/handoff-skill
-  clone_if_missing https://github.com/Ar9av/obsidian-wiki components/obsidian-wiki
-  clone_if_missing https://github.com/realraelrr/cc-connect components/cc-connect-local-main
-  clone_if_missing https://github.com/realraelrr/planning-with-files components/planning-with-files
-  clone_if_missing https://github.com/realraelrr/knot-skills components/knot-skills
+  clone_component https://github.com/realraelrr/docling-skill components/docling-skill "$DOCLING_SKILL_REF"
+  clone_component https://github.com/realraelrr/md-for-human components/md-for-human "$MD_FOR_HUMAN_REF"
+  clone_component https://github.com/realraelrr/handoff-skill components/handoff-skill "$HANDOFF_SKILL_REF"
+  clone_component https://github.com/Ar9av/obsidian-wiki components/obsidian-wiki "$OBSIDIAN_WIKI_REF"
+  clone_component https://github.com/realraelrr/cc-connect components/cc-connect-local-main "$CC_CONNECT_REF"
+  clone_component https://github.com/realraelrr/planning-with-files components/planning-with-files "$PLANNING_WITH_FILES_REF"
+  clone_component https://github.com/realraelrr/knot-skills components/knot-skills "$KNOT_SKILLS_REF"
 fi
 
 if [ -x components/knot-skills/scripts/install-codex-skills.sh ]; then
-  bash components/knot-skills/scripts/install-codex-skills.sh
+  KNOT_ROOT="$ROOT" bash components/knot-skills/scripts/install-codex-skills.sh
 fi
 
 if [ -d components/obsidian-wiki/.skills ]; then
