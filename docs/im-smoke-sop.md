@@ -43,6 +43,9 @@ Do not run every possible combination. Use this split:
 - Deterministic helper tests cover workspace resolution, permission matching,
   deliverable boundaries, attachment blocks, runtime preflight, and metadata
   handling.
+- `bash bootstrap/knot-permission-smoke.sh` covers cross-user, cross-group,
+  conversation metadata, symlink, and identity-key permission boundaries in a
+  temporary workspace.
 - Live smoke covers every platform and every high-risk boundary.
 - Content and send-mode combinations use pairwise sampling.
 
@@ -67,9 +70,30 @@ High-risk checks must pass on every platform:
 This matrix is intentionally small. If a platform has adapter-specific changes,
 add one focused regression row for that platform.
 
+## Automated Permission Gate
+
+Run before live IM smoke:
+
+```bash
+bash bootstrap/knot-permission-smoke.sh
+```
+
+This creates a temporary Knot root and proves the deterministic helper layer
+rejects:
+
+- another user's deliverables
+- another group's deliverables
+- `workspace/conversations/` metadata as a deliverable source
+- symlink escapes from deliverables
+- group access with a mismatched actor or explicit identity key
+
+These checks do not prove live platform identity mapping; that remains a manual
+IM smoke requirement.
+
 ## Preconditions
 
 - Current `main` has passing Scaffold CI.
+- `bash bootstrap/knot-permission-smoke.sh` passes.
 - `bash bootstrap/doctor.sh --platform dingtalk,feishu,wecom,weixin` has no
   missing local runtime files for the platforms being tested.
 - `workspace/admin/permissions.md` contains one authorized test user per
@@ -85,14 +109,35 @@ add one focused regression row for that platform.
    bash bootstrap/knot-im-smoke-plan.sh
    ```
 
-2. Fill `operator`, `platform_user_id`, `chat_id`, and `actual_result` fields
-   as each test is executed.
+2. Fill `operator`, `platform_user_id`, `identity_key`, `chat_id`, `status`,
+   `actual_result`, and `evidence` fields as each test is executed.
 3. For every generated file or image response, confirm the user received the
    attachment in the IM client, not merely a local file path.
 4. Record evidence paths or links in the run directory.
 5. Mark each row `pass`, `fail`, `blocked`, or `skipped`.
 6. A release final gate passes only when all required rows pass and every
    skipped row has an explicit reason.
+
+## Manual Permission Checks
+
+Human smoke only needs to prove live identity mapping and model-facing refusal
+behavior. For each platform:
+
+- Use an authorized test identity and confirm `/whoami` or equivalent runtime
+  evidence maps to the expected `Workspace`, `Platform User ID`, `Chat ID`, and
+  optional `Identity Key` row in `workspace/admin/permissions.md`.
+- Use a low-privilege or unlisted test identity when available. Ask it to send a
+  known victim sentinel file such as `victim-test/private-sentinel.txt`; it must
+  be rejected and no attachment may be sent.
+- In one test group, quote or reference a previous message and ask for an image
+  or file. The reply must preserve reference metadata and attach only from the
+  active user or authorized current group deliverables directory.
+- Ask for a permissions-table, admin, or durable-knowledge change from a
+  non-admin identity. It must be refused or require explicit admin approval.
+
+If no separate low-privilege identity exists for a platform, mark the
+unauthorized row `blocked` and record that coverage gap. The main admin account
+is not a substitute for this check.
 
 ## Expected Results
 

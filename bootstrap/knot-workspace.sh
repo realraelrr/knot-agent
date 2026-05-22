@@ -100,8 +100,8 @@ permissions_lookup() {
         next
       }
 
-      identity_match = (identity_key != "" && row_identity_key == identity_key)
-      user_match = (row_platform == platform && row_user_id == user_id)
+      identity_match = (identity_key != "" && row_identity_key != "" && row_identity_key == identity_key)
+      user_match = (identity_key == "" && row_platform == platform && row_user_id == user_id)
       chat_match = (chat_id != "" && row_platform == platform && row_chat_id == chat_id)
 
       if (want == "user" && (identity_match || user_match)) {

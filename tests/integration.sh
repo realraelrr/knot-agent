@@ -123,6 +123,15 @@ else
   fail "knot-workspace exposed permissions group to unmatched actor"
 fi
 
+if resolved_exports="$(bash "$ROOT/bootstrap/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:wrong" --name "Jane Example" --group-name "Ignored Group")" &&
+  eval "$resolved_exports" &&
+  [ "$KNOT_ACTIVE_WORKSPACE" != "$tmp_root/workspace/users/jane-example" ] &&
+  [ -z "$KNOT_GROUP_WORKSPACE" ]; then
+  ok "knot-workspace rejects mismatched explicit identity key before permission fallback"
+else
+  fail "knot-workspace resolved permissions row with mismatched explicit identity key"
+fi
+
 if bash "$ROOT/bootstrap/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id $'oc/bad\tchat' --user-id "ou/test user" --user-slug "bad-meta" >/dev/null 2>&1; then
   fail "knot-workspace allowed tab in chat metadata"
 else
@@ -267,6 +276,11 @@ if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu -
   fail "knot-deliver allowed artifact from conversations metadata"
 else
   ok "knot-deliver rejects artifact from conversations metadata"
+fi
+if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$conversation_dir/audit.txt" >/dev/null 2>&1; then
+  fail "knot-attachment allowed artifact from conversations metadata"
+else
+  ok "knot-attachment rejects artifact from conversations metadata"
 fi
 
 printf 'external\n' > "$tmp_root/generated/external.txt"
