@@ -35,6 +35,10 @@ When task state is needed, write it under `workspace/.state/tasks/<task_id>/`.
 For IM-triggered work, use
 `workspace/users/<user_slug>/.state/tasks/<task_id>/`.
 
+Treat `.state` as temporary: deliver user-visible results, promote durable
+facts to `workspace/knowledge/` or admin audit records, and keep virtualenvs,
+caches, and large intermediates out of it.
+
 ## Active Workspaces
 
 For IM-triggered work, `bootstrap/knot-workspace.sh` resolves the actor user,
@@ -71,7 +75,8 @@ group deliverables.
 
 Shared durable knowledge lives under `workspace/knowledge/`. Keep conversion
 sidecars and wiki ingest decoupled. Treat feedback as a signal, not verified
-fact. Material knowledge changes require admin approval or a visible diff.
+fact. Material knowledge changes require admin approval, a visible diff, and a
+`workspace/admin/knowledge-feedback.md` row with status and execution.
 
 ## Delivery
 

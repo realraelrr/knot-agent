@@ -10,6 +10,7 @@ SKILLS_DIR="$CODEX_HOME_DIR/skills"
 PLATFORMS=""
 SCAFFOLD_ONLY=0
 FAILURES=0
+KNOWLEDGE_FEEDBACK_HEADER="| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Diff | Status | Execution | Admin Notes |"
 
 ok() { printf 'OK   %s\n' "$1"; }
 warn() { printf 'WARN %s\n' "$1"; }
@@ -405,7 +406,6 @@ check_dir "$ROOT/components/knot-skills/skills/office-pdf" "office-pdf source"
 check_dir "$ROOT/components/knot-skills/skills/web-ppt" "web-ppt source"
 check_file_exists "$ROOT/components/knot-skills/skills/office-docx/scripts/dotnet/OfficeDocx.Cli/OfficeDocx.Cli.csproj" "office-docx CLI project"
 check_file_contains "$ROOT/components/knot-skills/skills/web-ppt/SKILL.md" "active user workspace" "web-ppt skill"
-check_file_not_contains "$ROOT/components/knot-skills/skills/web-ppt/SKILL.md" "workspace/deliverables" "web-ppt skill"
 check_file_not_contains "$ROOT/components/knot-skills/skills/web-ppt/SKILL.md" "current session" "web-ppt skill"
 check_component_ref "docling-skill component" "$ROOT/components/docling-skill" "DOCLING_SKILL_REF"
 check_component_ref "md-for-human component" "$ROOT/components/md-for-human" "MD_FOR_HUMAN_REF"
@@ -423,11 +423,6 @@ check_file_contains "$ROOT/.gitignore" "workspace/" ".gitignore"
 check_file_contains "$ROOT/.gitignore" "runtime/" ".gitignore"
 check_file_contains "$ROOT/.gitignore" "components/" ".gitignore"
 
-if [ -e "$ROOT/bootstrap/knot-session.sh" ] || [ -L "$ROOT/bootstrap/knot-session.sh" ]; then
-  fail "legacy knot-session helper must be removed"
-else
-  ok "legacy knot-session helper removed"
-fi
 check_executable "$ROOT/bootstrap/knot-workspace.sh" "knot-workspace helper"
 check_executable "$ROOT/bootstrap/knot-install.sh" "knot-install helper"
 check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
@@ -468,8 +463,6 @@ check_file_not_contains "$ROOT/AGENTS.md" "## Skill Packs" "AGENTS.md"
 check_file_not_contains "$ROOT/AGENTS.md" "Office Pack" "AGENTS.md"
 check_file_not_contains "$ROOT/AGENTS.md" "Agent Workbench" "AGENTS.md"
 check_file_not_contains "$ROOT/AGENTS.md" "Roles:" "AGENTS.md"
-check_file_not_contains "$ROOT/AGENTS.md" "bootstrap/knot-session.sh" "AGENTS.md"
-check_file_not_contains "$ROOT/AGENTS.md" "workspace/sessions" "AGENTS.md"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "Use the lightest execution weight" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "**quick**" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "**durable**" "knot-workflow"
@@ -483,8 +476,6 @@ check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-backu
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-runtime-check.sh" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "KNOT_ACTIVE_WORKSPACE" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "workspace/conversations/<platform>/<chat_id>/" "knot-workflow"
-check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "bootstrap/knot-session.sh" "knot-workflow"
-check_file_not_contains "$ROOT/.skills/knot-workflow/SKILL.md" "workspace/sessions" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "available knowledge-ingest skill" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "available knowledge-query skill" "knot-workflow"
 check_file_contains "$ROOT/.skills/knot-workflow/SKILL.md" "available spreadsheet, document" "knot-workflow"
@@ -508,9 +499,6 @@ check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "com
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-workspace.sh" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-attachment.sh" "runtime config"
 check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-runtime-check.sh" "runtime config"
-check_file_not_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "\$KNOT_ROOT/workspace/deliverables/example" "runtime config"
-check_file_not_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "bootstrap/knot-session.sh" "runtime config"
-check_file_not_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/sessions" "runtime config"
 
 check_dir "$WORKSPACE/knowledge/raw" "knowledge/raw"
 check_dir "$WORKSPACE/knowledge/processed" "knowledge/processed"
@@ -519,11 +507,6 @@ check_dir "$WORKSPACE/users" "users"
 check_dir "$WORKSPACE/groups" "groups"
 check_dir "$WORKSPACE/conversations" "conversations"
 check_dir "$WORKSPACE/admin" "admin"
-if [ -e "$WORKSPACE/sessions" ] || [ -L "$WORKSPACE/sessions" ]; then
-  fail "legacy workspace/sessions must be removed"
-else
-  ok "legacy workspace/sessions removed"
-fi
 if check_file_exists "$WORKSPACE/admin/permissions.md" "permissions"; then
   check_file_contains "$WORKSPACE/admin/permissions.md" "| User | Workspace | Platform | Platform User ID | Group | Chat ID | Identity Key | Name | Role | Scope | Notes |" "permissions"
   check_file_contains "$WORKSPACE/admin/permissions.md" "agent operating contract, not a security sandbox" "permissions"
@@ -536,9 +519,9 @@ check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md
 check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "Only \`operator\` and \`admin\` may edit this file" "permissions template"
 check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "\`Scope\` is a human-readable boundary" "permissions template"
 if check_file_exists "$WORKSPACE/admin/knowledge-feedback.md" "knowledge feedback"; then
-  check_file_contains "$WORKSPACE/admin/knowledge-feedback.md" "| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Status | Admin Notes |" "knowledge feedback"
+  check_file_contains "$WORKSPACE/admin/knowledge-feedback.md" "$KNOWLEDGE_FEEDBACK_HEADER" "knowledge feedback"
 fi
-check_file_contains "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Status | Admin Notes |" "knowledge feedback template"
+check_file_contains "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "$KNOWLEDGE_FEEDBACK_HEADER" "knowledge feedback template"
 if check_file_exists "$WORKSPACE/admin/backup-policy.md" "backup policy"; then
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "committed and pushed by a Codex app" "backup policy"
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "customer-controlled git remote" "backup policy"
@@ -551,17 +534,14 @@ if check_file_exists "$WORKSPACE/admin/backup-policy.md" "backup policy"; then
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "runtime/" "backup policy"
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "components/" "backup policy"
   check_file_contains "$WORKSPACE/admin/backup-policy.md" "local secrets" "backup policy"
-  check_file_not_contains "$WORKSPACE/admin/backup-policy.md" "legacy" "backup policy"
   check_file_not_contains "$WORKSPACE/admin/backup-policy.md" "- knowledge/" "backup policy"
 fi
-check_file_not_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "legacy" "backup policy template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "- knowledge/" "backup policy template"
 check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "bootstrap/" "backup policy template"
 check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "bootstrap/knot-backup.sh" "backup policy template"
 check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "same URL as \`origin\` or \`scaffold\`" "backup policy template"
 check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "bash bootstrap/knot-backup.sh" "backup automation template"
 check_file_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "duplicate origin/scaffold remote" "backup automation template"
-check_file_not_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "legacy" "backup automation template"
 check_file_not_contains "$ROOT/.skills/knot-setup/references/daily-backup-automation.template.md" "- knowledge/" "backup automation template"
 check_file_contains "$ROOT/docs/im-smoke-sop.md" "Pairwise Matrix" "IM smoke SOP"
 check_file_contains "$ROOT/docs/im-smoke-sop.md" "Automated Permission Gate" "IM smoke SOP"

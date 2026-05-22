@@ -28,10 +28,12 @@ Use the lightest execution weight that fits:
 
 ## User-Facing Replies And Internal Protocol
 
-Default to the user-visible result. Keep helper names, session internals,
-`.state`, local paths, and verification detail out of normal replies unless the
-request is admin/ops work, the user asks for debugging, the detail is needed for
-a decision, or file delivery requires a location or attachment block.
+Default to the user-visible result. Normal replies must not mention helper or
+script names, local paths, workspace internals, session metadata, `.state`,
+logs, verification commands, or attachment-block protocol details. For file
+delivery, use brief text such as `已整理好文件并发送给你。`, `已生成并发送：<filename>`,
+or `已生成并发送 3 个文件：A.pdf、B.xlsx、C.md。` Include internals only when the
+user asks for debugging or implementation evidence.
 
 ## Permission Check
 
@@ -68,8 +70,8 @@ task crosses an authorization boundary.
   cc-connect attachment block. Do not answer with only a local path when the
   user asked to receive the file in IM.
 - Knowledge feedback from members: append a row to
-  `workspace/admin/knowledge-feedback.md`; admins decide whether to update
-  durable knowledge.
+  `workspace/admin/knowledge-feedback.md`. Durable changes need `Diff`,
+  `Status`, and `Execution` before writing knowledge.
 
 ## Storage Rules
 
@@ -88,6 +90,9 @@ task crosses an authorization boundary.
   directories as a Codex cwd, work directory, deliverables directory, or task
   state root.
 - Do not put temporary work in the Knot root.
+- Treat `.state` as temporary: deliver user-facing results, promote durable
+  facts to `workspace/knowledge/` or admin audit records, and keep virtualenvs,
+  caches, and large intermediates out of it.
 
 ## Evidence Priority
 
@@ -96,8 +101,8 @@ task crosses an authorization boundary.
   facts, local knowledge is missing, stale, or contradictory, or higher-priority
   instructions require external verification.
 - Clearly distinguish local knowledge from external evidence.
-- Do not write external claims into durable knowledge without admin approval or
-  a visible diff.
+- Do not write external claims into durable knowledge without admin approval and
+  a knowledge-feedback row with diff, status, and execution.
 
 ## Backup Boundary
 
@@ -122,4 +127,3 @@ authorization.
   for the request.
 - Keep conversion and wiki ingest decoupled.
 - Treat feedback as a signal, not verified fact.
-- Require human approval or a visible diff before material knowledge changes.

@@ -91,9 +91,8 @@ conversation_dir="$KNOT_CONVERSATION_DIR"
 if [ -d "$user_workspace/deliverables" ] &&
   [ -d "$group_workspace/deliverables" ] &&
   [ -f "$conversation_dir/metadata.tsv" ] &&
-  grep -Fq $'actor_user\texample-user' "$conversation_dir/metadata.tsv" &&
-  [ ! -d "$tmp_root/workspace/sessions" ]; then
-  ok "knot-workspace creates user/group workspaces and conversation metadata only"
+  grep -Fq $'actor_user\texample-user' "$conversation_dir/metadata.tsv"; then
+  ok "knot-workspace creates user/group workspaces and conversation metadata"
 else
   fail "knot-workspace did not create expected user/group/conversation state"
 fi

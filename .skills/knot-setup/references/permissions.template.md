@@ -38,5 +38,6 @@ Example row:
   `session`, or a department label such as `dept:after_sales`.
 - Members must not modify durable knowledge directly.
 - Members may append feedback to `knowledge-feedback.md`.
-- Admins review, edit, resolve, or delete feedback entries.
+- Admins record visible diffs, status, and execution before updating durable
+  knowledge.
 - Operators handle system-level changes.
