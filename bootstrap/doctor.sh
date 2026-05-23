@@ -14,11 +14,12 @@ STRICT_DOCS=0
 FAILURES=0
 WARNINGS=0
 COMPONENT_LOCK="$ROOT/components.lock"
-REQUIRED_COMPONENT_PATHS="components/docling-skill components/md-for-human components/handoff-skill components/obsidian-wiki components/cc-connect-local-main components/planning-with-files components/knot-skills"
 KNOWLEDGE_FEEDBACK_HEADER="| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Diff | Status | Execution | Admin Notes |"
 
 # shellcheck source=bootstrap/doctor/common.sh
 . "$SCRIPT_DIR/doctor/common.sh" || exit 1
+# shellcheck source=bootstrap/component-lock.sh
+. "$SCRIPT_DIR/component-lock.sh" || exit 1
 
 usage() {
   cat <<'EOF'

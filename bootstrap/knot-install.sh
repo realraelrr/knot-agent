@@ -5,13 +5,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=bootstrap/lib.sh
 . "$SCRIPT_DIR/lib.sh"
+# shellcheck source=bootstrap/component-lock.sh
+. "$SCRIPT_DIR/component-lock.sh"
 BACKUP_REMOTE_URL=""
 SKIP_BACKUP_REMOTE=0
 SKIP_COMPONENTS=0
 SKIP_BUILD=0
 SKIP_DOCTOR=0
 COMPONENT_LOCK="components.lock"
-REQUIRED_COMPONENT_PATHS="components/docling-skill components/md-for-human components/handoff-skill components/obsidian-wiki components/cc-connect-local-main components/planning-with-files components/knot-skills"
 
 usage() {
   cat <<'EOF'
@@ -116,133 +117,19 @@ clone_component() {
   fetch_component_ref "$dir" "$url" "$ref"
 }
 
-parse_component_lock_line() {
-  local line="$1"
-  local tab=$'\t'
-  local rest
+report_invalid_component_lock() { die "$1"; }
 
-  case "$line" in
-    *"$tab"*) ;;
-    *) die "invalid component lock row: expected tab-separated fields" ;;
-  esac
+clone_component_lock_row() {
+  local _name="$1"
+  local repo="$2"
+  local ref="$3"
+  local path="$4"
 
-  LOCK_NAME="${line%%"$tab"*}"
-  rest="${line#*"$tab"}"
-  case "$rest" in
-    *"$tab"*) ;;
-    *) die "invalid component lock row for $LOCK_NAME: missing repo/ref/path" ;;
-  esac
-
-  LOCK_REPO="${rest%%"$tab"*}"
-  rest="${rest#*"$tab"}"
-  case "$rest" in
-    *"$tab"*) ;;
-    *) die "invalid component lock row for $LOCK_NAME: missing ref/path" ;;
-  esac
-
-  LOCK_REF="${rest%%"$tab"*}"
-  LOCK_PATH="${rest#*"$tab"}"
-  case "$LOCK_PATH" in
-    *"$tab"*) die "invalid component lock row for $LOCK_NAME: too many fields" ;;
-  esac
-}
-
-validate_component_lock_fields() {
-  local component_dir
-
-  [ -n "$LOCK_NAME" ] || die "invalid component lock row: missing name"
-  [ -n "$LOCK_REPO" ] || die "invalid component lock row for $LOCK_NAME: missing repo"
-  [ -n "$LOCK_REF" ] || die "invalid component lock row for $LOCK_NAME: missing ref"
-  [ -n "$LOCK_PATH" ] || die "invalid component lock row for $LOCK_NAME: missing path"
-
-  case "$LOCK_NAME" in
-    *[!A-Za-z0-9._-]*|""|.*|*..*) die "component lock name must be a safe identifier: $LOCK_NAME" ;;
-  esac
-
-  case "$LOCK_REPO" in
-    https://github.com/*) ;;
-    *) die "component lock repo must be a GitHub HTTPS URL: $LOCK_NAME" ;;
-  esac
-
-  case "$LOCK_REF" in
-    *[!0-9a-f]*|"") die "component lock ref must be a lowercase full SHA: $LOCK_NAME" ;;
-  esac
-  [ "${#LOCK_REF}" -eq 40 ] || die "component lock ref must be a full 40-character SHA: $LOCK_NAME"
-
-  case "$LOCK_PATH" in
-    components/*) ;;
-    *) die "component lock path must stay under components/: $LOCK_NAME" ;;
-  esac
-
-  component_dir="${LOCK_PATH#components/}"
-  case "$component_dir" in
-    ""|*/*|.*|*..*|*[!A-Za-z0-9._-]*) die "component lock path must be components/<safe-dir>: $LOCK_NAME" ;;
-  esac
-}
-
-validate_component_lock() {
-  local line
-  local tab=$'\t'
-  local rows=0
-  local header_seen=0
-  local seen_names=" "
-  local seen_paths=" "
-  local required_path
-
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in
-      ""|\#*) continue ;;
-    esac
-
-    if [ "$line" = "name${tab}repo${tab}ref${tab}path" ]; then
-      [ "$header_seen" -eq 0 ] || die "component lock contains duplicate header"
-      header_seen=1
-      continue
-    fi
-
-    parse_component_lock_line "$line"
-    validate_component_lock_fields
-    rows=$((rows + 1))
-
-    case "$seen_names" in
-      *" $LOCK_NAME "*) die "component lock contains duplicate name: $LOCK_NAME" ;;
-      *) seen_names="${seen_names}${LOCK_NAME} " ;;
-    esac
-
-    case "$seen_paths" in
-      *" $LOCK_PATH "*) die "component lock contains duplicate path: $LOCK_PATH" ;;
-      *) seen_paths="${seen_paths}${LOCK_PATH} " ;;
-    esac
-  done < "$COMPONENT_LOCK"
-
-  [ "$header_seen" -eq 1 ] || die "component lock header missing"
-  [ "$rows" -gt 0 ] || die "component lock has no component rows"
-  for required_path in $REQUIRED_COMPONENT_PATHS; do
-    case "$seen_paths" in
-      *" $required_path "*) ;;
-      *) die "component lock missing required path: $required_path" ;;
-    esac
-  done
+  clone_component "$repo" "$path" "$ref"
 }
 
 clone_components_from_lock() {
-  local line
-  local tab=$'\t'
-
-  validate_component_lock
-
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in
-      ""|\#*) continue ;;
-    esac
-
-    if [ "$line" = "name${tab}repo${tab}ref${tab}path" ]; then
-      continue
-    fi
-
-    parse_component_lock_line "$line"
-    clone_component "$LOCK_REPO" "$LOCK_PATH" "$LOCK_REF"
-  done < "$COMPONENT_LOCK"
+  component_lock_each_row "$COMPONENT_LOCK" clone_component_lock_row
 }
 
 link_skill() {
@@ -267,6 +154,9 @@ link_skill() {
   ln -s "$target" "$dest"
 }
 
+require_file "$COMPONENT_LOCK"
+component_lock_validate "$COMPONENT_LOCK" report_invalid_component_lock
+
 mkdir -p components runtime \
   workspace/knowledge/raw \
   workspace/knowledge/processed \
@@ -282,7 +172,6 @@ require_file ".skills/knot-setup/references/knowledge-feedback.template.md"
 require_file ".skills/knot-setup/references/backup-policy.template.md"
 require_file ".skills/knot-setup/references/AGENTS.template.md"
 require_file ".skills/knot-setup/references/codex-agents.template.md"
-require_file "$COMPONENT_LOCK"
 
 test -f workspace/admin/permissions.md || cp .skills/knot-setup/references/permissions.template.md workspace/admin/permissions.md
 test -f workspace/admin/knowledge-feedback.md || cp .skills/knot-setup/references/knowledge-feedback.template.md workspace/admin/knowledge-feedback.md
@@ -292,6 +181,7 @@ test -f AGENTS.md || cp .skills/knot-setup/references/AGENTS.template.md AGENTS.
 for helper in bootstrap/*.sh; do
   [ -f "$helper" ] || continue
   [ "$(basename "$helper")" != "lib.sh" ] || continue
+  [ "$(basename "$helper")" != "component-lock.sh" ] || continue
   chmod +x "$helper"
 done
 

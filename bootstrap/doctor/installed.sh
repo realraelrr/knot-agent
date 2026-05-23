@@ -142,39 +142,18 @@ check_component_ref() {
 }
 
 check_component_refs_from_lock() {
-  local line
-  local component_dir
-  local tab=$'\t'
-
   check_file_exists "$COMPONENT_LOCK" "component lockfile" || return
+  component_lock_validate "$COMPONENT_LOCK" : || return
+  component_lock_each_row "$COMPONENT_LOCK" check_component_lock_ref_row
+}
 
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in
-      ""|\#*) continue ;;
-    esac
+check_component_lock_ref_row() {
+  local name="$1"
+  local _repo="$2"
+  local ref="$3"
+  local path="$4"
 
-    if [ "$line" = "name${tab}repo${tab}ref${tab}path" ]; then
-      continue
-    fi
-
-    parse_component_lock_line "$line" || continue
-    case "$LOCK_NAME" in
-      *[!A-Za-z0-9._-]*|""|.*|*..*) continue ;;
-    esac
-    case "$LOCK_REF" in
-      *[!0-9a-f]*|"") continue ;;
-    esac
-    [ "${#LOCK_REF}" -eq 40 ] || continue
-    case "$LOCK_PATH" in
-      components/*) ;;
-      *) continue ;;
-    esac
-    component_dir="${LOCK_PATH#components/}"
-    case "$component_dir" in
-      ""|*/*|.*|*..*|*[!A-Za-z0-9._-]*) continue ;;
-    esac
-    check_component_ref "$LOCK_NAME component" "$ROOT/$LOCK_PATH" "$LOCK_REF"
-  done < "$COMPONENT_LOCK"
+  check_component_ref "$name component" "$ROOT/$path" "$ref"
 }
 
 run_local_environment_checks() {
@@ -263,28 +242,27 @@ run_workspace_contract_checks() {
   printf '\nWorkspace contracts\n'
   if check_file_exists "$WORKSPACE/admin/permissions.md" "permissions"; then
     check_file_contains "$WORKSPACE/admin/permissions.md" "| User | Workspace | Platform | Platform User ID | Group | Chat ID | Identity Key | Name | Role | Scope | Notes |" "permissions"
-    check_file_contains "$WORKSPACE/admin/permissions.md" "agent operating contract, not a security sandbox" "permissions"
-    check_file_contains "$WORKSPACE/admin/permissions.md" "Platform + Platform User ID" "permissions"
     check_file_contains "$WORKSPACE/admin/permissions.md" "\`operator\`" "permissions"
     check_file_contains "$WORKSPACE/admin/permissions.md" "\`admin\`" "permissions"
     check_file_contains "$WORKSPACE/admin/permissions.md" "\`member\`" "permissions"
+    check_file_contains_doc_lint "$WORKSPACE/admin/permissions.md" "agent operating contract, not a security sandbox" "permissions"
+    check_file_contains_doc_lint "$WORKSPACE/admin/permissions.md" "Platform + Platform User ID" "permissions"
   fi
   if check_file_exists "$WORKSPACE/admin/knowledge-feedback.md" "knowledge feedback"; then
     check_file_contains "$WORKSPACE/admin/knowledge-feedback.md" "$KNOWLEDGE_FEEDBACK_HEADER" "knowledge feedback"
   fi
   if check_file_exists "$WORKSPACE/admin/backup-policy.md" "backup policy"; then
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "committed and pushed by a Codex app" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "customer-controlled git remote" "backup policy"
     check_file_contains "$WORKSPACE/admin/backup-policy.md" "remote \`backup\`" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "realraelrr/knot-agent" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "git add -f" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "Never use broad \`git add -A\`" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "bootstrap/" "backup policy"
     check_file_contains "$WORKSPACE/admin/backup-policy.md" "bootstrap/knot-backup.sh" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "runtime/" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "components/" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "local secrets" "backup policy"
-    check_file_not_contains "$WORKSPACE/admin/backup-policy.md" "- knowledge/" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "committed and pushed by a Codex app" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "customer-controlled git remote" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "realraelrr/knot-agent" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "git add -f" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "Never use broad \`git add -A\`" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "bootstrap/" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "runtime/" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "components/" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "local secrets" "backup policy"
   fi
 }
 

@@ -17,8 +17,8 @@ Knot Agent 为 Codex 驱动的 agent 提供 workspace、知识布局、权限契
 
 ## 边界
 
-- 源码仓库放在 `components/`；setup 会安装到
-  `bootstrap/knot-install.sh` 定义的固定版本。
+- 源码仓库放在 `components/`；经审查的固定版本记录在
+  `components.lock` 中，installer 与 doctor 都会校验该文件。
 - 用户文件、草稿、交付物和任务状态放在 `workspace/`。
 - runtime 配置、日志、socket 和本地密钥放在 `runtime/`。
 - 不要把生成物或临时工作放在仓库根目录。

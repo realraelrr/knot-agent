@@ -398,6 +398,8 @@ if CODEX_HOME="$install_root/codex-home" bash "$install_root/bootstrap/knot-inst
     [ -f "$install_root/workspace/admin/permissions.md" ] &&
     [ -f "$install_root/codex-home/AGENTS.md" ] &&
     [ -x "$install_root/bootstrap/knot-workspace.sh" ] &&
+    [ -f "$install_root/bootstrap/component-lock.sh" ] &&
+    [ ! -x "$install_root/bootstrap/component-lock.sh" ] &&
     [ "$(readlink "$install_root/codex-home/skills/planning-with-files")" = "$install_root/components/planning-with-files/.codex/skills/planning-with-files" ] &&
     [ "$(readlink "$install_root/codex-home/skills/docling-skill")" = "$install_root/components/docling-skill/.codex/skills/docling-skill" ] &&
     [ "$(readlink "$install_root/codex-home/skills/md-for-human")" = "$install_root/components/md-for-human/.codex/skills/md-for-human" ] &&
@@ -494,33 +496,95 @@ expect_installer_rejects_lock() {
   fi
 }
 
+expect_doctor_rejects_lock() {
+  local label="$1"
+  local expected="$2"
+  local lock_file="$3"
+  local output
+
+  if output="$(env \
+    ROOT="$ROOT" \
+    COMPONENT_LOCK="$lock_file" \
+    STRICT_DOCS=0 \
+    FAILURES=0 \
+    WARNINGS=0 \
+    bash -c '
+      set -u
+      . "$ROOT/bootstrap/doctor/common.sh"
+      . "$ROOT/bootstrap/component-lock.sh"
+      . "$ROOT/bootstrap/doctor/source.sh"
+      check_component_lock_schema
+      [ "$FAILURES" -eq 0 ]
+    ' 2>&1)"; then
+    fail "doctor allowed $label"
+  elif printf '%s\n' "$output" | grep -Fq "$expected"; then
+    ok "doctor rejects $label"
+  else
+    fail "doctor rejected $label for wrong reason: $output"
+  fi
+}
+
+expect_installer_rejects_lock_without_clone() {
+  local label="$1"
+  local expected="$2"
+  local lock_file="$3"
+  local lock_root
+  local output
+
+  LOCK_CASE_INDEX=$((LOCK_CASE_INDEX + 1))
+  lock_root="$TMP_PARENT/lock-case-$LOCK_CASE_INDEX"
+  cp -R "$install_root" "$lock_root"
+  cp "$lock_file" "$lock_root/components.lock"
+
+  if output="$(CODEX_HOME="$lock_root/codex-home" bash "$lock_root/bootstrap/knot-install.sh" \
+    --root "$lock_root" \
+    --skip-components \
+    --skip-build \
+    --skip-backup-remote \
+    --skip-doctor 2>&1)"; then
+    fail "knot-install --skip-components allowed $label"
+  elif printf '%s\n' "$output" | grep -Fq "$expected"; then
+    ok "knot-install --skip-components rejects $label"
+  else
+    fail "knot-install --skip-components rejected $label for wrong reason: $output"
+  fi
+}
+
 lock_case="$TMP_PARENT/lock-path-traversal.tsv"
 write_lock_with_extra_row "$lock_case" $'bad\thttps://github.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/../runtime/escape'
 expect_installer_rejects_lock "component lock path traversal" "component lock path must be components/<safe-dir>" "$lock_case"
+expect_doctor_rejects_lock "component lock path traversal" "component lock path must be components/<safe-dir>" "$lock_case"
 
 lock_case="$TMP_PARENT/lock-empty-field.tsv"
 write_lock_with_extra_row "$lock_case" $'bad\t\t0000000000000000000000000000000000000000\tcomponents/new-component'
 expect_installer_rejects_lock "empty component lock field" "missing repo" "$lock_case"
+expect_doctor_rejects_lock "empty component lock field" "missing repo" "$lock_case"
 
 lock_case="$TMP_PARENT/lock-extra-field.tsv"
 write_lock_with_extra_row "$lock_case" $'bad\thttps://github.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/new-component\textra'
 expect_installer_rejects_lock "extra component lock field" "too many fields" "$lock_case"
+expect_doctor_rejects_lock "extra component lock field" "too many fields" "$lock_case"
 
 lock_case="$TMP_PARENT/lock-short-sha.tsv"
 write_lock_with_extra_row "$lock_case" $'bad\thttps://github.com/example/bad\tabc123\tcomponents/new-component'
 expect_installer_rejects_lock "short component lock SHA" "full 40-character SHA" "$lock_case"
+expect_doctor_rejects_lock "short component lock SHA" "full 40-character SHA" "$lock_case"
 
 lock_case="$TMP_PARENT/lock-non-github.tsv"
 write_lock_with_extra_row "$lock_case" $'bad\thttps://example.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/new-component'
 expect_installer_rejects_lock "non-GitHub component lock repo" "GitHub HTTPS URL" "$lock_case"
+expect_doctor_rejects_lock "non-GitHub component lock repo" "GitHub HTTPS URL" "$lock_case"
+expect_installer_rejects_lock_without_clone "non-GitHub component lock repo" "GitHub HTTPS URL" "$lock_case"
 
 lock_case="$TMP_PARENT/lock-duplicate-name.tsv"
 write_lock_with_extra_row "$lock_case" $'docling-skill\thttps://github.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/new-component'
 expect_installer_rejects_lock "duplicate component lock name" "duplicate name" "$lock_case"
+expect_doctor_rejects_lock "duplicate component lock name" "duplicate name" "$lock_case"
 
 lock_case="$TMP_PARENT/lock-duplicate-path.tsv"
 write_lock_with_extra_row "$lock_case" $'new-component\thttps://github.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/docling-skill'
 expect_installer_rejects_lock "duplicate component lock path" "duplicate path" "$lock_case"
+expect_doctor_rejects_lock "duplicate component lock path" "duplicate path" "$lock_case"
 
 lock_case="$TMP_PARENT/lock-missing-required.tsv"
 cat > "$lock_case" <<'EOF'
@@ -528,6 +592,104 @@ name	repo	ref	path
 docling-skill	https://github.com/example/docling-skill	0000000000000000000000000000000000000000	components/docling-skill
 EOF
 expect_installer_rejects_lock "component lock missing required entries" "component lock missing required path" "$lock_case"
+expect_doctor_rejects_lock "component lock missing required entries" "component lock missing required path" "$lock_case"
+
+run_source_doc_checks() {
+  local root="$1"
+  local strict_docs="$2"
+
+  env \
+    ROOT="$root" \
+    STRICT_DOCS="$strict_docs" \
+    FAILURES=0 \
+    WARNINGS=0 \
+    KNOWLEDGE_FEEDBACK_HEADER='| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Diff | Status | Execution | Admin Notes |' \
+    bash -c '
+      set -u
+      . "$ROOT/bootstrap/doctor/common.sh"
+      . "$ROOT/bootstrap/doctor/source.sh"
+      run_contract_checks
+      run_doc_lint_checks
+      [ "$FAILURES" -eq 0 ]
+    '
+}
+
+run_workspace_doc_checks() {
+  local root="$1"
+  local strict_docs="$2"
+
+  env \
+    ROOT="$root" \
+    WORKSPACE="$root/workspace" \
+    STRICT_DOCS="$strict_docs" \
+    FAILURES=0 \
+    WARNINGS=0 \
+    KNOWLEDGE_FEEDBACK_HEADER='| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Diff | Status | Execution | Admin Notes |' \
+    bash -c '
+      set -u
+      . "$ROOT/bootstrap/doctor/common.sh"
+      . "$ROOT/bootstrap/doctor/installed.sh"
+      run_workspace_contract_checks
+      [ "$FAILURES" -eq 0 ]
+    '
+}
+
+doc_root="$TMP_PARENT/doc-contract-root"
+mkdir -p \
+  "$doc_root/bootstrap/doctor" \
+  "$doc_root/.skills/knot-setup/references" \
+  "$doc_root/.skills/knot-workflow" \
+  "$doc_root/docs" \
+  "$doc_root/workspace/admin"
+cp "$ROOT/bootstrap/doctor/common.sh" "$doc_root/bootstrap/doctor/common.sh"
+cp "$ROOT/bootstrap/doctor/source.sh" "$doc_root/bootstrap/doctor/source.sh"
+cp "$ROOT/bootstrap/doctor/installed.sh" "$doc_root/bootstrap/doctor/installed.sh"
+cp "$ROOT/AGENTS.md" "$doc_root/AGENTS.md"
+cp "$ROOT/.skills/knot-workflow/SKILL.md" "$doc_root/.skills/knot-workflow/SKILL.md"
+cp "$ROOT/.skills/knot-setup/references/"*.md "$doc_root/.skills/knot-setup/references/"
+cp "$ROOT/docs/im-smoke-sop.md" "$doc_root/docs/im-smoke-sop.md"
+cp "$ROOT/.skills/knot-setup/references/permissions.template.md" "$doc_root/workspace/admin/permissions.md"
+cp "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "$doc_root/workspace/admin/knowledge-feedback.md"
+cp "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "$doc_root/workspace/admin/backup-policy.md"
+
+sed 's/visible diff/human-reviewable diff/' "$doc_root/AGENTS.md" > "$doc_root/AGENTS.md.tmp"
+mv "$doc_root/AGENTS.md.tmp" "$doc_root/AGENTS.md"
+sed 's/Default to the user-visible result. Normal replies must not mention helper or/Reply with the user-visible outcome first. Normal replies must not expose helper or/' "$doc_root/.skills/knot-workflow/SKILL.md" > "$doc_root/.skills/knot-workflow/SKILL.md.tmp"
+mv "$doc_root/.skills/knot-workflow/SKILL.md.tmp" "$doc_root/.skills/knot-workflow/SKILL.md"
+sed 's/Do not set a static agent `work_dir`/Never configure a fixed agent `work_dir`/' "$doc_root/.skills/knot-setup/references/runtime-config.md" > "$doc_root/.skills/knot-setup/references/runtime-config.md.tmp"
+mv "$doc_root/.skills/knot-setup/references/runtime-config.md.tmp" "$doc_root/.skills/knot-setup/references/runtime-config.md"
+sed 's/duplicate origin\/scaffold remote/same URL as an unsafe remote/' "$doc_root/.skills/knot-setup/references/daily-backup-automation.template.md" > "$doc_root/.skills/knot-setup/references/daily-backup-automation.template.md.tmp"
+mv "$doc_root/.skills/knot-setup/references/daily-backup-automation.template.md.tmp" "$doc_root/.skills/knot-setup/references/daily-backup-automation.template.md"
+sed 's/agent operating contract, not a security sandbox/clear authorization contract, not process isolation/' "$doc_root/workspace/admin/permissions.md" > "$doc_root/workspace/admin/permissions.md.tmp"
+mv "$doc_root/workspace/admin/permissions.md.tmp" "$doc_root/workspace/admin/permissions.md"
+sed 's/committed and pushed by a Codex app/committed and pushed through a Codex app/' "$doc_root/workspace/admin/backup-policy.md" > "$doc_root/workspace/admin/backup-policy.md.tmp"
+mv "$doc_root/workspace/admin/backup-policy.md.tmp" "$doc_root/workspace/admin/backup-policy.md"
+
+if output="$(run_source_doc_checks "$doc_root" 0 2>&1)" &&
+  printf '%s\n' "$output" | grep -Fq 'WARN AGENTS.md missing advisory text: visible diff'; then
+  ok "document wording changes are advisory outside strict-docs mode"
+else
+  fail "document wording changes should only warn outside strict-docs mode: $output"
+fi
+
+if run_source_doc_checks "$doc_root" 1 >/dev/null 2>&1; then
+  fail "strict-docs allowed altered advisory wording"
+else
+  ok "strict-docs rejects altered advisory wording"
+fi
+
+if output="$(run_workspace_doc_checks "$doc_root" 0 2>&1)" &&
+  printf '%s\n' "$output" | grep -Fq 'WARN permissions missing advisory text: agent operating contract, not a security sandbox'; then
+  ok "installed document wording changes are advisory"
+else
+  fail "installed document wording changes should only warn: $output"
+fi
+
+if run_workspace_doc_checks "$doc_root" 1 >/dev/null 2>&1; then
+  fail "strict-docs allowed altered installed advisory wording"
+else
+  ok "strict-docs rejects altered installed advisory wording"
+fi
 
 if [ "$FAILURES" -gt 0 ]; then
   exit 1

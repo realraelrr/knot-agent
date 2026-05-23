@@ -120,51 +120,6 @@ check_file_not_contains_doc_lint() {
   fi
 }
 
-parse_component_lock_line() {
-  local line="$1"
-  local tab=$'\t'
-  local rest
-
-  case "$line" in
-    *"$tab"*) ;;
-    *)
-      fail "invalid component lock row: expected tab-separated fields"
-      return 1
-      ;;
-  esac
-
-  LOCK_NAME="${line%%"$tab"*}"
-  rest="${line#*"$tab"}"
-  case "$rest" in
-    *"$tab"*) ;;
-    *)
-      fail "invalid component lock row for $LOCK_NAME: missing repo/ref/path"
-      return 1
-      ;;
-  esac
-
-  # shellcheck disable=SC2034 # Used by sourced source/installed check modules.
-  LOCK_REPO="${rest%%"$tab"*}"
-  rest="${rest#*"$tab"}"
-  case "$rest" in
-    *"$tab"*) ;;
-    *)
-      fail "invalid component lock row for $LOCK_NAME: missing ref/path"
-      return 1
-      ;;
-  esac
-
-  # shellcheck disable=SC2034 # Used by sourced source/installed check modules.
-  LOCK_REF="${rest%%"$tab"*}"
-  LOCK_PATH="${rest#*"$tab"}"
-  case "$LOCK_PATH" in
-    *"$tab"*)
-      fail "invalid component lock row for $LOCK_NAME: too many fields"
-      return 1
-      ;;
-  esac
-}
-
 run_helper_smoke_tests() {
   if ! bash "$ROOT/tests/integration.sh" --root "$ROOT"; then
     fail "integration smoke tests failed"

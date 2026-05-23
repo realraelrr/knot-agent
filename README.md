@@ -25,8 +25,8 @@ local and are not part of this scaffold.
 
 ## Boundaries
 
-- Source repos live under `components/`; setup installs them at pinned
-  revisions defined in `bootstrap/knot-install.sh`.
+- Source repos live under `components/`; their reviewed revisions are pinned in
+  `components.lock`, which the installer and doctor both validate.
 - User files, drafts, deliverables, and task state live under `workspace/`.
 - Runtime configs, logs, sockets, and local secrets live under `runtime/`.
 - Do not put generated work in the repository root.
