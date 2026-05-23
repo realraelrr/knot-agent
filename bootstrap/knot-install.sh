@@ -10,14 +10,8 @@ SKIP_BACKUP_REMOTE=0
 SKIP_COMPONENTS=0
 SKIP_BUILD=0
 SKIP_DOCTOR=0
-# Update these pins with the component pin workflow in .skills/knot-setup/SKILL.md.
-DOCLING_SKILL_REF="02a9659fdb09312f8abe844b97a97ad9a782bb9d"
-MD_FOR_HUMAN_REF="d329bc8b8a22c081d19e0b849418faef013881b3"
-HANDOFF_SKILL_REF="744fa700203fcdcab31127fccfb6b5c15b07abbe"
-OBSIDIAN_WIKI_REF="6f20faaa0f3b53fa8917816baf5ccbb36f93da72"
-CC_CONNECT_REF="af501b5750330b11f1f9c3c210059ee391595373"
-PLANNING_WITH_FILES_REF="0587a48d102ae53821668188a12555b167483aaa"
-KNOT_SKILLS_REF="d8094f2f9277045b0f3a857a8c9a26dcf38cd810"
+COMPONENT_LOCK="components.lock"
+REQUIRED_COMPONENT_PATHS="components/docling-skill components/md-for-human components/handoff-skill components/obsidian-wiki components/cc-connect-local-main components/planning-with-files components/knot-skills"
 
 usage() {
   cat <<'EOF'
@@ -122,6 +116,135 @@ clone_component() {
   fetch_component_ref "$dir" "$url" "$ref"
 }
 
+parse_component_lock_line() {
+  local line="$1"
+  local tab=$'\t'
+  local rest
+
+  case "$line" in
+    *"$tab"*) ;;
+    *) die "invalid component lock row: expected tab-separated fields" ;;
+  esac
+
+  LOCK_NAME="${line%%"$tab"*}"
+  rest="${line#*"$tab"}"
+  case "$rest" in
+    *"$tab"*) ;;
+    *) die "invalid component lock row for $LOCK_NAME: missing repo/ref/path" ;;
+  esac
+
+  LOCK_REPO="${rest%%"$tab"*}"
+  rest="${rest#*"$tab"}"
+  case "$rest" in
+    *"$tab"*) ;;
+    *) die "invalid component lock row for $LOCK_NAME: missing ref/path" ;;
+  esac
+
+  LOCK_REF="${rest%%"$tab"*}"
+  LOCK_PATH="${rest#*"$tab"}"
+  case "$LOCK_PATH" in
+    *"$tab"*) die "invalid component lock row for $LOCK_NAME: too many fields" ;;
+  esac
+}
+
+validate_component_lock_fields() {
+  local component_dir
+
+  [ -n "$LOCK_NAME" ] || die "invalid component lock row: missing name"
+  [ -n "$LOCK_REPO" ] || die "invalid component lock row for $LOCK_NAME: missing repo"
+  [ -n "$LOCK_REF" ] || die "invalid component lock row for $LOCK_NAME: missing ref"
+  [ -n "$LOCK_PATH" ] || die "invalid component lock row for $LOCK_NAME: missing path"
+
+  case "$LOCK_NAME" in
+    *[!A-Za-z0-9._-]*|""|.*|*..*) die "component lock name must be a safe identifier: $LOCK_NAME" ;;
+  esac
+
+  case "$LOCK_REPO" in
+    https://github.com/*) ;;
+    *) die "component lock repo must be a GitHub HTTPS URL: $LOCK_NAME" ;;
+  esac
+
+  case "$LOCK_REF" in
+    *[!0-9a-f]*|"") die "component lock ref must be a lowercase full SHA: $LOCK_NAME" ;;
+  esac
+  [ "${#LOCK_REF}" -eq 40 ] || die "component lock ref must be a full 40-character SHA: $LOCK_NAME"
+
+  case "$LOCK_PATH" in
+    components/*) ;;
+    *) die "component lock path must stay under components/: $LOCK_NAME" ;;
+  esac
+
+  component_dir="${LOCK_PATH#components/}"
+  case "$component_dir" in
+    ""|*/*|.*|*..*|*[!A-Za-z0-9._-]*) die "component lock path must be components/<safe-dir>: $LOCK_NAME" ;;
+  esac
+}
+
+validate_component_lock() {
+  local line
+  local tab=$'\t'
+  local rows=0
+  local header_seen=0
+  local seen_names=" "
+  local seen_paths=" "
+  local required_path
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      ""|\#*) continue ;;
+    esac
+
+    if [ "$line" = "name${tab}repo${tab}ref${tab}path" ]; then
+      [ "$header_seen" -eq 0 ] || die "component lock contains duplicate header"
+      header_seen=1
+      continue
+    fi
+
+    parse_component_lock_line "$line"
+    validate_component_lock_fields
+    rows=$((rows + 1))
+
+    case "$seen_names" in
+      *" $LOCK_NAME "*) die "component lock contains duplicate name: $LOCK_NAME" ;;
+      *) seen_names="${seen_names}${LOCK_NAME} " ;;
+    esac
+
+    case "$seen_paths" in
+      *" $LOCK_PATH "*) die "component lock contains duplicate path: $LOCK_PATH" ;;
+      *) seen_paths="${seen_paths}${LOCK_PATH} " ;;
+    esac
+  done < "$COMPONENT_LOCK"
+
+  [ "$header_seen" -eq 1 ] || die "component lock header missing"
+  [ "$rows" -gt 0 ] || die "component lock has no component rows"
+  for required_path in $REQUIRED_COMPONENT_PATHS; do
+    case "$seen_paths" in
+      *" $required_path "*) ;;
+      *) die "component lock missing required path: $required_path" ;;
+    esac
+  done
+}
+
+clone_components_from_lock() {
+  local line
+  local tab=$'\t'
+
+  validate_component_lock
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      ""|\#*) continue ;;
+    esac
+
+    if [ "$line" = "name${tab}repo${tab}ref${tab}path" ]; then
+      continue
+    fi
+
+    parse_component_lock_line "$line"
+    clone_component "$LOCK_REPO" "$LOCK_PATH" "$LOCK_REF"
+  done < "$COMPONENT_LOCK"
+}
+
 link_skill() {
   local name="$1"
   local target="$2"
@@ -159,6 +282,7 @@ require_file ".skills/knot-setup/references/knowledge-feedback.template.md"
 require_file ".skills/knot-setup/references/backup-policy.template.md"
 require_file ".skills/knot-setup/references/AGENTS.template.md"
 require_file ".skills/knot-setup/references/codex-agents.template.md"
+require_file "$COMPONENT_LOCK"
 
 test -f workspace/admin/permissions.md || cp .skills/knot-setup/references/permissions.template.md workspace/admin/permissions.md
 test -f workspace/admin/knowledge-feedback.md || cp .skills/knot-setup/references/knowledge-feedback.template.md workspace/admin/knowledge-feedback.md
@@ -205,13 +329,7 @@ if [ "$SKIP_BACKUP_REMOTE" -eq 0 ]; then
 fi
 
 if [ "$SKIP_COMPONENTS" -eq 0 ]; then
-  clone_component https://github.com/realraelrr/docling-skill components/docling-skill "$DOCLING_SKILL_REF"
-  clone_component https://github.com/realraelrr/md-for-human components/md-for-human "$MD_FOR_HUMAN_REF"
-  clone_component https://github.com/realraelrr/handoff-skill components/handoff-skill "$HANDOFF_SKILL_REF"
-  clone_component https://github.com/Ar9av/obsidian-wiki components/obsidian-wiki "$OBSIDIAN_WIKI_REF"
-  clone_component https://github.com/realraelrr/cc-connect components/cc-connect-local-main "$CC_CONNECT_REF"
-  clone_component https://github.com/realraelrr/planning-with-files components/planning-with-files "$PLANNING_WITH_FILES_REF"
-  clone_component https://github.com/realraelrr/knot-skills components/knot-skills "$KNOT_SKILLS_REF"
+  clone_components_from_lock
 fi
 
 if [ -x components/knot-skills/scripts/install-codex-skills.sh ]; then

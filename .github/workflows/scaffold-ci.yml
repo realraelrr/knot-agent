@@ -21,10 +21,10 @@ jobs:
           sudo apt-get install -y shellcheck
 
       - name: Syntax check
-        run: bash -n bootstrap/*.sh tests/*.sh
+        run: bash -n bootstrap/*.sh bootstrap/doctor/*.sh tests/*.sh
 
       - name: Shellcheck
-        run: shellcheck --severity=warning -x bootstrap/*.sh tests/*.sh
+        run: shellcheck --severity=warning -x bootstrap/*.sh bootstrap/doctor/*.sh tests/*.sh
 
       - name: Scaffold doctor
-        run: bash bootstrap/doctor.sh --scaffold-only
+        run: bash bootstrap/doctor.sh --scaffold-only --strict-docs

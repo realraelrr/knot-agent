@@ -52,13 +52,13 @@ report that daily rollback backup is not ready.
 The installer owns directory creation, admin templates, global Codex defaults,
 project `AGENTS.md`, pinned component repos, skill links, helper permissions,
 `cc-connect` build, and the base doctor check.
-Pinned component revisions are defined in `bootstrap/knot-install.sh`. Repair
-updates clean existing component checkouts to those revisions and stops if a
-component has tracked local changes.
+Pinned component revisions are defined in `components.lock`. Repair updates
+clean existing component checkouts to those revisions and stops if a component
+has tracked local changes.
 
 To update component pins:
 
-1. Change only the relevant `*_REF` values in `bootstrap/knot-install.sh`.
+1. Change only the relevant rows in `components.lock`.
 2. Run the installer from a clean checkout; it must stop instead of overwriting
    tracked local component changes.
 3. Run `bash bootstrap/doctor.sh` and confirm each component reports the new

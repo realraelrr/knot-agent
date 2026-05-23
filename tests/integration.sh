@@ -375,6 +375,7 @@ mkdir -p "$install_root/.skills/knot-setup" "$install_root/.skills/knot-workflow
 cp -R "$ROOT/bootstrap" "$install_root/bootstrap"
 cp -R "$ROOT/.skills/knot-setup/references" "$install_root/.skills/knot-setup/references"
 cp "$ROOT/AGENTS.md" "$install_root/AGENTS.md"
+cp "$ROOT/components.lock" "$install_root/components.lock"
 cp "$ROOT/.gitignore" "$install_root/.gitignore"
 printf '%s\n' 'name: knot-workflow' > "$install_root/.skills/knot-workflow/SKILL.md"
 mkdir -p \
@@ -418,6 +419,7 @@ mkdir -p "$repair_root/.skills/knot-setup" \
 cp -R "$ROOT/bootstrap" "$repair_root/bootstrap"
 cp -R "$ROOT/.skills/knot-setup/references" "$repair_root/.skills/knot-setup/references"
 cp "$ROOT/AGENTS.md" "$repair_root/AGENTS.md"
+cp "$ROOT/components.lock" "$repair_root/components.lock"
 cp "$ROOT/.gitignore" "$repair_root/.gitignore"
 printf '%s\n' 'name: knot-workflow' > "$repair_root/.skills/knot-workflow/SKILL.md"
 printf '%s\n' 'custom global instructions' > "$repair_root/codex-home/AGENTS.md"
@@ -452,6 +454,80 @@ if CODEX_HOME="$repair_root/codex-home" bash "$repair_root/bootstrap/knot-instal
 else
   fail "knot-install overwrote existing empty global instructions file"
 fi
+
+LOCK_CASE_INDEX=0
+
+write_lock_with_extra_row() {
+  local path="$1"
+  local row="$2"
+
+  cp "$ROOT/components.lock" "$path"
+  printf '%s\n' "$row" >> "$path"
+}
+
+expect_installer_rejects_lock() {
+  local label="$1"
+  local expected="$2"
+  local lock_file="$3"
+  local lock_root
+  local output
+
+  LOCK_CASE_INDEX=$((LOCK_CASE_INDEX + 1))
+  lock_root="$TMP_PARENT/lock-case-$LOCK_CASE_INDEX"
+  cp -R "$install_root" "$lock_root"
+  cp "$lock_file" "$lock_root/components.lock"
+
+  if output="$(CODEX_HOME="$lock_root/codex-home" bash "$lock_root/bootstrap/knot-install.sh" \
+    --root "$lock_root" \
+    --skip-build \
+    --skip-backup-remote \
+    --skip-doctor 2>&1)"; then
+    fail "knot-install allowed $label"
+  elif printf '%s\n' "$output" | grep -Fq "$expected"; then
+    ok "knot-install rejects $label"
+  else
+    fail "knot-install rejected $label for wrong reason: $output"
+  fi
+
+  if [ -e "$lock_root/components/new-component" ]; then
+    fail "knot-install mutated components before rejecting $label"
+  fi
+}
+
+lock_case="$TMP_PARENT/lock-path-traversal.tsv"
+write_lock_with_extra_row "$lock_case" $'bad\thttps://github.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/../runtime/escape'
+expect_installer_rejects_lock "component lock path traversal" "component lock path must be components/<safe-dir>" "$lock_case"
+
+lock_case="$TMP_PARENT/lock-empty-field.tsv"
+write_lock_with_extra_row "$lock_case" $'bad\t\t0000000000000000000000000000000000000000\tcomponents/new-component'
+expect_installer_rejects_lock "empty component lock field" "missing repo" "$lock_case"
+
+lock_case="$TMP_PARENT/lock-extra-field.tsv"
+write_lock_with_extra_row "$lock_case" $'bad\thttps://github.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/new-component\textra'
+expect_installer_rejects_lock "extra component lock field" "too many fields" "$lock_case"
+
+lock_case="$TMP_PARENT/lock-short-sha.tsv"
+write_lock_with_extra_row "$lock_case" $'bad\thttps://github.com/example/bad\tabc123\tcomponents/new-component'
+expect_installer_rejects_lock "short component lock SHA" "full 40-character SHA" "$lock_case"
+
+lock_case="$TMP_PARENT/lock-non-github.tsv"
+write_lock_with_extra_row "$lock_case" $'bad\thttps://example.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/new-component'
+expect_installer_rejects_lock "non-GitHub component lock repo" "GitHub HTTPS URL" "$lock_case"
+
+lock_case="$TMP_PARENT/lock-duplicate-name.tsv"
+write_lock_with_extra_row "$lock_case" $'docling-skill\thttps://github.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/new-component'
+expect_installer_rejects_lock "duplicate component lock name" "duplicate name" "$lock_case"
+
+lock_case="$TMP_PARENT/lock-duplicate-path.tsv"
+write_lock_with_extra_row "$lock_case" $'new-component\thttps://github.com/example/bad\t0000000000000000000000000000000000000000\tcomponents/docling-skill'
+expect_installer_rejects_lock "duplicate component lock path" "duplicate path" "$lock_case"
+
+lock_case="$TMP_PARENT/lock-missing-required.tsv"
+cat > "$lock_case" <<'EOF'
+name	repo	ref	path
+docling-skill	https://github.com/example/docling-skill	0000000000000000000000000000000000000000	components/docling-skill
+EOF
+expect_installer_rejects_lock "component lock missing required entries" "component lock missing required path" "$lock_case"
 
 if [ "$FAILURES" -gt 0 ]; then
   exit 1
