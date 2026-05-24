@@ -146,6 +146,9 @@ is not a substitute for this check.
   group workspace only for explicit shared assets.
 - Attachments are sent only from the active user or authorized group
   `deliverables/` directory.
+- Boundary actions write compact evidence to
+  `workspace/conversations/<platform>/chat_<hash>/events.jsonl` when launched
+  with conversation audit context.
 - Unauthorized requests fail with a clear authorization response.
 - Reply/reference sends preserve enough source metadata to audit the referenced
   message.

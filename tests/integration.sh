@@ -50,6 +50,25 @@ fail() {
   FAILURES=$((FAILURES + 1))
 }
 
+assert_event_schema() {
+  local path="$1"
+  local fixed_keys='["actor_user","chat_id_hash","codex_session_id","event","group_slug","identity_key_hash","platform","platform_user_id_hash","reason_code","resource_kind","resource_path","resource_sha256","resource_size_bytes","schema_version","status","time"]'
+
+  if [ ! -s "$path" ]; then
+    fail "event log is empty or missing: $path"
+    return
+  fi
+
+  if jq -c . "$path" >/dev/null 2>&1 &&
+    jq -s -e --argjson keys "$fixed_keys" \
+      'all(.[]; ([keys_unsorted[]] | sort) == ($keys | sort))' "$path" >/dev/null &&
+    jq -s -e 'all(.[]; if (.event == "delivery.verified" or .event == "delivery.denied" or .event == "delivery.sent" or .event == "delivery.failed" or .event == "input.ref.recorded") then true else (.resource_kind == "" and .resource_path == "" and .resource_sha256 == "" and .resource_size_bytes == 0) end)' "$path" >/dev/null; then
+    ok "event log rows use fixed compact audit schema"
+  else
+    fail "event log rows do not match fixed audit schema"
+  fi
+}
+
 cleanup() {
   [ -z "$TMP_PARENT" ] || rm -rf "$TMP_PARENT"
   [ -z "$UNSAFE_ROOT" ] || rm -rf "$UNSAFE_ROOT"
@@ -87,6 +106,8 @@ fi
 user_workspace="$tmp_root/workspace/users/example-user"
 group_workspace="$tmp_root/workspace/groups/example-group"
 conversation_dir="$KNOT_CONVERSATION_DIR"
+chat_hash="$(sha256_hex_pair feishu "oc/test group")"
+expected_conversation_segment="chat_${chat_hash:0:24}"
 
 if [ -d "$user_workspace/deliverables" ] &&
   [ -d "$group_workspace/deliverables" ] &&
@@ -96,6 +117,89 @@ if [ -d "$user_workspace/deliverables" ] &&
 else
   fail "knot-workspace did not create expected user/group/conversation state"
 fi
+
+if [ "$(basename "$conversation_dir")" = "$expected_conversation_segment" ] &&
+  printf '%s\n' "$conversation_dir" | grep -Fq "/workspace/conversations/feishu/chat_" &&
+  ! printf '%s\n' "$conversation_dir" | grep -Fq "oc_test_group"; then
+  ok "knot-workspace uses opaque conversation directory segments"
+else
+  fail "knot-workspace conversation directory exposed raw or sanitized chat id: $conversation_dir"
+fi
+
+event_log="$conversation_dir/events.jsonl"
+if [ ! -e "$event_log" ]; then
+  ok "workspace resolution without explicit audit flag creates no event log"
+else
+  fail "workspace resolution created event log without explicit audit flag"
+fi
+
+audit_chat_id="oc/audit group"
+audit_hash="$(sha256_hex_pair feishu "$audit_chat_id")"
+audit_conversation_dir="$tmp_root/workspace/conversations/feishu/chat_${audit_hash:0:24}"
+if audit_exports="$(bash "$ROOT/bootstrap/knot-workspace.sh" \
+  --root "$tmp_root" \
+  --platform feishu \
+  --chat-id "$audit_chat_id" \
+  --user-id "ou/test user" \
+  --user-slug "example-user" \
+  --identity-key "feishu:user:ou-test" \
+  --emit-conversation-initialized)" &&
+  eval "$audit_exports" &&
+  [ "$KNOT_CONVERSATION_DIR" = "$audit_conversation_dir" ] &&
+  [ -f "$audit_conversation_dir/events.jsonl" ] &&
+  jq -e 'select(.event == "conversation.initialized" and .status == "allowed")' "$audit_conversation_dir/events.jsonl" >/dev/null &&
+  ! grep -Fq "$audit_chat_id" "$audit_conversation_dir/events.jsonl" &&
+  ! grep -Fq "ou/test user" "$audit_conversation_dir/events.jsonl" &&
+  ! grep -Fq "feishu:user:ou-test" "$audit_conversation_dir/events.jsonl"; then
+  ok "knot-workspace explicit audit writes hashed conversation.initialized event"
+else
+  fail "knot-workspace explicit audit did not write expected conversation.initialized event"
+fi
+
+before_repeat_init_count="$(wc -l < "$audit_conversation_dir/events.jsonl" | tr -d '[:space:]')"
+if bash "$ROOT/bootstrap/knot-workspace.sh" \
+  --root "$tmp_root" \
+  --platform feishu \
+  --chat-id "$audit_chat_id" \
+  --user-id "ou/test user" \
+  --user-slug "example-user" \
+  --identity-key "feishu:user:ou-test" \
+  --emit-conversation-initialized >/dev/null &&
+  [ "$(wc -l < "$audit_conversation_dir/events.jsonl" | tr -d '[:space:]')" = "$before_repeat_init_count" ]; then
+  ok "knot-workspace does not duplicate conversation.initialized events"
+else
+  fail "knot-workspace duplicated conversation.initialized event"
+fi
+
+assert_event_schema "$audit_conversation_dir/events.jsonl"
+
+if bash "$ROOT/bootstrap/knot-audit.sh" record \
+  --root "$tmp_root" \
+  --conversation-dir "$audit_conversation_dir" \
+  --event conversation.initialized \
+  --platform feishu \
+  --chat-id-hash "sha256:0000000000000000000000000000000000000000000000000000000000000000" \
+  --status allowed >/dev/null 2>&1; then
+  fail "knot-audit allowed chat hash mismatch"
+else
+  ok "knot-audit rejects chat hash mismatch"
+fi
+
+wrong_platform_dir="$tmp_root/workspace/conversations/dingtalk/chat_${audit_hash:0:24}"
+mkdir -p "$wrong_platform_dir"
+if bash "$ROOT/bootstrap/knot-audit.sh" record \
+  --root "$tmp_root" \
+  --conversation-dir "$wrong_platform_dir" \
+  --event conversation.initialized \
+  --platform feishu \
+  --chat-id-hash "sha256:$audit_hash" \
+  --status allowed >/dev/null 2>&1; then
+  fail "knot-audit allowed parent platform mismatch"
+else
+  ok "knot-audit rejects parent platform mismatch"
+fi
+
+eval "$workspace_exports"
 
 mkdir -p "$tmp_root/workspace/admin"
 cat > "$tmp_root/workspace/admin/permissions.md" <<'EOF'
@@ -136,6 +240,7 @@ if bash "$ROOT/bootstrap/knot-workspace.sh" --root "$tmp_root" --platform feishu
 else
   ok "knot-workspace rejects tabs in chat metadata"
 fi
+eval "$workspace_exports"
 
 printf 'ok\n' > "$user_workspace/deliverables/result.txt"
 if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null; then
@@ -144,11 +249,48 @@ else
   fail "knot-attachment rejected current user deliverable"
 fi
 
+if bash "$ROOT/bootstrap/knot-attachment.sh" \
+  --root "$tmp_root" \
+  --conversation-dir "$audit_conversation_dir" \
+  --platform feishu \
+  --chat-id "$audit_chat_id" \
+  --user-id "ou/test user" \
+  --user-slug "example-user" \
+  --identity-key "feishu:user:ou-test" \
+  --kind file \
+  --path "$user_workspace/deliverables/result.txt" >/dev/null &&
+  jq -e 'select(.event == "delivery.verified" and .resource_kind == "file" and (.resource_sha256 | length == 64))' "$audit_conversation_dir/events.jsonl" >/dev/null &&
+  ! grep -Fq "$audit_chat_id" "$audit_conversation_dir/events.jsonl" &&
+  ! grep -Fq "ou/test user" "$audit_conversation_dir/events.jsonl" &&
+  ! grep -Fq "feishu:user:ou-test" "$audit_conversation_dir/events.jsonl"; then
+  ok "knot-attachment writes compact hashed delivery.verified event"
+else
+  fail "knot-attachment did not write expected delivery.verified audit event"
+fi
+
 printf 'group\n' > "$group_workspace/deliverables/group.txt"
 if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$group_workspace/deliverables/group.txt" >/dev/null; then
   ok "knot-attachment allows current group deliverable"
 else
   fail "knot-attachment rejected current group deliverable"
+fi
+
+if bash "$ROOT/bootstrap/knot-attachment.sh" \
+  --root "$tmp_root" \
+  --conversation-dir "$conversation_dir" \
+  --platform feishu \
+  --chat-id "oc/test group" \
+  --user-id "ou/test user" \
+  --user-slug "example-user" \
+  --group-slug "example-group" \
+  --kind file \
+  --path "$group_workspace/deliverables/group.txt" >/dev/null &&
+  [ -f "$event_log" ] &&
+  jq -e 'select(.event == "group.access.allowed" and .status == "allowed")' "$event_log" >/dev/null &&
+  jq -e 'select(.event == "delivery.verified" and .resource_kind == "file")' "$event_log" >/dev/null; then
+  ok "knot-attachment audits current group deliverable access"
+else
+  fail "knot-attachment did not audit current group deliverable access"
 fi
 
 mkdir -p "$tmp_root/generated"
@@ -220,6 +362,24 @@ else
   fail "knot-deliver unauthorized group rejection had wrong error: $unauthorized_output"
 fi
 
+if unauthorized_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" \
+  --root "$tmp_root" \
+  --conversation-dir "$conversation_dir" \
+  --platform feishu \
+  --chat-id "oc/test group" \
+  --user-id "ou/test user" \
+  --user-slug "example-user" \
+  --group-slug "unauthorized-group" \
+  --kind image \
+  --path "$tmp_root/generated/image.png" \
+  --target group 2>&1)"; then
+  fail "knot-deliver allowed audited unauthorized explicit group delivery"
+elif jq -e 'select(.event == "group.access.denied" and .reason_code == "unauthorized_group")' "$event_log" >/dev/null; then
+  ok "knot-deliver audits unauthorized group delivery denial"
+else
+  fail "knot-deliver did not audit unauthorized group delivery denial: $unauthorized_output"
+fi
+
 if unauthorized_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --identity-key "feishu:user:wrong" --kind image --path "$tmp_root/generated/image.png" --target group 2>&1)"; then
   fail "knot-deliver allowed group delivery with mismatched identity key"
 elif printf '%s\n' "$unauthorized_output" | grep -Fq "not authorized"; then
@@ -276,10 +436,42 @@ if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu -
 else
   ok "knot-deliver rejects artifact from conversations metadata"
 fi
+if bash "$ROOT/bootstrap/knot-deliver.sh" \
+  --root "$tmp_root" \
+  --conversation-dir "$conversation_dir" \
+  --platform feishu \
+  --chat-id "oc/test group" \
+  --user-id "ou/test user" \
+  --user-slug "example-user" \
+  --group-slug "example-group" \
+  --kind file \
+  --path "$conversation_dir/audit.txt" >/dev/null 2>&1; then
+  fail "knot-deliver allowed audited artifact from conversations metadata"
+elif jq -e 'select(.event == "delivery.denied" and .reason_code == "conversation_source_denied")' "$event_log" >/dev/null; then
+  ok "knot-deliver audits conversation metadata delivery denial"
+else
+  fail "knot-deliver did not audit conversation metadata delivery denial"
+fi
 if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$conversation_dir/audit.txt" >/dev/null 2>&1; then
   fail "knot-attachment allowed artifact from conversations metadata"
 else
   ok "knot-attachment rejects artifact from conversations metadata"
+fi
+if bash "$ROOT/bootstrap/knot-attachment.sh" \
+  --root "$tmp_root" \
+  --conversation-dir "$conversation_dir" \
+  --platform feishu \
+  --chat-id "oc/test group" \
+  --user-id "ou/test user" \
+  --user-slug "example-user" \
+  --group-slug "example-group" \
+  --kind file \
+  --path "$conversation_dir/audit.txt" >/dev/null 2>&1; then
+  fail "knot-attachment allowed audited artifact from conversations metadata"
+elif jq -e 'select(.event == "delivery.denied" and .reason_code == "conversation_source_denied")' "$event_log" >/dev/null; then
+  ok "knot-attachment audits conversation metadata attachment denial"
+else
+  fail "knot-attachment did not audit conversation metadata attachment denial"
 fi
 
 printf 'external\n' > "$tmp_root/generated/external.txt"
@@ -296,6 +488,9 @@ if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feish
 else
   ok "knot-attachment rejects file outside current user/group workspaces"
 fi
+
+assert_event_schema "$event_log"
+assert_event_schema "$audit_conversation_dir/events.jsonl"
 
 ln -s "$tmp_root/outside.txt" "$user_workspace/deliverables/leak.txt"
 if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/leak.txt" >/dev/null 2>&1; then
@@ -397,6 +592,7 @@ if CODEX_HOME="$install_root/codex-home" bash "$install_root/bootstrap/knot-inst
     [ -d "$install_root/runtime" ] &&
     [ -f "$install_root/workspace/admin/permissions.md" ] &&
     [ -f "$install_root/codex-home/AGENTS.md" ] &&
+    [ -x "$install_root/bootstrap/knot-audit.sh" ] &&
     [ -x "$install_root/bootstrap/knot-workspace.sh" ] &&
     [ -f "$install_root/bootstrap/component-lock.sh" ] &&
     [ ! -x "$install_root/bootstrap/component-lock.sh" ] &&
@@ -648,6 +844,7 @@ cp "$ROOT/AGENTS.md" "$doc_root/AGENTS.md"
 cp "$ROOT/.skills/knot-workflow/SKILL.md" "$doc_root/.skills/knot-workflow/SKILL.md"
 cp "$ROOT/.skills/knot-setup/references/"*.md "$doc_root/.skills/knot-setup/references/"
 cp "$ROOT/docs/im-smoke-sop.md" "$doc_root/docs/im-smoke-sop.md"
+cp "$ROOT/docs/security-model.md" "$doc_root/docs/security-model.md"
 cp "$ROOT/.skills/knot-setup/references/permissions.template.md" "$doc_root/workspace/admin/permissions.md"
 cp "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "$doc_root/workspace/admin/knowledge-feedback.md"
 cp "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "$doc_root/workspace/admin/backup-policy.md"

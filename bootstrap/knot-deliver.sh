@@ -12,6 +12,7 @@ USER_ID="${KNOT_PLATFORM_USER_ID:-}"
 USER_SLUG="${KNOT_ACTOR_USER:-}"
 GROUP_SLUG="${KNOT_SOURCE_GROUP:-}"
 IDENTITY_KEY="${KNOT_IDENTITY_KEY:-}"
+CONVERSATION_DIR="${KNOT_CONVERSATION_DIR:-}"
 NAME="${KNOT_ACTOR_NAME:-}"
 GROUP_NAME="${KNOT_SOURCE_GROUP_NAME:-}"
 KIND=""
@@ -24,6 +25,8 @@ EXPLICIT_CONTEXT=0
 # shellcheck disable=SC2034
 EXPLICIT_IDENTITY_KEY=0
 # shellcheck disable=SC2034
+EXPLICIT_GROUP_SLUG=0
+# shellcheck disable=SC2034
 KNOT_PARSE_NAMES=1
 
 usage() {
@@ -33,6 +36,8 @@ Usage: bash bootstrap/knot-deliver.sh --platform NAME --user-id ID --user-slug S
 Options:
   --root DIR           Knot root. Defaults to the parent of this script.
   --chat-id ID         Source chat id for conversation context.
+  --conversation-dir DIR
+                       Conversation audit directory from Knot workspace routing.
   --group-slug SLUG    Current group workspace slug for group chats.
   --identity-key KEY   Stable identity/context key from the IM glue layer.
   --name NAME          Human display name to record in metadata.
@@ -46,22 +51,58 @@ validates the boundary, then prints a cc-connect attachment block.
 EOF
 }
 
+message_for_reason_code() {
+  case "$1" in
+    unauthorized_group)
+      printf 'group workspace is not authorized for this actor/context: %s\n' "$GROUP_SLUG"
+      ;;
+    conversation_source_denied)
+      printf 'cannot deliver files from workspace/conversations\n'
+      ;;
+    outside_deliverables)
+      printf 'source file belongs outside the current user or group workspace\n'
+      ;;
+    invalid_resource)
+      printf 'file not found: %s\n' "$SOURCE_PATH"
+      ;;
+    *)
+      printf 'delivery denied\n'
+      ;;
+  esac
+}
+
+deny_delivery() {
+  local reason_code="$1"
+  knot_audit_deny_delivery "$reason_code" "$KIND" "$SOURCE_PATH" "$(message_for_reason_code "$reason_code")"
+}
+
+deny_group_access() {
+  knot_audit_deny_group_access "$(message_for_reason_code unauthorized_group)"
+}
+
+deny_delivery_with_message() {
+  local reason_code="$1"
+  local message="$2"
+
+  knot_audit_deny_delivery "$reason_code" "$KIND" "$SOURCE_PATH" "$message"
+}
+
 reject_non_current_workspace_source() {
   local path="$1"
 
   [ -n "$path" ] || return 0
 
   if [ -n "$CONVERSATIONS_DIR" ] && path_is_under "$path" "$CONVERSATIONS_DIR"; then
-    die "cannot deliver files from workspace/conversations"
+    deny_delivery conversation_source_denied
   fi
 
   if path_is_under "$path" "$USERS_DIR" && ! path_is_under "$path" "$USER_REAL"; then
-    die "source file belongs to another user workspace"
+    deny_delivery_with_message outside_deliverables "source file belongs to another user workspace"
   fi
 
   if path_is_under "$path" "$GROUPS_DIR"; then
     if [ -z "$GROUP_REAL" ] || ! path_is_under "$path" "$GROUP_REAL"; then
-      die "source file belongs to another group workspace"
+      deny_delivery_with_message outside_deliverables "source file belongs to another group workspace"
     fi
   fi
 }
@@ -126,11 +167,11 @@ case "$TARGET" in
 esac
 
 [ "$TARGET" != "group" ] || [ -n "$GROUP_SLUG" ] || die "--target group requires --group-slug"
-[ -f "$SOURCE_PATH" ] || die "file not found: $SOURCE_PATH"
 
+[ -f "$SOURCE_PATH" ] || deny_delivery invalid_resource
 ROOT="$(cd "$ROOT" && pwd)"
 if [ -n "$GROUP_SLUG" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
-  die "group workspace is not authorized for this actor/context: $GROUP_SLUG"
+  deny_group_access
 fi
 SOURCE_ABS="$(resolve_path "$SOURCE_PATH")" || die "cannot resolve file path: $SOURCE_PATH"
 SOURCE_LOCATION_ABS="$(absolute_path "$SOURCE_PATH")" || die "cannot resolve source path location: $SOURCE_PATH"
@@ -146,11 +187,11 @@ USER_WORKSPACE="$(workspace_export KNOT_USER_WORKSPACE "$WORKSPACE_EXPORTS")"
 GROUP_WORKSPACE="$(workspace_export KNOT_GROUP_WORKSPACE "$WORKSPACE_EXPORTS")"
 
 if [ -L "$USER_WORKSPACE" ] || [ -L "$USER_WORKSPACE/deliverables" ]; then
-  die "current user workspace and deliverables must not be symlinks"
+  deny_delivery_with_message symlink_denied "current user workspace and deliverables must not be symlinks"
 fi
 
 if [ -n "$GROUP_WORKSPACE" ] && { [ -L "$GROUP_WORKSPACE" ] || [ -L "$GROUP_WORKSPACE/deliverables" ]; }; then
-  die "current group workspace and deliverables must not be symlinks"
+  deny_delivery_with_message symlink_denied "current group workspace and deliverables must not be symlinks"
 fi
 
 USER_REAL="$(resolve_path "$USER_WORKSPACE")" || die "cannot resolve user workspace"
@@ -196,4 +237,6 @@ fi
 ATTACH_ARGS=(--root "$ROOT" --platform "$PLATFORM" --user-id "$USER_ID" --user-slug "$USER_SLUG" --kind "$KIND" --path "$DEST_PATH")
 [ -z "$CHAT_ID" ] || ATTACH_ARGS+=(--chat-id "$CHAT_ID")
 [ -z "$GROUP_SLUG" ] || ATTACH_ARGS+=(--group-slug "$GROUP_SLUG")
+[ -z "$IDENTITY_KEY" ] || ATTACH_ARGS+=(--identity-key "$IDENTITY_KEY")
+[ -z "$CONVERSATION_DIR" ] || ATTACH_ARGS+=(--conversation-dir "$CONVERSATION_DIR")
 bash "$SCRIPT_DIR/knot-attachment.sh" "${ATTACH_ARGS[@]}"

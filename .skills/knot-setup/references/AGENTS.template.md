@@ -56,7 +56,7 @@ The gateway should launch Codex from `KNOT_ACTIVE_WORKSPACE`. Write to the
 active user workspace by default. Write to `KNOT_GROUP_WORKSPACE` only for
 explicit shared group assets.
 
-`workspace/conversations/<platform>/<chat_id>/` is source and audit metadata
+`workspace/conversations/<platform>/chat_<hash>/` is source and audit metadata
 only. It is never a Codex cwd, work directory, deliverables directory, or task
 state root.
 

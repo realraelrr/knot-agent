@@ -14,6 +14,7 @@ IDENTITY_KEY=""
 NAME=""
 GROUP_NAME=""
 CREATE_DIRS=1
+EMIT_CONVERSATION_INITIALIZED=0
 
 usage() {
   cat <<'EOF'
@@ -28,6 +29,8 @@ Options:
   --name NAME          Human display name to record in metadata.
   --group-name NAME    Human group display name to record in metadata.
   --no-create          Resolve paths and print exports without creating files.
+  --emit-conversation-initialized
+                       Emit one audit event when a new conversation dir is created.
   --help, -h           Show this help.
 
 If --user-slug or --group-slug is omitted, this helper first tries
@@ -135,10 +138,14 @@ emit_exports() {
   print_export KNOT_CONVERSATION_DIR "$CONVERSATION_DIR"
   print_export KNOT_ACTOR_USER "$USER_SLUG"
   print_export KNOT_SOURCE_GROUP "$GROUP_SLUG"
+  print_export KNOT_GROUP_SLUG "$GROUP_SLUG"
   print_export KNOT_PLATFORM "$PLATFORM"
   print_export KNOT_PLATFORM_USER_ID "$USER_ID"
   print_export KNOT_CHAT_ID "$CHAT_ID"
   print_export KNOT_IDENTITY_KEY "$IDENTITY_KEY"
+  print_export KNOT_CHAT_ID_HASH "$CHAT_ID_HASH"
+  print_export KNOT_PLATFORM_USER_ID_HASH "$PLATFORM_USER_ID_HASH"
+  print_export KNOT_IDENTITY_KEY_HASH "$IDENTITY_KEY_HASH"
 }
 
 write_kv_file() {
@@ -213,6 +220,9 @@ while [ "$#" -gt 0 ]; do
     --no-create)
       CREATE_DIRS=0
       ;;
+    --emit-conversation-initialized)
+      EMIT_CONVERSATION_INITIALIZED=1
+      ;;
     --help|-h)
       usage
       exit 0
@@ -267,6 +277,9 @@ USER_WORKSPACE="$ROOT/workspace/users/$USER_SLUG"
 GROUP_WORKSPACE=""
 CONVERSATION_DIR=""
 CONVERSATION_SEGMENT=""
+CHAT_ID_HASH=""
+PLATFORM_USER_ID_HASH="sha256:$(sha256_hex_string "$USER_ID")"
+IDENTITY_KEY_HASH=""
 CONTEXT_DIR="$USER_WORKSPACE/.knot"
 CONTEXT_FILE="$CONTEXT_DIR/current-context.sh"
 
@@ -275,8 +288,13 @@ if [ -n "$GROUP_SLUG" ]; then
 fi
 
 if [ -n "$CHAT_ID" ]; then
-  CONVERSATION_SEGMENT="$(safe_segment "$CHAT_ID" "id" 80)"
+  CHAT_ID_HASH="sha256:$(sha256_hex_pair "$PLATFORM" "$CHAT_ID")"
+  CONVERSATION_SEGMENT="chat_${CHAT_ID_HASH#sha256:}"
+  CONVERSATION_SEGMENT="${CONVERSATION_SEGMENT:0:29}"
   CONVERSATION_DIR="$ROOT/workspace/conversations/$PLATFORM/$CONVERSATION_SEGMENT"
+fi
+if [ -n "$IDENTITY_KEY" ]; then
+  IDENTITY_KEY_HASH="sha256:$(sha256_hex_string "$IDENTITY_KEY")"
 fi
 
 if [ -L "$USER_WORKSPACE" ]; then
@@ -285,6 +303,11 @@ fi
 
 if [ -n "$GROUP_WORKSPACE" ] && [ -L "$GROUP_WORKSPACE" ]; then
   die "group workspace must not be a symlink: $GROUP_WORKSPACE"
+fi
+
+CONVERSATION_EXISTED=0
+if [ -n "$CONVERSATION_DIR" ] && [ -d "$CONVERSATION_DIR" ]; then
+  CONVERSATION_EXISTED=1
 fi
 
 if [ "$CREATE_DIRS" -eq 1 ]; then
@@ -341,6 +364,19 @@ if [ "$CREATE_DIRS" -eq 1 ]; then
       chat_segment "$CONVERSATION_SEGMENT" \
       actor_user "$USER_SLUG" \
       group_slug "$GROUP_SLUG"
+    if [ "$EMIT_CONVERSATION_INITIALIZED" -eq 1 ] && [ "$CONVERSATION_EXISTED" -eq 0 ]; then
+      bash "$SCRIPT_DIR/knot-audit.sh" record \
+        --root "$ROOT" \
+        --conversation-dir "$CONVERSATION_DIR" \
+        --event conversation.initialized \
+        --platform "$PLATFORM" \
+        --chat-id-hash "$CHAT_ID_HASH" \
+        --user-id-hash "$PLATFORM_USER_ID_HASH" \
+        --identity-key-hash "$IDENTITY_KEY_HASH" \
+        --actor-user "$USER_SLUG" \
+        --group-slug "$GROUP_SLUG" \
+        --status allowed
+    fi
   fi
 
   emit_exports > "$CONTEXT_FILE"

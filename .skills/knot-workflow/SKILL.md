@@ -86,7 +86,7 @@ task crosses an authorization boundary.
   user's `workspace/users/<user_slug>/` workspace. For group chats, use
   `KNOT_GROUP_WORKSPACE` only for explicitly shared group assets.
 - Conversation source and audit metadata goes under
-  `workspace/conversations/<platform>/<chat_id>/`. Do not use conversation
+  `workspace/conversations/<platform>/chat_<hash>/`. Do not use conversation
   directories as a Codex cwd, work directory, deliverables directory, or task
   state root.
 - Do not put temporary work in the Knot root.

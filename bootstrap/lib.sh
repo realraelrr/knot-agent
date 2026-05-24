@@ -5,6 +5,102 @@ die() {
   exit 1
 }
 
+timestamp_utc() {
+  date -u '+%Y-%m-%dT%H:%M:%SZ'
+}
+
+sha256_hex_string() {
+  local value="$1"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "$value" | sha256sum | awk '{print $1}'
+    return
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$value" | shasum -a 256 | awk '{print $1}'
+    return
+  fi
+  die "sha256sum or shasum is required"
+}
+
+sha256_hex_pair() {
+  local left="$1"
+  local right="$2"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    { printf '%s' "$left"; printf '\0'; printf '%s' "$right"; } | sha256sum | awk '{print $1}'
+    return
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    { printf '%s' "$left"; printf '\0'; printf '%s' "$right"; } | shasum -a 256 | awk '{print $1}'
+    return
+  fi
+  die "sha256sum or shasum is required"
+}
+
+file_sha256() {
+  local path="$1"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$path" | awk '{print $1}'
+    return
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$path" | awk '{print $1}'
+    return
+  fi
+  die "sha256sum or shasum is required"
+}
+
+file_size_bytes() {
+  wc -c < "$1" | tr -d '[:space:]'
+}
+
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+knot_audit_record() {
+  [ -n "${CONVERSATION_DIR:-}" ] || return 0
+  bash "$SCRIPT_DIR/knot-audit.sh" record \
+    --root "$ROOT" \
+    --conversation-dir "$CONVERSATION_DIR" \
+    --event "$1" \
+    --platform "$PLATFORM" \
+    --chat-id "${CHAT_ID:-}" \
+    --user-id "${USER_ID:-}" \
+    --identity-key "${IDENTITY_KEY:-}" \
+    --actor-user "${USER_SLUG:-}" \
+    --group-slug "${GROUP_SLUG:-}" \
+    --status "$2" \
+    --reason-code "${3:-}" \
+    --resource-kind "${4:-}" \
+    --resource-path "${5:-}"
+}
+
+knot_audit_deny_delivery() {
+  local reason_code="$1"
+  local resource_kind="$2"
+  local resource_path="$3"
+  local message="$4"
+
+  knot_audit_record delivery.denied denied "$reason_code" "$resource_kind" "$resource_path" || true
+  die "$message"
+}
+
+knot_audit_deny_group_access() {
+  local message="$1"
+
+  knot_audit_record group.access.denied denied unauthorized_group || true
+  die "$message"
+}
+
 absolute_path() {
   local path="$1"
   local dir
@@ -190,6 +286,13 @@ parse_knot_context_arg() {
       EXPLICIT_CONTEXT=1
       KNOT_ARG_CONSUMED=2
       ;;
+    --conversation-dir)
+      shift
+      [ "$#" -gt 0 ] || die "--conversation-dir requires a value"
+      value="$1"
+      CONVERSATION_DIR="$value"
+      KNOT_ARG_CONSUMED=2
+      ;;
     --user-id)
       shift
       [ "$#" -gt 0 ] || die "--user-id requires a value"
@@ -212,6 +315,7 @@ parse_knot_context_arg() {
       value="$1"
       GROUP_SLUG="$value"
       EXPLICIT_CONTEXT=1
+      EXPLICIT_GROUP_SLUG=1
       KNOT_ARG_CONSUMED=2
       ;;
     --identity-key)
@@ -248,6 +352,9 @@ parse_knot_context_arg() {
 clear_implicit_identity_key() {
   if [ "${EXPLICIT_CONTEXT:-0}" -eq 1 ] && [ "${EXPLICIT_IDENTITY_KEY:-0}" -eq 0 ]; then
     IDENTITY_KEY=""
+  fi
+  if [ "${EXPLICIT_CONTEXT:-0}" -eq 1 ] && [ "${EXPLICIT_GROUP_SLUG:-0}" -eq 0 ]; then
+    GROUP_SLUG=""
   fi
 }
 

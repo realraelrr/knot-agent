@@ -217,6 +217,7 @@ run_workspace_structure_checks() {
 
   check_executable "$ROOT/bootstrap/knot-workspace.sh" "knot-workspace helper"
   check_executable "$ROOT/bootstrap/knot-install.sh" "knot-install helper"
+  check_executable "$ROOT/bootstrap/knot-audit.sh" "knot-audit helper"
   check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
   check_executable "$ROOT/bootstrap/knot-deliver.sh" "knot-deliver helper"
   check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
@@ -226,6 +227,7 @@ run_workspace_structure_checks() {
   check_file_exists "$ROOT/bootstrap/lib.sh" "bootstrap shell library"
   check_executable "$ROOT/tests/integration.sh" "integration smoke tests"
   check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
+  check_file_exists "$ROOT/docs/security-model.md" "security model"
 
   check_dir "$WORKSPACE/knowledge/raw" "knowledge/raw"
   check_dir "$WORKSPACE/knowledge/processed" "knowledge/processed"

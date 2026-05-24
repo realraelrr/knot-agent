@@ -103,7 +103,7 @@ mkdir -p \
   "$TEST_ROOT/workspace/users/victim-user/deliverables" \
   "$TEST_ROOT/workspace/groups/allowed-group/deliverables" \
   "$TEST_ROOT/workspace/groups/victim-group/deliverables" \
-  "$TEST_ROOT/workspace/conversations/feishu/id-smoke" \
+  "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000" \
   "$TEST_ROOT/generated"
 
 cat > "$TEST_ROOT/workspace/admin/permissions.md" <<'EOF'
@@ -116,7 +116,7 @@ EOF
 printf 'attacker own deliverable\n' > "$TEST_ROOT/workspace/users/attacker-user/deliverables/own.txt"
 printf 'victim private sentinel\n' > "$TEST_ROOT/workspace/users/victim-user/deliverables/private-sentinel.txt"
 printf 'victim group sentinel\n' > "$TEST_ROOT/workspace/groups/victim-group/deliverables/group-private.txt"
-printf 'conversation metadata\n' > "$TEST_ROOT/workspace/conversations/feishu/id-smoke/metadata.txt"
+printf 'conversation metadata\n' > "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000/metadata.txt"
 printf 'generated artifact\n' > "$TEST_ROOT/generated/report.txt"
 printf 'external secret\n' > "$TMP_PARENT/outside-secret.txt"
 ln -s "$TMP_PARENT/outside-secret.txt" "$TEST_ROOT/workspace/users/attacker-user/deliverables/outside-link.txt"
@@ -178,19 +178,46 @@ expect_fail_contains \
     --kind file \
     --path "$TEST_ROOT/workspace/users/victim-user/deliverables/private-sentinel.txt"
 
+audit_exports="$(
+  bash "$ROOT/bootstrap/knot-workspace.sh" \
+    --root "$TEST_ROOT" \
+    --platform feishu \
+    --chat-id oc_allowed \
+    --user-id ou_attacker \
+    --user-slug attacker-user \
+    --identity-key feishu:user:attacker \
+    --emit-conversation-initialized
+)"
+eval "$audit_exports"
+AUDIT_CONVERSATION_DIR="$KNOT_CONVERSATION_DIR"
+
+expect_fail_contains \
+  "another user's workspace file delivery denial can be audited" \
+  "source file belongs to another user workspace" \
+  bash "$ROOT/bootstrap/knot-deliver.sh" "${ATTACKER_CONTEXT[@]}" \
+    --conversation-dir "$AUDIT_CONVERSATION_DIR" \
+    --kind file \
+    --path "$TEST_ROOT/workspace/users/victim-user/deliverables/private-sentinel.txt"
+
+if jq -e 'select(.event == "delivery.denied" and .reason_code == "outside_deliverables")' "$AUDIT_CONVERSATION_DIR/events.jsonl" >/dev/null; then
+  ok "audited cross-user delivery denial records a boundary event"
+else
+  fail "audited cross-user delivery denial did not record delivery.denied"
+fi
+
 expect_fail_contains \
   "conversation metadata cannot be delivered" \
   "cannot deliver files from workspace/conversations" \
   bash "$ROOT/bootstrap/knot-deliver.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
-    --path "$TEST_ROOT/workspace/conversations/feishu/id-smoke/metadata.txt"
+    --path "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000/metadata.txt"
 
 expect_fail_contains \
   "conversation metadata cannot be attached" \
   "attachments cannot be sent from workspace/conversations" \
   bash "$ROOT/bootstrap/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
-    --path "$TEST_ROOT/workspace/conversations/feishu/id-smoke/metadata.txt"
+    --path "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000/metadata.txt"
 
 expect_fail_contains \
   "symlinked deliverable cannot escape the current user deliverables boundary" \
