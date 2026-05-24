@@ -226,6 +226,9 @@ run_workspace_structure_checks() {
   check_executable "$ROOT/bootstrap/knot-permission-smoke.sh" "permission smoke helper"
   check_file_exists "$ROOT/bootstrap/lib.sh" "bootstrap shell library"
   check_executable "$ROOT/tests/integration.sh" "integration smoke tests"
+  check_file_exists "$ROOT/docs/release-gate.md" "release gate"
+  check_file_exists "$ROOT/docs/component-sync.md" "component sync SOP"
+  check_file_exists "$ROOT/docs/deployment-inputs.md" "deployment inputs"
   check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
   check_file_exists "$ROOT/docs/security-model.md" "security model"
 

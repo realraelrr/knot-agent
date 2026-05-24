@@ -29,6 +29,9 @@ run_source_structure_checks() {
   check_executable "$ROOT/bootstrap/knot-runtime-check.sh" "knot-runtime-check helper"
   check_executable "$ROOT/bootstrap/knot-im-smoke-plan.sh" "IM smoke plan helper"
   check_executable "$ROOT/bootstrap/knot-permission-smoke.sh" "permission smoke helper"
+  check_file_exists "$ROOT/docs/release-gate.md" "release gate"
+  check_file_exists "$ROOT/docs/component-sync.md" "component sync SOP"
+  check_file_exists "$ROOT/docs/deployment-inputs.md" "deployment inputs"
   check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
   check_file_exists "$ROOT/docs/security-model.md" "security model"
 

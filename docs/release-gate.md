@@ -17,6 +17,15 @@ existing gate to run and when. It does not replace `doctor.sh`, CI,
 | cc-connect core | `GOMODCACHE=/private/tmp/knot-go-cache go test ./core -count=1 -timeout=120s` from `components/cc-connect-local-main` | Component local/CI | Any cc-connect change or cc-connect pin update | Go tests pass |
 | Live IM smoke | `docs/im-smoke-sop.md` and `bash bootstrap/knot-im-smoke-plan.sh` | Manual | Final release validation for IM behavior | Required rows pass; skipped or blocked rows have explicit reasons |
 
+## CI Alignment
+
+Scaffold CI is intentionally the automated source gate. It runs shell syntax,
+shellcheck, and `bash bootstrap/doctor.sh --scaffold-only --strict-docs`.
+
+It does not claim installed runtime readiness, live IM readiness, or complete
+component-internal validation. Those stay in the installed doctor, platform
+doctor, IM smoke SOP, and component repositories.
+
 ## Release Sequences
 
 For scaffold-only changes:
@@ -55,6 +64,11 @@ bash bootstrap/knot-im-smoke-plan.sh
 ```
 
 Then execute the generated IM smoke plan according to `docs/im-smoke-sop.md`.
+
+For component updates, follow `docs/component-sync.md`.
+
+For customer or pilot deployments, collect the required runtime boundary inputs
+from `docs/deployment-inputs.md`.
 
 ## Release Blockers
 
