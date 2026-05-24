@@ -87,7 +87,9 @@ stage_workspace_metadata() {
 }
 
 stage_if_exists "AGENTS.md"
-stage_if_exists "bootstrap"
+stage_if_exists "bin"
+stage_if_exists "lib"
+stage_if_exists "checks"
 stage_if_exists ".skills/knot-setup"
 stage_if_exists ".skills/knot-workflow"
 stage_if_exists "workspace/knowledge"
