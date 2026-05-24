@@ -53,7 +53,7 @@ scripts only for selected platforms.
 ## Shared Config Skeleton
 
 Use the Knot root as the gateway install/runtime root. Enable cc-connect's
-Knot resolver so each incoming message calls `bootstrap/knot-workspace.sh`
+Knot resolver so each incoming message calls `bin/knot-workspace.sh`
 before agent startup. Do not set a static agent `work_dir`; the resolver starts
 Codex from the returned `KNOT_ACTIVE_WORKSPACE` and injects the other `KNOT_*`
 context exports into the agent process.
@@ -85,7 +85,7 @@ type = "codex"
 
 [projects.knot_workspace]
 enabled = true
-helper = "${KNOT_ROOT}/bootstrap/knot-workspace.sh"
+helper = "${KNOT_ROOT}/bin/knot-workspace.sh"
 root = "${KNOT_ROOT}"
 
 [projects.agent.options]
@@ -192,7 +192,7 @@ exec ./bin/cc-connect --config config.PLATFORM.toml
 Before starting a selected platform, run:
 
 ```bash
-bash bootstrap/knot-runtime-check.sh --platform PLATFORM
+bash bin/knot-runtime-check.sh --platform PLATFORM
 ```
 
 This is a static preflight only. It does not start cc-connect, call `/whoami`,
@@ -222,13 +222,13 @@ syntax.
 
 ## Workspace And Attachments
 
-Use `bootstrap/knot-workspace.sh` as a preflight helper after cc-connect or
+Use `bin/knot-workspace.sh` as a preflight helper after cc-connect or
 another IM glue layer has parsed platform, user, and optional group metadata.
 The helper prints source-safe shell exports. Start Codex with cwd set to
 `KNOT_ACTIVE_WORKSPACE`, which must be the actor's user workspace:
 
 ```bash
-eval "$(bash bootstrap/knot-workspace.sh \
+eval "$(bash bin/knot-workspace.sh \
   --platform PLATFORM \
   --user-id USER_ID \
   --user-slug USER_SLUG \
@@ -244,7 +244,7 @@ For group chats, `KNOT_GROUP_WORKSPACE` exposes the shared group workspace by
 path. It is not a second Codex cwd. `KNOT_CONVERSATION_DIR` is source/audit
 metadata only and must not be used as a work or deliverables directory.
 
-Use `bootstrap/knot-attachment.sh` when Codex must send files through IM. It
+Use `bin/knot-attachment.sh` when Codex must send files through IM. It
 validates that the file exists under the current user `deliverables/` directory,
 or under the current group `deliverables/` directory for explicit shared group
 assets, and prints a strict attachment block:

@@ -18,7 +18,7 @@ https://github.com/realraelrr/knot-agent
 ```
 
 The scaffold should contain only safe project source and setup templates:
-`AGENTS.md`, `bootstrap/`, `.skills/`, docs, and examples. It must not contain
+`AGENTS.md`, `bin/`, `lib/`, `checks/`, `.skills/`, docs, and examples. It must not contain
 runtime secrets, logs, sockets, or customer data.
 
 ## Workflow
@@ -61,17 +61,17 @@ To update component pins:
 1. Change only the relevant rows in `components.lock`.
 2. Run the installer from a clean checkout; it must stop instead of overwriting
    tracked local component changes.
-3. Run `bash bootstrap/doctor.sh` and confirm each component reports the new
+3. Run `bash bin/knot-doctor.sh` and confirm each component reports the new
    pinned revision.
 
 ```bash
-bash bootstrap/knot-install.sh --backup-remote "$BACKUP_REMOTE_URL"
+bash bin/knot-install.sh --backup-remote "$BACKUP_REMOTE_URL"
 ```
 
 When intentionally proceeding without backup setup:
 
 ```bash
-bash bootstrap/knot-install.sh --skip-backup-remote
+bash bin/knot-install.sh --skip-backup-remote
 ```
 
 For repair work, use the same installer. It should preserve existing global
@@ -95,7 +95,7 @@ For each selected platform, read only the relevant section of
 - create or reuse the matching config under `runtime/`;
 - create credential placeholders when credentials are missing;
 - point the platform config at the built `cc-connect` binary;
-- run `bash bootstrap/knot-runtime-check.sh --platform PLATFORM`;
+- run `bash bin/knot-runtime-check.sh --platform PLATFORM`;
 - start only that platform gateway;
 - ask the human to send `/whoami` from each intended direct or group context.
 
@@ -120,13 +120,13 @@ context passes.
 Always run:
 
 ```bash
-bash bootstrap/doctor.sh
+bash bin/knot-doctor.sh
 ```
 
 For each configured platform, also run:
 
 ```bash
-bash bootstrap/doctor.sh --platform <configured-platform>
+bash bin/knot-doctor.sh --platform <configured-platform>
 ```
 
 Verify each configured IM context with:

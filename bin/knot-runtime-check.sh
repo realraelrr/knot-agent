@@ -15,7 +15,7 @@ fail() {
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/knot-runtime-check.sh --platform NAME [--root DIR]
+Usage: bash bin/knot-runtime-check.sh --platform NAME [--root DIR]
 
 Platform names: dingtalk, feishu, wecom, weixin
 
@@ -350,7 +350,7 @@ if [ -f "$CONFIG_FILE" ]; then
   # shellcheck disable=SC2016
   if grep -Eq '^[[:space:]]*\[projects\.knot_workspace\][[:space:]]*$' "$CONFIG_FILE" &&
     config_has_bool_true "$CONFIG_FILE" "enabled" &&
-    grep -Fq 'helper = "${KNOT_ROOT}/bootstrap/knot-workspace.sh"' "$CONFIG_FILE" &&
+    grep -Fq 'helper = "${KNOT_ROOT}/bin/knot-workspace.sh"' "$CONFIG_FILE" &&
     grep -Fq 'root = "${KNOT_ROOT}"' "$CONFIG_FILE"; then
     ok "config enables Knot per-message workspace resolver"
   else

@@ -4,8 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT="${KNOT_ROOT:-$DEFAULT_ROOT}"
-# shellcheck source=bootstrap/lib.sh
-. "$SCRIPT_DIR/lib.sh"
+# shellcheck source=lib/knot/core.sh
+. "$DEFAULT_ROOT/lib/knot/core.sh"
 PLATFORM="${KNOT_PLATFORM:-}"
 CHAT_ID="${KNOT_CHAT_ID:-}"
 USER_ID="${KNOT_PLATFORM_USER_ID:-}"
@@ -31,7 +31,7 @@ KNOT_PARSE_NAMES=1
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/knot-deliver.sh --platform NAME --user-id ID --user-slug SLUG --kind image|file --path FILE [options]
+Usage: bash bin/knot-deliver.sh --platform NAME --user-id ID --user-slug SLUG --kind image|file --path FILE [options]
 
 Options:
   --root DIR           Knot root. Defaults to the parent of this script.

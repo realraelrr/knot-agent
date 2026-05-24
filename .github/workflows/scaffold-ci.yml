@@ -21,10 +21,10 @@ jobs:
           sudo apt-get install -y shellcheck
 
       - name: Syntax check
-        run: bash -n bootstrap/*.sh bootstrap/doctor/*.sh tests/*.sh
+        run: find bin lib/knot checks/doctor tests -name '*.sh' -print0 | xargs -0 bash -n
 
       - name: Shellcheck
-        run: shellcheck --severity=warning -x bootstrap/*.sh bootstrap/doctor/*.sh tests/*.sh
+        run: find bin lib/knot checks/doctor tests -name '*.sh' -print0 | xargs -0 shellcheck --severity=warning -x
 
       - name: Scaffold doctor
-        run: bash bootstrap/doctor.sh --scaffold-only --strict-docs
+        run: bash bin/knot-doctor.sh --scaffold-only --strict-docs

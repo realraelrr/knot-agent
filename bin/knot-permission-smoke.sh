@@ -9,7 +9,7 @@ TMP_PARENT=""
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/knot-permission-smoke.sh [--root DIR] [--keep]
+Usage: bash bin/knot-permission-smoke.sh [--root DIR] [--keep]
 
 Runs deterministic permission-boundary checks against a temporary Knot
 workspace. The script does not use live IM credentials or the real workspace.
@@ -160,26 +160,26 @@ printf 'Test root: %s\n\n' "$TEST_ROOT"
 
 expect_ok \
   "current user deliverable can be attached" \
-  bash "$ROOT/bootstrap/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/users/attacker-user/deliverables/own.txt"
 
 expect_fail_contains \
   "another user's deliverable cannot be attached" \
   "attachment must be inside the current user or group deliverables directory" \
-  bash "$ROOT/bootstrap/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/users/victim-user/deliverables/private-sentinel.txt"
 
 expect_fail_contains \
   "another user's workspace file cannot be delivered" \
   "source file belongs to another user workspace" \
-  bash "$ROOT/bootstrap/knot-deliver.sh" "${ATTACKER_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-deliver.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/users/victim-user/deliverables/private-sentinel.txt"
 
 audit_exports="$(
-  bash "$ROOT/bootstrap/knot-workspace.sh" \
+  bash "$ROOT/bin/knot-workspace.sh" \
     --root "$TEST_ROOT" \
     --platform feishu \
     --chat-id oc_allowed \
@@ -194,7 +194,7 @@ AUDIT_CONVERSATION_DIR="$KNOT_CONVERSATION_DIR"
 expect_fail_contains \
   "another user's workspace file delivery denial can be audited" \
   "source file belongs to another user workspace" \
-  bash "$ROOT/bootstrap/knot-deliver.sh" "${ATTACKER_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-deliver.sh" "${ATTACKER_CONTEXT[@]}" \
     --conversation-dir "$AUDIT_CONVERSATION_DIR" \
     --kind file \
     --path "$TEST_ROOT/workspace/users/victim-user/deliverables/private-sentinel.txt"
@@ -208,27 +208,27 @@ fi
 expect_fail_contains \
   "conversation metadata cannot be delivered" \
   "cannot deliver files from workspace/conversations" \
-  bash "$ROOT/bootstrap/knot-deliver.sh" "${ATTACKER_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-deliver.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000/metadata.txt"
 
 expect_fail_contains \
   "conversation metadata cannot be attached" \
   "attachments cannot be sent from workspace/conversations" \
-  bash "$ROOT/bootstrap/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000/metadata.txt"
 
 expect_fail_contains \
   "symlinked deliverable cannot escape the current user deliverables boundary" \
   "attachment must be inside the current user or group deliverables directory" \
-  bash "$ROOT/bootstrap/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/users/attacker-user/deliverables/outside-link.txt"
 
 expect_ok \
   "authorized group delivery can attach generated artifacts" \
-  bash "$ROOT/bootstrap/knot-deliver.sh" "${ATTACKER_GROUP_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-deliver.sh" "${ATTACKER_GROUP_CONTEXT[@]}" \
     --kind file \
     --target group \
     --path "$TEST_ROOT/generated/report.txt"
@@ -236,7 +236,7 @@ expect_ok \
 expect_fail_contains \
   "unauthorized group target is rejected" \
   "group workspace is not authorized for this actor/context: victim-group" \
-  bash "$ROOT/bootstrap/knot-deliver.sh" "${VICTIM_GROUP_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-deliver.sh" "${VICTIM_GROUP_CONTEXT[@]}" \
     --kind file \
     --target group \
     --path "$TEST_ROOT/generated/report.txt"
@@ -244,7 +244,7 @@ expect_fail_contains \
 expect_fail_contains \
   "wrong explicit identity key is rejected even when platform user id matches" \
   "group workspace is not authorized for this actor/context: allowed-group" \
-  bash "$ROOT/bootstrap/knot-deliver.sh" "${WRONG_IDENTITY_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-deliver.sh" "${WRONG_IDENTITY_CONTEXT[@]}" \
     --kind file \
     --target group \
     --path "$TEST_ROOT/generated/report.txt"
@@ -252,19 +252,19 @@ expect_fail_contains \
 expect_fail_contains \
   "another group's deliverable cannot be attached" \
   "attachment must be inside the current user or group deliverables directory" \
-  bash "$ROOT/bootstrap/knot-attachment.sh" "${ATTACKER_GROUP_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-attachment.sh" "${ATTACKER_GROUP_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/groups/victim-group/deliverables/group-private.txt"
 
 expect_fail_contains \
   "another group's workspace file cannot be delivered" \
   "source file belongs to another group workspace" \
-  bash "$ROOT/bootstrap/knot-deliver.sh" "${ATTACKER_GROUP_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-deliver.sh" "${ATTACKER_GROUP_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/groups/victim-group/deliverables/group-private.txt"
 
 resolver_exports="$(
-  bash "$ROOT/bootstrap/knot-workspace.sh" \
+  bash "$ROOT/bin/knot-workspace.sh" \
     --root "$TEST_ROOT" \
     --platform feishu \
     --chat-id oc_victim \
@@ -280,7 +280,7 @@ else
 fi
 
 wrong_identity_exports="$(
-  bash "$ROOT/bootstrap/knot-workspace.sh" \
+  bash "$ROOT/bin/knot-workspace.sh" \
     --root "$TEST_ROOT" \
     --platform feishu \
     --chat-id oc_allowed \
@@ -306,7 +306,7 @@ printf 'symlinked output\n' > "$TMP_PARENT/symlinked-deliverables/own.txt"
 expect_fail_contains \
   "symlinked current deliverables directory is rejected" \
   "current user workspace and deliverables must not be symlinks" \
-  bash "$ROOT/bootstrap/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
+  bash "$ROOT/bin/knot-attachment.sh" "${ATTACKER_CONTEXT[@]}" \
     --kind file \
     --path "$TEST_ROOT/workspace/users/attacker-user/deliverables/own.txt"
 

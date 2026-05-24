@@ -1,5 +1,8 @@
 # shellcheck shell=bash
 
+KNOT_CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KNOT_COMMAND_ROOT="$(cd "$KNOT_CORE_DIR/../.." && pwd)"
+
 die() {
   printf 'ERROR %s\n' "$1" >&2
   exit 1
@@ -68,7 +71,7 @@ json_escape() {
 
 knot_audit_record() {
   [ -n "${CONVERSATION_DIR:-}" ] || return 0
-  bash "$SCRIPT_DIR/knot-audit.sh" record \
+  bash "$KNOT_COMMAND_ROOT/bin/knot-audit.sh" record \
     --root "$ROOT" \
     --conversation-dir "$CONVERSATION_DIR" \
     --event "$1" \

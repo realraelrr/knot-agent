@@ -3,13 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-# shellcheck source=bootstrap/lib.sh
-. "$SCRIPT_DIR/lib.sh"
+# shellcheck source=lib/knot/core.sh
+. "$ROOT/lib/knot/core.sh"
 REMOTE="backup"
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/knot-backup.sh [--root DIR]
+Usage: bash bin/knot-backup.sh [--root DIR]
 
 Commits and pushes Knot durable rollback data to the customer-controlled
 git remote named "backup".

@@ -66,7 +66,7 @@ check_platform() {
 
   case "$platform" in
     dingtalk|feishu|wecom|weixin)
-      if bash "$ROOT/bootstrap/knot-runtime-check.sh" --root "$ROOT" --platform "$platform"; then
+      if bash "$ROOT/bin/knot-runtime-check.sh" --root "$ROOT" --platform "$platform"; then
         ok "$platform runtime check passed"
       else
         fail "$platform runtime check failed"
@@ -215,16 +215,16 @@ run_workspace_structure_checks() {
   check_file_contains "$ROOT/.gitignore" "runtime/" ".gitignore"
   check_file_contains "$ROOT/.gitignore" "components/" ".gitignore"
 
-  check_executable "$ROOT/bootstrap/knot-workspace.sh" "knot-workspace helper"
-  check_executable "$ROOT/bootstrap/knot-install.sh" "knot-install helper"
-  check_executable "$ROOT/bootstrap/knot-audit.sh" "knot-audit helper"
-  check_executable "$ROOT/bootstrap/knot-attachment.sh" "knot-attachment helper"
-  check_executable "$ROOT/bootstrap/knot-deliver.sh" "knot-deliver helper"
-  check_executable "$ROOT/bootstrap/knot-backup.sh" "knot-backup helper"
-  check_executable "$ROOT/bootstrap/knot-runtime-check.sh" "knot-runtime-check helper"
-  check_executable "$ROOT/bootstrap/knot-im-smoke-plan.sh" "IM smoke plan helper"
-  check_executable "$ROOT/bootstrap/knot-permission-smoke.sh" "permission smoke helper"
-  check_file_exists "$ROOT/bootstrap/lib.sh" "bootstrap shell library"
+  check_executable "$ROOT/bin/knot-workspace.sh" "knot-workspace helper"
+  check_executable "$ROOT/bin/knot-install.sh" "knot-install helper"
+  check_executable "$ROOT/bin/knot-audit.sh" "knot-audit helper"
+  check_executable "$ROOT/bin/knot-attachment.sh" "knot-attachment helper"
+  check_executable "$ROOT/bin/knot-deliver.sh" "knot-deliver helper"
+  check_executable "$ROOT/bin/knot-backup.sh" "knot-backup helper"
+  check_executable "$ROOT/bin/knot-runtime-check.sh" "knot-runtime-check helper"
+  check_executable "$ROOT/bin/knot-im-smoke-plan.sh" "IM smoke plan helper"
+  check_executable "$ROOT/bin/knot-permission-smoke.sh" "permission smoke helper"
+  check_file_exists "$ROOT/lib/knot/core.sh" "Knot core shell library"
   check_executable "$ROOT/tests/integration.sh" "integration smoke tests"
   check_operations_docs
   check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
@@ -257,13 +257,13 @@ run_workspace_contract_checks() {
   fi
   if check_file_exists "$WORKSPACE/admin/backup-policy.md" "backup policy"; then
     check_file_contains "$WORKSPACE/admin/backup-policy.md" "remote \`backup\`" "backup policy"
-    check_file_contains "$WORKSPACE/admin/backup-policy.md" "bootstrap/knot-backup.sh" "backup policy"
+    check_file_contains "$WORKSPACE/admin/backup-policy.md" "bin/knot-backup.sh" "backup policy"
     check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "committed and pushed by a Codex app" "backup policy"
     check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "customer-controlled git remote" "backup policy"
     check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "realraelrr/knot-agent" "backup policy"
     check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "git add -f" "backup policy"
     check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "Never use broad \`git add -A\`" "backup policy"
-    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "bootstrap/" "backup policy"
+    check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "bin/" "backup policy"
     check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "runtime/" "backup policy"
     check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "components/" "backup policy"
     check_file_contains_doc_lint "$WORKSPACE/admin/backup-policy.md" "local secrets" "backup policy"

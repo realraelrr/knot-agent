@@ -60,7 +60,7 @@ Do not put secrets under `workspace/`, `components/`, docs, or deliverables.
 ## Validation Evidence
 
 - Release gate run date:
-- `bootstrap/doctor.sh` result:
+- `bin/knot-doctor.sh` result:
 - Platform doctor command and result:
 - Permission smoke result:
 - IM smoke plan path:

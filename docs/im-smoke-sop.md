@@ -43,7 +43,7 @@ Do not run every possible combination. Use this split:
 - Deterministic helper tests cover workspace resolution, permission matching,
   deliverable boundaries, attachment blocks, runtime preflight, and metadata
   handling.
-- `bash bootstrap/knot-permission-smoke.sh` covers cross-user, cross-group,
+- `bash bin/knot-permission-smoke.sh` covers cross-user, cross-group,
   conversation metadata, symlink, and identity-key permission boundaries in a
   temporary workspace.
 - Live smoke covers every platform and every high-risk boundary.
@@ -75,7 +75,7 @@ add one focused regression row for that platform.
 Run before live IM smoke:
 
 ```bash
-bash bootstrap/knot-permission-smoke.sh
+bash bin/knot-permission-smoke.sh
 ```
 
 This creates a temporary Knot root and proves the deterministic helper layer
@@ -93,8 +93,8 @@ IM smoke requirement.
 ## Preconditions
 
 - Current `main` has passing Scaffold CI.
-- `bash bootstrap/knot-permission-smoke.sh` passes.
-- `bash bootstrap/doctor.sh --platform dingtalk,feishu,wecom,weixin` has no
+- `bash bin/knot-permission-smoke.sh` passes.
+- `bash bin/knot-doctor.sh --platform dingtalk,feishu,wecom,weixin` has no
   missing local runtime files for the platforms being tested.
 - `workspace/admin/permissions.md` contains one authorized test user per
   platform and one unauthorized test user or identity.
@@ -106,7 +106,7 @@ IM smoke requirement.
 1. Create a run plan:
 
    ```bash
-   bash bootstrap/knot-im-smoke-plan.sh
+   bash bin/knot-im-smoke-plan.sh
    ```
 
 2. Fill `operator`, `platform_user_id`, `identity_key`, `chat_id`, `status`,

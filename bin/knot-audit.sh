@@ -4,8 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT="${KNOT_ROOT:-$DEFAULT_ROOT}"
-# shellcheck source=bootstrap/lib.sh
-. "$SCRIPT_DIR/lib.sh"
+# shellcheck source=lib/knot/core.sh
+. "$DEFAULT_ROOT/lib/knot/core.sh"
 
 COMMAND="${1:-}"
 [ "$#" -eq 0 ] || shift
@@ -29,7 +29,7 @@ RESOURCE_PATH=""
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/knot-audit.sh record --event NAME --platform NAME --conversation-dir DIR [options]
+Usage: bash bin/knot-audit.sh record --event NAME --platform NAME --conversation-dir DIR [options]
 
 Options:
   --root DIR

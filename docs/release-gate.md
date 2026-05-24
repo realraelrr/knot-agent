@@ -9,18 +9,18 @@ existing gate to run and when. It does not replace `doctor.sh`, CI,
 | Gate | Command or source | Mode | Required when | Pass signal |
 |---|---|---|---|---|
 | Scaffold CI | `.github/workflows/scaffold-ci.yml` | Automatic | Every PR and push to `main` | All workflow steps pass |
-| Scaffold source | `bash bootstrap/doctor.sh --scaffold-only --strict-docs` | Local/CI | Scaffold, docs, installer, helper, or lockfile changes | No `MISS` or failed smoke checks |
-| Installed runtime | `bash bootstrap/doctor.sh` | Local | Before tagging or validating an installed workspace | No `MISS`; advisory warnings are reviewed |
-| Platform runtime | `bash bootstrap/doctor.sh --platform dingtalk,feishu,wecom,weixin` | Local | Before live IM smoke for configured platforms | No missing runtime files for target platforms |
-| Permission smoke | `bash bootstrap/knot-permission-smoke.sh` | Local/doctor | Before release and before live IM smoke | All permission checks print `OK` |
+| Scaffold source | `bash bin/knot-doctor.sh --scaffold-only --strict-docs` | Local/CI | Scaffold, docs, installer, helper, or lockfile changes | No `MISS` or failed smoke checks |
+| Installed runtime | `bash bin/knot-doctor.sh` | Local | Before tagging or validating an installed workspace | No `MISS`; advisory warnings are reviewed |
+| Platform runtime | `bash bin/knot-doctor.sh --platform dingtalk,feishu,wecom,weixin` | Local | Before live IM smoke for configured platforms | No missing runtime files for target platforms |
+| Permission smoke | `bash bin/knot-permission-smoke.sh` | Local/doctor | Before release and before live IM smoke | All permission checks print `OK` |
 | Component pins | `components.lock`, validated by installer and doctor | Local/CI | Any component revision change | Pinned refs match reviewed component commits |
 | cc-connect core | `GOMODCACHE=/private/tmp/knot-go-cache go test ./core -count=1 -timeout=120s` from `components/cc-connect-local-main` | Component local/CI | Any cc-connect change or cc-connect pin update | Go tests pass |
-| Live IM smoke | `docs/im-smoke-sop.md` and `bash bootstrap/knot-im-smoke-plan.sh` | Manual | Final release validation for IM behavior | Required rows pass; skipped or blocked rows have explicit reasons |
+| Live IM smoke | `docs/im-smoke-sop.md` and `bash bin/knot-im-smoke-plan.sh` | Manual | Final release validation for IM behavior | Required rows pass; skipped or blocked rows have explicit reasons |
 
 ## CI Alignment
 
 Scaffold CI is intentionally the automated source gate. It runs shell syntax,
-shellcheck, and `bash bootstrap/doctor.sh --scaffold-only --strict-docs`.
+shellcheck, and `bash bin/knot-doctor.sh --scaffold-only --strict-docs`.
 
 It does not claim installed runtime readiness, live IM readiness, or complete
 component-internal validation. Those stay in the installed doctor, platform
@@ -31,22 +31,22 @@ doctor, IM smoke SOP, and component repositories.
 For scaffold-only changes:
 
 ```bash
-bash -n bootstrap/*.sh bootstrap/doctor/*.sh tests/*.sh
-shellcheck --severity=warning -x bootstrap/*.sh bootstrap/doctor/*.sh tests/*.sh
-bash bootstrap/doctor.sh --scaffold-only --strict-docs
+find bin lib/knot checks/doctor tests -name '*.sh' -print0 | xargs -0 bash -n
+find bin lib/knot checks/doctor tests -name '*.sh' -print0 | xargs -0 shellcheck --severity=warning -x
+bash bin/knot-doctor.sh --scaffold-only --strict-docs
 ```
 
 For installed runtime validation:
 
 ```bash
-bash bootstrap/doctor.sh
+bash bin/knot-doctor.sh
 ```
 
 For permission or delivery boundary changes:
 
 ```bash
-bash bootstrap/knot-permission-smoke.sh
-bash bootstrap/doctor.sh --scaffold-only --strict-docs
+bash bin/knot-permission-smoke.sh
+bash bin/knot-doctor.sh --scaffold-only --strict-docs
 ```
 
 For cc-connect changes:
@@ -59,8 +59,8 @@ GOMODCACHE=/private/tmp/knot-go-cache go test ./core -count=1 -timeout=120s
 For final IM release validation:
 
 ```bash
-bash bootstrap/doctor.sh --platform dingtalk,feishu,wecom,weixin
-bash bootstrap/knot-im-smoke-plan.sh
+bash bin/knot-doctor.sh --platform dingtalk,feishu,wecom,weixin
+bash bin/knot-im-smoke-plan.sh
 ```
 
 Then execute the generated IM smoke plan according to `docs/im-smoke-sop.md`.

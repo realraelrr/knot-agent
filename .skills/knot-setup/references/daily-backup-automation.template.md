@@ -12,7 +12,7 @@ Goal: commit and push durable rollback data once per day.
 Use the deterministic backup entrypoint:
 
 ```bash
-bash bootstrap/knot-backup.sh
+bash bin/knot-backup.sh
 ```
 
 Never stage or commit runtime/, components/, logs, sockets, locks, local

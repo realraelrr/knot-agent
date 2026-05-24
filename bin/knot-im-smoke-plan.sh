@@ -8,7 +8,7 @@ OUT_DIR=""
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/knot-im-smoke-plan.sh [--root DIR] [--out DIR]
+Usage: bash bin/knot-im-smoke-plan.sh [--root DIR] [--out DIR]
 
 Creates an IM live-smoke checklist under workspace/.state/im-smoke/<run_id>/.
 This script does not send IM messages or touch runtime credentials.
@@ -60,8 +60,8 @@ Follow `docs/im-smoke-sop.md`.
 ## Release Gate
 
 - Scaffold CI on current candidate commit passed.
-- `bash bootstrap/knot-permission-smoke.sh` passed.
-- `bash bootstrap/doctor.sh --platform dingtalk,feishu,wecom,weixin` has been
+- `bash bin/knot-permission-smoke.sh` passed.
+- `bash bin/knot-doctor.sh --platform dingtalk,feishu,wecom,weixin` has been
   reviewed for local runtime readiness.
 - All required rows in `results.tsv` are `pass`.
 - Every `blocked` or `skipped` row has a reason.

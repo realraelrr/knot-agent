@@ -3,8 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-# shellcheck source=bootstrap/lib.sh
-. "$SCRIPT_DIR/lib.sh"
+# shellcheck source=lib/knot/core.sh
+. "$ROOT/lib/knot/core.sh"
 PLATFORM=""
 CHAT_ID=""
 USER_ID=""
@@ -18,7 +18,7 @@ EMIT_CONVERSATION_INITIALIZED=0
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/knot-workspace.sh --platform NAME --user-id ID [options]
+Usage: bash bin/knot-workspace.sh --platform NAME --user-id ID [options]
 
 Options:
   --root DIR           Knot root. Defaults to the parent of this script.

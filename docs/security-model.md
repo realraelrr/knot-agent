@@ -10,8 +10,8 @@ process sandbox, container boundary, or operating-system access-control layer.
   the IM glue layer or by the operator.
 - **Codex session history:** Codex session history is the transcript source of
   truth for user and model messages.
-- **Knot helpers:** `bootstrap/knot-workspace.sh`, `bootstrap/knot-deliver.sh`,
-  `bootstrap/knot-attachment.sh`, and `bootstrap/knot-audit.sh` provide
+- **Knot helpers:** `bin/knot-workspace.sh`, `bin/knot-deliver.sh`,
+  `bin/knot-attachment.sh`, and `bin/knot-audit.sh` provide
   deterministic workspace routing, delivery validation, and compact boundary
   event records that follow `docs/schemas/audit-event.schema.json`.
 - **Workspace data:** `workspace/users/<user_slug>/` is the default private
@@ -91,8 +91,8 @@ or tenant isolation.
 
 IM outbound files must be delivered from the active user's `deliverables/`
 directory or the authorized current group's `deliverables/` directory. Use
-`bootstrap/knot-deliver.sh` to copy generated artifacts into that boundary and
-`bootstrap/knot-attachment.sh` to emit the `cc-connect-attachments` block.
+`bin/knot-deliver.sh` to copy generated artifacts into that boundary and
+`bin/knot-attachment.sh` to emit the `cc-connect-attachments` block.
 
 Files from `runtime/`, `workspace/conversations/`, another user's workspace, or
 another group's workspace are not valid outbound attachments in the default

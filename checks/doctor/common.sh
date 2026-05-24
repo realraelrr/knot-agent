@@ -130,7 +130,7 @@ run_helper_smoke_tests() {
   if ! bash "$ROOT/tests/integration.sh" --root "$ROOT"; then
     fail "integration smoke tests failed"
   fi
-  if ! bash "$ROOT/bootstrap/knot-permission-smoke.sh" --root "$ROOT"; then
+  if ! bash "$ROOT/bin/knot-permission-smoke.sh" --root "$ROOT"; then
     fail "permission smoke tests failed"
   fi
 }

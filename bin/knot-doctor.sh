@@ -3,8 +3,8 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-# shellcheck source=bootstrap/lib.sh
-. "$SCRIPT_DIR/lib.sh"
+# shellcheck source=lib/knot/core.sh
+. "$ROOT/lib/knot/core.sh"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 SKILLS_DIR="$CODEX_HOME_DIR/skills"
 WORKSPACE="$ROOT/workspace"
@@ -16,14 +16,14 @@ WARNINGS=0
 COMPONENT_LOCK="$ROOT/components.lock"
 KNOWLEDGE_FEEDBACK_HEADER="| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Diff | Status | Execution | Admin Notes |"
 
-# shellcheck source=bootstrap/doctor/common.sh
-. "$SCRIPT_DIR/doctor/common.sh" || exit 1
-# shellcheck source=bootstrap/component-lock.sh
-. "$SCRIPT_DIR/component-lock.sh" || exit 1
+# shellcheck source=checks/doctor/common.sh
+. "$ROOT/checks/doctor/common.sh" || exit 1
+# shellcheck source=lib/knot/component-lock.sh
+. "$ROOT/lib/knot/component-lock.sh" || exit 1
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/doctor.sh [--scaffold-only] [--strict-docs] [--platform NAME[,NAME...]]
+Usage: bash bin/knot-doctor.sh [--scaffold-only] [--strict-docs] [--platform NAME[,NAME...]]
 
 Platform names: dingtalk, feishu, wecom, weixin
 EOF
@@ -56,13 +56,13 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-# shellcheck source=bootstrap/doctor/source.sh
-. "$SCRIPT_DIR/doctor/source.sh" || {
+# shellcheck source=checks/doctor/source.sh
+. "$ROOT/checks/doctor/source.sh" || {
   fail "doctor source checks module unavailable"
   exit 1
 }
-# shellcheck source=bootstrap/doctor/installed.sh
-. "$SCRIPT_DIR/doctor/installed.sh" || {
+# shellcheck source=checks/doctor/installed.sh
+. "$ROOT/checks/doctor/installed.sh" || {
   fail "doctor installed checks module unavailable"
   exit 1
 }

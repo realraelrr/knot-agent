@@ -37,14 +37,14 @@ user asks for debugging or implementation evidence.
 
 ## Permission Check
 
-Normal workspace routing is handled before launch by `bootstrap/knot-workspace.sh`.
+Normal workspace routing is handled before launch by `bin/knot-workspace.sh`.
 For role and identity rules, read `workspace/admin/permissions.md` only when the
 task crosses an authorization boundary.
 
 ## Routing
 
 - IM workspace setup: the IM glue layer should call
-  `bootstrap/knot-workspace.sh` with parsed platform/user/group metadata before
+  `bin/knot-workspace.sh` with parsed platform/user/group metadata before
   launching Codex. Codex should run from `KNOT_ACTIVE_WORKSPACE`, which must be
   the actor's `workspace/users/<user_slug>` directory.
 - Raw document to knowledge: use an available conversion skill when conversion
@@ -63,10 +63,10 @@ task crosses an authorization boundary.
 - General execution: use the execution weights above; create workspace files
   only when the task needs them.
 - IM file/image delivery: generation is not delivery. For generated or local
-  artifacts, use `bootstrap/knot-deliver.sh` to copy the file into the current
+  artifacts, use `bin/knot-deliver.sh` to copy the file into the current
   user deliverables directory, or into the current group deliverables directory
   only when the output is explicitly a shared group asset. Then delegate to
-  `bootstrap/knot-attachment.sh` to validate the boundary and print the
+  `bin/knot-attachment.sh` to validate the boundary and print the
   cc-connect attachment block. Do not answer with only a local path when the
   user asked to receive the file in IM.
 - Knowledge feedback from members: append a row to
@@ -107,14 +107,14 @@ task crosses an authorization boundary.
 ## Backup Boundary
 
 Daily rollback backup is handled by Codex app automation, not by ad hoc workflow
-steps. The automation should call `bootstrap/knot-backup.sh`. If asked to
+steps. The automation should call `bin/knot-backup.sh`. If asked to
 verify backup health, inspect `workspace/admin/backup-policy.md` and the
 current git remote before claiming backup is active.
 
 ## Runtime Boundary
 
 Before starting a selected IM gateway, run
-`bootstrap/knot-runtime-check.sh --platform <name>`. It checks local files,
+`bin/knot-runtime-check.sh --platform <name>`. It checks local files,
 required `.env` values, `KNOT_ROOT`, writability, and basic platform config
 matching only. It does not start the gateway, call `/whoami`, or verify live IM
 authorization.

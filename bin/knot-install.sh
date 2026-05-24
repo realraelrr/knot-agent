@@ -3,10 +3,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-# shellcheck source=bootstrap/lib.sh
-. "$SCRIPT_DIR/lib.sh"
-# shellcheck source=bootstrap/component-lock.sh
-. "$SCRIPT_DIR/component-lock.sh"
+# shellcheck source=lib/knot/core.sh
+. "$ROOT/lib/knot/core.sh"
+# shellcheck source=lib/knot/component-lock.sh
+. "$ROOT/lib/knot/component-lock.sh"
 BACKUP_REMOTE_URL=""
 SKIP_BACKUP_REMOTE=0
 SKIP_COMPONENTS=0
@@ -16,7 +16,7 @@ COMPONENT_LOCK="components.lock"
 
 usage() {
   cat <<'EOF'
-Usage: bash bootstrap/knot-install.sh [options]
+Usage: bash bin/knot-install.sh [options]
 
 Options:
   --root DIR             Knot root. Defaults to the parent of this script.
@@ -24,7 +24,7 @@ Options:
   --skip-backup-remote   Do not configure or require the backup remote.
   --skip-components      Do not clone component repositories.
   --skip-build           Do not build cc-connect.
-  --skip-doctor          Do not run bootstrap/doctor.sh at the end.
+  --skip-doctor          Do not run bin/knot-doctor.sh at the end.
   --help, -h             Show this help.
 EOF
 }
@@ -178,12 +178,7 @@ test -f workspace/admin/knowledge-feedback.md || cp .skills/knot-setup/reference
 test -f workspace/admin/backup-policy.md || cp .skills/knot-setup/references/backup-policy.template.md workspace/admin/backup-policy.md
 test -f AGENTS.md || cp .skills/knot-setup/references/AGENTS.template.md AGENTS.md
 
-for helper in bootstrap/*.sh; do
-  [ -f "$helper" ] || continue
-  [ "$(basename "$helper")" != "lib.sh" ] || continue
-  [ "$(basename "$helper")" != "component-lock.sh" ] || continue
-  chmod +x "$helper"
-done
+find bin -maxdepth 1 -name '*.sh' -type f -exec chmod +x {} \;
 
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 GLOBAL_AGENTS="$CODEX_HOME_DIR/AGENTS.md"
@@ -273,5 +268,5 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
 fi
 
 if [ "$SKIP_DOCTOR" -eq 0 ]; then
-  bash bootstrap/doctor.sh
+  bash bin/knot-doctor.sh
 fi

@@ -41,8 +41,8 @@ ROOT="$(cd "$ROOT" && pwd)" || {
   printf 'MISS root directory does not exist: %s\n' "$ROOT"
   exit 1
 }
-# shellcheck source=bootstrap/lib.sh
-. "$ROOT/bootstrap/lib.sh"
+# shellcheck source=lib/knot/core.sh
+. "$ROOT/lib/knot/core.sh"
 
 ok() { printf 'OK   %s\n' "$1"; }
 fail() {
@@ -91,7 +91,7 @@ TMP_PARENT="$(mktemp -d)"
 tmp_root="$TMP_PARENT/root with spaces"
 mkdir -p "$tmp_root"
 
-workspace_exports="$(bash "$ROOT/bootstrap/knot-workspace.sh" \
+workspace_exports="$(bash "$ROOT/bin/knot-workspace.sh" \
   --root "$tmp_root" \
   --platform feishu \
   --chat-id "oc/test group" \
@@ -148,7 +148,7 @@ fi
 audit_chat_id="oc/audit group"
 audit_hash="$(sha256_hex_pair feishu "$audit_chat_id")"
 audit_conversation_dir="$tmp_root/workspace/conversations/feishu/chat_${audit_hash:0:24}"
-if audit_exports="$(bash "$ROOT/bootstrap/knot-workspace.sh" \
+if audit_exports="$(bash "$ROOT/bin/knot-workspace.sh" \
   --root "$tmp_root" \
   --platform feishu \
   --chat-id "$audit_chat_id" \
@@ -169,7 +169,7 @@ else
 fi
 
 before_repeat_init_count="$(wc -l < "$audit_conversation_dir/events.jsonl" | tr -d '[:space:]')"
-if bash "$ROOT/bootstrap/knot-workspace.sh" \
+if bash "$ROOT/bin/knot-workspace.sh" \
   --root "$tmp_root" \
   --platform feishu \
   --chat-id "$audit_chat_id" \
@@ -185,7 +185,7 @@ fi
 
 assert_event_schema "$audit_conversation_dir/events.jsonl"
 
-if bash "$ROOT/bootstrap/knot-audit.sh" record \
+if bash "$ROOT/bin/knot-audit.sh" record \
   --root "$tmp_root" \
   --conversation-dir "$audit_conversation_dir" \
   --event conversation.initialized \
@@ -199,7 +199,7 @@ fi
 
 wrong_platform_dir="$tmp_root/workspace/conversations/dingtalk/chat_${audit_hash:0:24}"
 mkdir -p "$wrong_platform_dir"
-if bash "$ROOT/bootstrap/knot-audit.sh" record \
+if bash "$ROOT/bin/knot-audit.sh" record \
   --root "$tmp_root" \
   --conversation-dir "$wrong_platform_dir" \
   --event conversation.initialized \
@@ -221,7 +221,7 @@ cat > "$tmp_root/workspace/admin/permissions.md" <<'EOF'
 | Jane Example | jane-example | feishu | ou/jane | product-room | oc/product | feishu:user:ou/jane | Jane Example | member | session | smoke |
 EOF
 
-if resolved_exports="$(bash "$ROOT/bootstrap/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:ou/jane" --name "Ignored Name" --group-name "Ignored Group")" &&
+if resolved_exports="$(bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:ou/jane" --name "Ignored Name" --group-name "Ignored Group")" &&
   eval "$resolved_exports" &&
   [ "$KNOT_ACTIVE_WORKSPACE" = "$tmp_root/workspace/users/jane-example" ] &&
   [ "$KNOT_GROUP_WORKSPACE" = "$tmp_root/workspace/groups/product-room" ]; then
@@ -230,7 +230,7 @@ else
   fail "knot-workspace did not resolve permissions table slugs"
 fi
 
-if resolved_exports="$(bash "$ROOT/bootstrap/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/bob" --identity-key "feishu:user:ou/bob" --name "Bob Example" --group-name "Ignored Group")" &&
+if resolved_exports="$(bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/bob" --identity-key "feishu:user:ou/bob" --name "Bob Example" --group-name "Ignored Group")" &&
   eval "$resolved_exports" &&
   [ -z "$KNOT_GROUP_WORKSPACE" ]; then
   ok "knot-workspace requires actor match before exposing permissions group"
@@ -238,7 +238,7 @@ else
   fail "knot-workspace exposed permissions group to unmatched actor"
 fi
 
-if resolved_exports="$(bash "$ROOT/bootstrap/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:wrong" --name "Jane Example" --group-name "Ignored Group")" &&
+if resolved_exports="$(bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:wrong" --name "Jane Example" --group-name "Ignored Group")" &&
   eval "$resolved_exports" &&
   [ "$KNOT_ACTIVE_WORKSPACE" != "$tmp_root/workspace/users/jane-example" ] &&
   [ -z "$KNOT_GROUP_WORKSPACE" ]; then
@@ -247,7 +247,7 @@ else
   fail "knot-workspace resolved permissions row with mismatched explicit identity key"
 fi
 
-if bash "$ROOT/bootstrap/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id $'oc/bad\tchat' --user-id "ou/test user" --user-slug "bad-meta" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id $'oc/bad\tchat' --user-id "ou/test user" --user-slug "bad-meta" >/dev/null 2>&1; then
   fail "knot-workspace allowed tab in chat metadata"
 else
   ok "knot-workspace rejects tabs in chat metadata"
@@ -255,13 +255,13 @@ fi
 eval "$workspace_exports"
 
 printf 'ok\n' > "$user_workspace/deliverables/result.txt"
-if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null; then
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null; then
   ok "knot-attachment allows current user deliverable"
 else
   fail "knot-attachment rejected current user deliverable"
 fi
 
-if bash "$ROOT/bootstrap/knot-attachment.sh" \
+if bash "$ROOT/bin/knot-attachment.sh" \
   --root "$tmp_root" \
   --conversation-dir "$audit_conversation_dir" \
   --platform feishu \
@@ -281,13 +281,13 @@ else
 fi
 
 printf 'group\n' > "$group_workspace/deliverables/group.txt"
-if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$group_workspace/deliverables/group.txt" >/dev/null; then
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$group_workspace/deliverables/group.txt" >/dev/null; then
   ok "knot-attachment allows current group deliverable"
 else
   fail "knot-attachment rejected current group deliverable"
 fi
 
-if bash "$ROOT/bootstrap/knot-attachment.sh" \
+if bash "$ROOT/bin/knot-attachment.sh" \
   --root "$tmp_root" \
   --conversation-dir "$conversation_dir" \
   --platform feishu \
@@ -307,7 +307,7 @@ fi
 
 mkdir -p "$tmp_root/generated"
 printf 'generated\n' > "$tmp_root/generated/image.png"
-if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png")"; then
+if deliver_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png")"; then
   expected_deliverable="$(resolve_path "$user_workspace/deliverables/image.png")"
   if [ -f "$user_workspace/deliverables/image.png" ] &&
     printf '%s\n' "$deliver_output" | grep -Fq '```cc-connect-attachments' &&
@@ -320,7 +320,7 @@ else
   fail "knot-deliver rejected generated artifact"
 fi
 
-if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png" --target group --output-name "shared.png")"; then
+if deliver_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png" --target group --output-name "shared.png")"; then
   if [ -f "$group_workspace/deliverables/shared.png" ] &&
     printf '%s\n' "$deliver_output" | grep -Fq "image: $(resolve_path "$group_workspace/deliverables/shared.png")"; then
     ok "knot-deliver can target current group deliverables explicitly"
@@ -340,7 +340,7 @@ if deliver_output="$(env \
   KNOT_SOURCE_GROUP=example-group \
   KNOT_CHAT_ID="oc/test group" \
   KNOT_IDENTITY_KEY="feishu:user:ou-test" \
-  bash "$ROOT/bootstrap/knot-deliver.sh" --kind image --path "$tmp_root/generated/env.png" --target group --output-name "env-shared.png")"; then
+  bash "$ROOT/bin/knot-deliver.sh" --kind image --path "$tmp_root/generated/env.png" --target group --output-name "env-shared.png")"; then
   if [ -f "$group_workspace/deliverables/env-shared.png" ] &&
     printf '%s\n' "$deliver_output" | grep -Fq "image: $(resolve_path "$group_workspace/deliverables/env-shared.png")"; then
     ok "knot-deliver reads current context from KNOT_* environment"
@@ -359,14 +359,14 @@ if attach_output="$(env \
   KNOT_SOURCE_GROUP=example-group \
   KNOT_CHAT_ID="oc/test group" \
   KNOT_IDENTITY_KEY="feishu:user:ou-test" \
-  bash "$ROOT/bootstrap/knot-attachment.sh" --kind image --path "$group_workspace/deliverables/env-shared.png")" &&
+  bash "$ROOT/bin/knot-attachment.sh" --kind image --path "$group_workspace/deliverables/env-shared.png")" &&
   printf '%s\n' "$attach_output" | grep -Fq "image: $(resolve_path "$group_workspace/deliverables/env-shared.png")"; then
   ok "knot-attachment reads current context from KNOT_* environment"
 else
   fail "knot-attachment did not accept KNOT_* environment context"
 fi
 
-if unauthorized_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "unauthorized-group" --kind image --path "$tmp_root/generated/image.png" --target group 2>&1)"; then
+if unauthorized_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "unauthorized-group" --kind image --path "$tmp_root/generated/image.png" --target group 2>&1)"; then
   fail "knot-deliver allowed unauthorized explicit group delivery"
 elif printf '%s\n' "$unauthorized_output" | grep -Fq "not authorized"; then
   ok "knot-deliver rejects unauthorized explicit group delivery"
@@ -374,7 +374,7 @@ else
   fail "knot-deliver unauthorized group rejection had wrong error: $unauthorized_output"
 fi
 
-if unauthorized_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" \
+if unauthorized_output="$(bash "$ROOT/bin/knot-deliver.sh" \
   --root "$tmp_root" \
   --conversation-dir "$conversation_dir" \
   --platform feishu \
@@ -392,7 +392,7 @@ else
   fail "knot-deliver did not audit unauthorized group delivery denial: $unauthorized_output"
 fi
 
-if unauthorized_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --identity-key "feishu:user:wrong" --kind image --path "$tmp_root/generated/image.png" --target group 2>&1)"; then
+if unauthorized_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --identity-key "feishu:user:wrong" --kind image --path "$tmp_root/generated/image.png" --target group 2>&1)"; then
   fail "knot-deliver allowed group delivery with mismatched identity key"
 elif printf '%s\n' "$unauthorized_output" | grep -Fq "not authorized"; then
   ok "knot-deliver rejects mismatched identity key for group delivery"
@@ -400,7 +400,7 @@ else
   fail "knot-deliver identity mismatch rejection had wrong error: $unauthorized_output"
 fi
 
-if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" --target group --output-name "result-shared.txt")"; then
+if deliver_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" --target group --output-name "result-shared.txt")"; then
   if [ -f "$group_workspace/deliverables/result-shared.txt" ] &&
     printf '%s\n' "$deliver_output" | grep -Fq "file: $(resolve_path "$group_workspace/deliverables/result-shared.txt")"; then
     ok "knot-deliver copies user deliverable into group deliverables when target is group"
@@ -412,7 +412,7 @@ else
 fi
 
 ln -s "$tmp_root/escaped-delivery.png" "$user_workspace/deliverables/symlink.png"
-if deliver_output="$(bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png" --output-name "symlink.png")"; then
+if deliver_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png" --output-name "symlink.png")"; then
   if [ ! -e "$tmp_root/escaped-delivery.png" ] &&
     [ -f "$user_workspace/deliverables/symlink-1.png" ] &&
     printf '%s\n' "$deliver_output" | grep -Fq "image: $(resolve_path "$user_workspace/deliverables/symlink-1.png")"; then
@@ -427,7 +427,7 @@ fi
 other_user_workspace="$tmp_root/workspace/users/other-user"
 mkdir -p "$other_user_workspace/deliverables"
 printf 'private\n' > "$other_user_workspace/deliverables/private.txt"
-if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$other_user_workspace/deliverables/private.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$other_user_workspace/deliverables/private.txt" >/dev/null 2>&1; then
   fail "knot-deliver allowed artifact from another user workspace"
 else
   ok "knot-deliver rejects artifact from another user workspace"
@@ -436,19 +436,19 @@ fi
 other_group_workspace="$tmp_root/workspace/groups/other-group"
 mkdir -p "$other_group_workspace/deliverables"
 printf 'group-private\n' > "$other_group_workspace/deliverables/private.txt"
-if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$other_group_workspace/deliverables/private.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$other_group_workspace/deliverables/private.txt" >/dev/null 2>&1; then
   fail "knot-deliver allowed artifact from another group workspace"
 else
   ok "knot-deliver rejects artifact from another group workspace"
 fi
 
 printf 'audit\n' > "$conversation_dir/audit.txt"
-if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$conversation_dir/audit.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$conversation_dir/audit.txt" >/dev/null 2>&1; then
   fail "knot-deliver allowed artifact from conversations metadata"
 else
   ok "knot-deliver rejects artifact from conversations metadata"
 fi
-if bash "$ROOT/bootstrap/knot-deliver.sh" \
+if bash "$ROOT/bin/knot-deliver.sh" \
   --root "$tmp_root" \
   --conversation-dir "$conversation_dir" \
   --platform feishu \
@@ -464,12 +464,12 @@ elif jq -e 'select(.event == "delivery.denied" and .reason_code == "conversation
 else
   fail "knot-deliver did not audit conversation metadata delivery denial"
 fi
-if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$conversation_dir/audit.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$conversation_dir/audit.txt" >/dev/null 2>&1; then
   fail "knot-attachment allowed artifact from conversations metadata"
 else
   ok "knot-attachment rejects artifact from conversations metadata"
 fi
-if bash "$ROOT/bootstrap/knot-attachment.sh" \
+if bash "$ROOT/bin/knot-attachment.sh" \
   --root "$tmp_root" \
   --conversation-dir "$conversation_dir" \
   --platform feishu \
@@ -488,14 +488,14 @@ fi
 
 printf 'external\n' > "$tmp_root/generated/external.txt"
 ln -s "$tmp_root/generated/external.txt" "$other_user_workspace/deliverables/external-link.txt"
-if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$other_user_workspace/deliverables/external-link.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$other_user_workspace/deliverables/external-link.txt" >/dev/null 2>&1; then
   fail "knot-deliver allowed symlink path from another user workspace"
 else
   ok "knot-deliver rejects symlink path from another user workspace"
 fi
 
 printf 'outside\n' > "$tmp_root/outside.txt"
-if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$tmp_root/outside.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$tmp_root/outside.txt" >/dev/null 2>&1; then
   fail "knot-attachment allowed file outside current user/group workspaces"
 else
   ok "knot-attachment rejects file outside current user/group workspaces"
@@ -505,7 +505,7 @@ assert_event_schema "$event_log"
 assert_event_schema "$audit_conversation_dir/events.jsonl"
 
 ln -s "$tmp_root/outside.txt" "$user_workspace/deliverables/leak.txt"
-if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/leak.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/leak.txt" >/dev/null 2>&1; then
   fail "knot-attachment allowed symlink escaping current user workspace"
 else
   ok "knot-attachment rejects symlink escaping current user workspace"
@@ -513,7 +513,7 @@ fi
 
 mv "$user_workspace/deliverables" "$user_workspace/deliverables-real"
 ln -s "$user_workspace/deliverables-real" "$user_workspace/deliverables"
-if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables-real/result.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables-real/result.txt" >/dev/null 2>&1; then
   fail "knot-attachment allowed symlinked user deliverables directory"
 else
   ok "knot-attachment rejects symlinked user deliverables directory"
@@ -522,19 +522,19 @@ rm "$user_workspace/deliverables"
 mv "$user_workspace/deliverables-real" "$user_workspace/deliverables"
 
 ln -s "$user_workspace" "$tmp_root/workspace/users/alias-user"
-if bash "$ROOT/bootstrap/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "alias-user" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "alias-user" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null 2>&1; then
   fail "knot-attachment allowed symlinked user workspace slug"
 else
   ok "knot-attachment rejects symlinked user workspace slug"
 fi
-if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "alias-user" --kind file --path "$tmp_root/generated/external.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "alias-user" --kind file --path "$tmp_root/generated/external.txt" >/dev/null 2>&1; then
   fail "knot-deliver allowed symlinked user workspace slug"
 else
   ok "knot-deliver rejects symlinked user workspace slug"
 fi
 
 ln -s "$group_workspace" "$tmp_root/workspace/groups/alias-group"
-if bash "$ROOT/bootstrap/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "alias-group" --target group --kind file --path "$tmp_root/generated/external.txt" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "alias-group" --target group --kind file --path "$tmp_root/generated/external.txt" >/dev/null 2>&1; then
   fail "knot-deliver allowed symlinked group workspace slug"
 else
   ok "knot-deliver rejects symlinked group workspace slug"
@@ -543,7 +543,7 @@ fi
 UNSAFE_ROOT="$(mktemp -d)"
 git -C "$UNSAFE_ROOT" init >/dev/null 2>&1
 git -C "$UNSAFE_ROOT" remote add backup https://github.com/realraelrr/knot-agent.git
-if bash "$ROOT/bootstrap/knot-backup.sh" --root "$UNSAFE_ROOT" >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-backup.sh" --root "$UNSAFE_ROOT" >/dev/null 2>&1; then
   fail "knot-backup allowed scaffold backup remote"
 else
   ok "knot-backup rejects scaffold backup remote"
@@ -560,7 +560,7 @@ name = "knot"
 
 [projects.knot_workspace]
 enabled = true
-helper = "${KNOT_ROOT}/bootstrap/knot-workspace.sh"
+helper = "${KNOT_ROOT}/bin/knot-workspace.sh"
 root = "${KNOT_ROOT}"
 
 [[projects.platforms]]
@@ -571,7 +571,7 @@ KNOT_ROOT=$runtime_root
 WEIXIN_ALLOW_FROM=*
 KNOT_ACTIVE_WORKSPACE=$runtime_root/workspace/users/stale
 EOF
-if bash "$ROOT/bootstrap/knot-runtime-check.sh" --root "$runtime_root" --platform weixin >/dev/null 2>&1; then
+if bash "$ROOT/bin/knot-runtime-check.sh" --root "$runtime_root" --platform weixin >/dev/null 2>&1; then
   fail "knot-runtime-check allowed static KNOT_ACTIVE_WORKSPACE in .env"
 else
   ok "knot-runtime-check rejects static KNOT_ACTIVE_WORKSPACE in .env"
@@ -579,7 +579,9 @@ fi
 
 install_root="$TMP_PARENT/install-root"
 mkdir -p "$install_root/.skills/knot-setup" "$install_root/.skills/knot-workflow"
-cp -R "$ROOT/bootstrap" "$install_root/bootstrap"
+cp -R "$ROOT/bin" "$install_root/bin"
+cp -R "$ROOT/lib" "$install_root/lib"
+cp -R "$ROOT/checks" "$install_root/checks"
 cp -R "$ROOT/.skills/knot-setup/references" "$install_root/.skills/knot-setup/references"
 cp "$ROOT/AGENTS.md" "$install_root/AGENTS.md"
 cp "$ROOT/components.lock" "$install_root/components.lock"
@@ -594,7 +596,7 @@ printf '%s\n' 'name: planning-with-files' > "$install_root/components/planning-w
 printf '%s\n' 'name: docling-skill' > "$install_root/components/docling-skill/.codex/skills/docling-skill/SKILL.md"
 printf '%s\n' 'name: md-for-human' > "$install_root/components/md-for-human/.codex/skills/md-for-human/SKILL.md"
 printf '%s\n' 'name: handoff' > "$install_root/components/handoff-skill/.codex/skills/handoff/SKILL.md"
-if CODEX_HOME="$install_root/codex-home" bash "$install_root/bootstrap/knot-install.sh" \
+if CODEX_HOME="$install_root/codex-home" bash "$install_root/bin/knot-install.sh" \
   --root "$install_root" \
   --skip-components \
   --skip-build \
@@ -604,15 +606,15 @@ if CODEX_HOME="$install_root/codex-home" bash "$install_root/bootstrap/knot-inst
     [ -d "$install_root/runtime" ] &&
     [ -f "$install_root/workspace/admin/permissions.md" ] &&
     [ -f "$install_root/codex-home/AGENTS.md" ] &&
-    [ -x "$install_root/bootstrap/knot-audit.sh" ] &&
-    [ -x "$install_root/bootstrap/knot-workspace.sh" ] &&
-    [ -f "$install_root/bootstrap/component-lock.sh" ] &&
-    [ ! -x "$install_root/bootstrap/component-lock.sh" ] &&
+    [ -x "$install_root/bin/knot-audit.sh" ] &&
+    [ -x "$install_root/bin/knot-workspace.sh" ] &&
+    [ -f "$install_root/lib/knot/component-lock.sh" ] &&
+    [ ! -x "$install_root/lib/knot/component-lock.sh" ] &&
     [ "$(readlink "$install_root/codex-home/skills/planning-with-files")" = "$install_root/components/planning-with-files/.codex/skills/planning-with-files" ] &&
     [ "$(readlink "$install_root/codex-home/skills/docling-skill")" = "$install_root/components/docling-skill/.codex/skills/docling-skill" ] &&
     [ "$(readlink "$install_root/codex-home/skills/md-for-human")" = "$install_root/components/md-for-human/.codex/skills/md-for-human" ] &&
     [ "$(readlink "$install_root/codex-home/skills/handoff")" = "$install_root/components/handoff-skill/.codex/skills/handoff" ] &&
-    [ ! -x "$install_root/bootstrap/lib.sh" ]; then
+    [ ! -x "$install_root/lib/knot/core.sh" ]; then
     ok "knot-install smoke test creates deterministic local scaffold"
   else
     fail "knot-install smoke test missed expected scaffold files"
@@ -626,7 +628,9 @@ mkdir -p "$repair_root/.skills/knot-setup" \
   "$repair_root/.skills/knot-workflow" \
   "$repair_root/workspace/admin" \
   "$repair_root/codex-home"
-cp -R "$ROOT/bootstrap" "$repair_root/bootstrap"
+cp -R "$ROOT/bin" "$repair_root/bin"
+cp -R "$ROOT/lib" "$repair_root/lib"
+cp -R "$ROOT/checks" "$repair_root/checks"
 cp -R "$ROOT/.skills/knot-setup/references" "$repair_root/.skills/knot-setup/references"
 cp "$ROOT/AGENTS.md" "$repair_root/AGENTS.md"
 cp "$ROOT/components.lock" "$repair_root/components.lock"
@@ -637,7 +641,7 @@ printf '%s\n' 'custom permissions' > "$repair_root/workspace/admin/permissions.m
 printf '%s\n' 'custom feedback' > "$repair_root/workspace/admin/knowledge-feedback.md"
 printf '%s\n' 'custom backup policy' > "$repair_root/workspace/admin/backup-policy.md"
 
-if CODEX_HOME="$repair_root/codex-home" bash "$repair_root/bootstrap/knot-install.sh" \
+if CODEX_HOME="$repair_root/codex-home" bash "$repair_root/bin/knot-install.sh" \
   --root "$repair_root" \
   --skip-components \
   --skip-build \
@@ -653,7 +657,7 @@ else
 fi
 
 : > "$repair_root/codex-home/AGENTS.md"
-if CODEX_HOME="$repair_root/codex-home" bash "$repair_root/bootstrap/knot-install.sh" \
+if CODEX_HOME="$repair_root/codex-home" bash "$repair_root/bin/knot-install.sh" \
   --root "$repair_root" \
   --skip-components \
   --skip-build \
@@ -687,7 +691,7 @@ expect_installer_rejects_lock() {
   cp -R "$install_root" "$lock_root"
   cp "$lock_file" "$lock_root/components.lock"
 
-  if output="$(CODEX_HOME="$lock_root/codex-home" bash "$lock_root/bootstrap/knot-install.sh" \
+  if output="$(CODEX_HOME="$lock_root/codex-home" bash "$lock_root/bin/knot-install.sh" \
     --root "$lock_root" \
     --skip-build \
     --skip-backup-remote \
@@ -718,9 +722,9 @@ expect_doctor_rejects_lock() {
     WARNINGS=0 \
     bash -c '
       set -u
-      . "$ROOT/bootstrap/doctor/common.sh"
-      . "$ROOT/bootstrap/component-lock.sh"
-      . "$ROOT/bootstrap/doctor/source.sh"
+      . "$ROOT/checks/doctor/common.sh"
+      . "$ROOT/lib/knot/component-lock.sh"
+      . "$ROOT/checks/doctor/source.sh"
       check_component_lock_schema
       [ "$FAILURES" -eq 0 ]
     ' 2>&1)"; then
@@ -744,7 +748,7 @@ expect_installer_rejects_lock_without_clone() {
   cp -R "$install_root" "$lock_root"
   cp "$lock_file" "$lock_root/components.lock"
 
-  if output="$(CODEX_HOME="$lock_root/codex-home" bash "$lock_root/bootstrap/knot-install.sh" \
+  if output="$(CODEX_HOME="$lock_root/codex-home" bash "$lock_root/bin/knot-install.sh" \
     --root "$lock_root" \
     --skip-components \
     --skip-build \
@@ -814,8 +818,8 @@ run_source_doc_checks() {
     KNOWLEDGE_FEEDBACK_HEADER='| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Diff | Status | Execution | Admin Notes |' \
     bash -c '
       set -u
-      . "$ROOT/bootstrap/doctor/common.sh"
-      . "$ROOT/bootstrap/doctor/source.sh"
+      . "$ROOT/checks/doctor/common.sh"
+      . "$ROOT/checks/doctor/source.sh"
       run_contract_checks
       run_doc_lint_checks
       [ "$FAILURES" -eq 0 ]
@@ -835,8 +839,8 @@ run_workspace_doc_checks() {
     KNOWLEDGE_FEEDBACK_HEADER='| Time | Platform | Chat ID | Platform User ID | Identity Key | Name | Topic | Feedback | Evidence | Diff | Status | Execution | Admin Notes |' \
     bash -c '
       set -u
-      . "$ROOT/bootstrap/doctor/common.sh"
-      . "$ROOT/bootstrap/doctor/installed.sh"
+      . "$ROOT/checks/doctor/common.sh"
+      . "$ROOT/checks/doctor/installed.sh"
       run_workspace_contract_checks
       [ "$FAILURES" -eq 0 ]
     '
@@ -844,14 +848,14 @@ run_workspace_doc_checks() {
 
 doc_root="$TMP_PARENT/doc-contract-root"
 mkdir -p \
-  "$doc_root/bootstrap/doctor" \
+  "$doc_root/checks/doctor" \
   "$doc_root/.skills/knot-setup/references" \
   "$doc_root/.skills/knot-workflow" \
   "$doc_root/docs" \
   "$doc_root/workspace/admin"
-cp "$ROOT/bootstrap/doctor/common.sh" "$doc_root/bootstrap/doctor/common.sh"
-cp "$ROOT/bootstrap/doctor/source.sh" "$doc_root/bootstrap/doctor/source.sh"
-cp "$ROOT/bootstrap/doctor/installed.sh" "$doc_root/bootstrap/doctor/installed.sh"
+cp "$ROOT/checks/doctor/common.sh" "$doc_root/checks/doctor/common.sh"
+cp "$ROOT/checks/doctor/source.sh" "$doc_root/checks/doctor/source.sh"
+cp "$ROOT/checks/doctor/installed.sh" "$doc_root/checks/doctor/installed.sh"
 cp "$ROOT/AGENTS.md" "$doc_root/AGENTS.md"
 cp "$ROOT/.skills/knot-workflow/SKILL.md" "$doc_root/.skills/knot-workflow/SKILL.md"
 cp "$ROOT/.skills/knot-setup/references/"*.md "$doc_root/.skills/knot-setup/references/"

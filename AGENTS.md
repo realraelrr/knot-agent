@@ -41,7 +41,7 @@ caches, and large intermediates out of it.
 
 ## Active Workspaces
 
-For IM-triggered work, `bootstrap/knot-workspace.sh` resolves the actor user,
+For IM-triggered work, `bin/knot-workspace.sh` resolves the actor user,
 optional source group, and conversation metadata, then prints source-safe
 exports:
 
@@ -63,7 +63,7 @@ state root.
 ## Authorization
 
 `workspace/admin/permissions.md` is the source of truth for identity, roles, and
-authorization. The IM glue layer and `bootstrap/knot-workspace.sh` handle normal
+authorization. The IM glue layer and `bin/knot-workspace.sh` handle normal
 workspace routing.
 
 Read the permissions file before actions that modify system files, modify
@@ -83,8 +83,8 @@ fact. Material knowledge changes require admin approval, a visible diff, and a
 Final user-facing files go under the active user or explicit current group
 `deliverables/` directory. Generation is not delivery.
 
-Use `bootstrap/knot-deliver.sh` to copy generated artifacts into the correct
-deliverables directory. Use `bootstrap/knot-attachment.sh` to validate an
+Use `bin/knot-deliver.sh` to copy generated artifacts into the correct
+deliverables directory. Use `bin/knot-attachment.sh` to validate an
 existing deliverable and print the `cc-connect-attachments` block.
 
 When sending a local file or image through IM, use:

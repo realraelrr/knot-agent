@@ -24,7 +24,7 @@ installer, doctor, and release gate.
 6. Run:
 
    ```bash
-   bash bootstrap/doctor.sh --scaffold-only --strict-docs
+   bash bin/knot-doctor.sh --scaffold-only --strict-docs
    ```
 
 7. Commit the root scaffold with the lockfile update.
