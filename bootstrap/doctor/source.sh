@@ -32,6 +32,7 @@ run_source_structure_checks() {
   check_operations_docs
   check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
   check_file_exists "$ROOT/docs/security-model.md" "security model"
+  check_file_exists "$ROOT/docs/schemas/audit-event.schema.json" "audit event schema"
 
   check_file_contains "$ROOT/.gitignore" ".state/" ".gitignore"
   check_file_contains "$ROOT/.gitignore" "workspace/" ".gitignore"
@@ -60,6 +61,7 @@ run_contract_checks() {
   check_file_contains "$ROOT/docs/security-model.md" "## Trust Boundaries" "security model"
   check_file_contains "$ROOT/docs/security-model.md" "Codex session history" "security model"
   check_file_contains "$ROOT/docs/security-model.md" "boundary event records" "security model"
+  check_file_contains "$ROOT/docs/security-model.md" "## Boundary Classes" "security model"
   check_file_contains "$ROOT/docs/security-model.md" "## What Knot Prevents" "security model"
   check_file_contains "$ROOT/docs/security-model.md" "## What Knot Does Not Prevent" "security model"
   check_file_contains "$ROOT/docs/security-model.md" "## Local Secrets Policy" "security model"

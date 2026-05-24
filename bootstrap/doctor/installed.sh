@@ -229,6 +229,7 @@ run_workspace_structure_checks() {
   check_operations_docs
   check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
   check_file_exists "$ROOT/docs/security-model.md" "security model"
+  check_file_exists "$ROOT/docs/schemas/audit-event.schema.json" "audit event schema"
 
   check_dir "$WORKSPACE/knowledge/raw" "knowledge/raw"
   check_dir "$WORKSPACE/knowledge/processed" "knowledge/processed"

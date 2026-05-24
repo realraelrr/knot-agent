@@ -13,7 +13,7 @@ process sandbox, container boundary, or operating-system access-control layer.
 - **Knot helpers:** `bootstrap/knot-workspace.sh`, `bootstrap/knot-deliver.sh`,
   `bootstrap/knot-attachment.sh`, and `bootstrap/knot-audit.sh` provide
   deterministic workspace routing, delivery validation, and compact boundary
-  event records.
+  event records that follow `docs/schemas/audit-event.schema.json`.
 - **Workspace data:** `workspace/users/<user_slug>/` is the default private
   working area for one actor. `workspace/groups/<group_slug>/` is for explicit
   shared group assets. `workspace/conversations/` is source and audit metadata,
@@ -22,6 +22,14 @@ process sandbox, container boundary, or operating-system access-control layer.
   secrets. It is operator-managed infrastructure, not user deliverable storage.
 - **Shared knowledge:** `workspace/knowledge/` contains approved durable
   knowledge. Material changes require admin approval and an audit row.
+
+## Boundary Classes
+
+| Class | Boundary | Enforced by | Meaning |
+|---|---|---|---|
+| Hard guardrail | Workspace routing, deliverable attachment paths, symlink rejection, component lockfile format, static active-workspace config rejection | Deterministic Knot helpers and doctor checks | These checks must pass before the related helper action succeeds. |
+| Soft protocol | User-facing reply style, knowledge-change approval records, use of `.state/`, durable knowledge promotion, admin review expectations | Agent instructions, templates, and human review | These rules guide Codex and operators, but they are not process isolation. |
+| Out of scope | OS tenant isolation, enterprise DLP, platform credential authorization, network egress control, complete sensitive-data classification | External infrastructure and enterprise controls | These require controls outside the default Knot scaffold. |
 
 ## What Knot Prevents
 
