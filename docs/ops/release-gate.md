@@ -15,7 +15,7 @@ existing gate to run and when. It does not replace `doctor.sh`, CI,
 | Permission smoke | `bash bin/knot-permission-smoke.sh` | Local/doctor | Before release and before live IM smoke | All permission checks print `OK` |
 | Component pins | `components.lock`, validated by installer and doctor | Local/CI | Any component revision change | Pinned refs match reviewed component commits |
 | cc-connect core | `GOMODCACHE=/private/tmp/knot-go-cache go test ./core -count=1 -timeout=120s` from `components/cc-connect-local-main` | Component local/CI | Any cc-connect change or cc-connect pin update | Go tests pass |
-| Live IM smoke | `docs/im-smoke-sop.md` and `bash bin/knot-im-smoke-plan.sh` | Manual | Final release validation for IM behavior | Required rows pass; skipped or blocked rows have explicit reasons |
+| Live IM smoke | `docs/ops/im-smoke-sop.md` and `bash bin/knot-im-smoke-plan.sh` | Manual | Final release validation for IM behavior | Required rows pass; skipped or blocked rows have explicit reasons |
 
 ## CI Alignment
 
@@ -63,12 +63,12 @@ bash bin/knot-doctor.sh --platform dingtalk,feishu,wecom,weixin
 bash bin/knot-im-smoke-plan.sh
 ```
 
-Then execute the generated IM smoke plan according to `docs/im-smoke-sop.md`.
+Then execute the generated IM smoke plan according to `docs/ops/im-smoke-sop.md`.
 
-For component updates, follow `docs/component-sync.md`.
+For component updates, follow `docs/ops/component-sync.md`.
 
 For customer or pilot deployments, collect the required runtime boundary inputs
-from `docs/deployment-inputs.md`.
+from `docs/ops/deployment-inputs.md`.
 
 ## Release Blockers
 

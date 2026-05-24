@@ -55,7 +55,7 @@ mkdir -p "$OUT_DIR/evidence"
 cat > "$OUT_DIR/plan.md" <<'EOF'
 # IM Smoke Run Plan
 
-Follow `docs/im-smoke-sop.md`.
+Follow `docs/ops/im-smoke-sop.md`.
 
 ## Release Gate
 

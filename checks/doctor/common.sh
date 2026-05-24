@@ -121,9 +121,9 @@ check_file_not_contains_doc_lint() {
 }
 
 check_operations_docs() {
-  check_file_exists "$ROOT/docs/release-gate.md" "release gate"
-  check_file_exists "$ROOT/docs/component-sync.md" "component sync SOP"
-  check_file_exists "$ROOT/docs/deployment-inputs.md" "deployment inputs"
+  check_file_exists "$ROOT/docs/ops/release-gate.md" "release gate"
+  check_file_exists "$ROOT/docs/ops/component-sync.md" "component sync SOP"
+  check_file_exists "$ROOT/docs/ops/deployment-inputs.md" "deployment inputs"
 }
 
 run_helper_smoke_tests() {

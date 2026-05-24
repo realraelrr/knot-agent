@@ -67,5 +67,5 @@ Do not put secrets under `workspace/`, `components/`, docs, or deliverables.
 - Blocked live smoke rows and reasons:
 - Operator who reviewed the evidence:
 
-Use `docs/release-gate.md` for gate definitions and `docs/im-smoke-sop.md` for
+Use `docs/ops/release-gate.md` for gate definitions and `docs/ops/im-smoke-sop.md` for
 manual IM smoke execution.

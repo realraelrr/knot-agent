@@ -227,8 +227,8 @@ run_workspace_structure_checks() {
   check_file_exists "$ROOT/lib/knot/core.sh" "Knot core shell library"
   check_executable "$ROOT/tests/integration.sh" "integration smoke tests"
   check_operations_docs
-  check_file_exists "$ROOT/docs/im-smoke-sop.md" "IM smoke SOP"
-  check_file_exists "$ROOT/docs/security-model.md" "security model"
+  check_file_exists "$ROOT/docs/ops/im-smoke-sop.md" "IM smoke SOP"
+  check_file_exists "$ROOT/docs/security/security-model.md" "security model"
   check_file_exists "$ROOT/docs/schemas/audit-event.schema.json" "audit event schema"
 
   check_dir "$WORKSPACE/knowledge/raw" "knowledge/raw"

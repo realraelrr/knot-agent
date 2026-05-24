@@ -851,7 +851,8 @@ mkdir -p \
   "$doc_root/checks/doctor" \
   "$doc_root/.skills/knot-setup/references" \
   "$doc_root/.skills/knot-workflow" \
-  "$doc_root/docs" \
+  "$doc_root/docs/ops" \
+  "$doc_root/docs/security" \
   "$doc_root/workspace/admin"
 cp "$ROOT/checks/doctor/common.sh" "$doc_root/checks/doctor/common.sh"
 cp "$ROOT/checks/doctor/source.sh" "$doc_root/checks/doctor/source.sh"
@@ -859,8 +860,8 @@ cp "$ROOT/checks/doctor/installed.sh" "$doc_root/checks/doctor/installed.sh"
 cp "$ROOT/AGENTS.md" "$doc_root/AGENTS.md"
 cp "$ROOT/.skills/knot-workflow/SKILL.md" "$doc_root/.skills/knot-workflow/SKILL.md"
 cp "$ROOT/.skills/knot-setup/references/"*.md "$doc_root/.skills/knot-setup/references/"
-cp "$ROOT/docs/im-smoke-sop.md" "$doc_root/docs/im-smoke-sop.md"
-cp "$ROOT/docs/security-model.md" "$doc_root/docs/security-model.md"
+cp "$ROOT/docs/ops/im-smoke-sop.md" "$doc_root/docs/ops/im-smoke-sop.md"
+cp "$ROOT/docs/security/security-model.md" "$doc_root/docs/security/security-model.md"
 cp "$ROOT/.skills/knot-setup/references/permissions.template.md" "$doc_root/workspace/admin/permissions.md"
 cp "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "$doc_root/workspace/admin/knowledge-feedback.md"
 cp "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "$doc_root/workspace/admin/backup-policy.md"
