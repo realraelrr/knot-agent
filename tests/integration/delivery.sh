@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034,SC2154
 
+# Depends on workspace.sh creating the shared smoke workspace.
 printf 'ok\n' > "$user_workspace/deliverables/result.txt"
 if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null; then
   ok "knot-attachment allows current user deliverable"

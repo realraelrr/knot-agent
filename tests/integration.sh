@@ -42,6 +42,7 @@ ROOT="$(cd "$ROOT" && pwd)" || {
 # shellcheck source=tests/lib/integration-common.sh
 . "$ROOT/tests/lib/integration-common.sh"
 
+# Suites are orchestrated in this order and are not standalone entrypoints.
 for suite in workspace delivery operations installer docs; do
   # shellcheck source=/dev/null
   . "$ROOT/tests/integration/$suite.sh"

@@ -15,7 +15,7 @@ IDENTITY_KEY="${KNOT_IDENTITY_KEY:-}"
 CONVERSATION_DIR="${KNOT_CONVERSATION_DIR:-}"
 KIND=""
 FILE_PATH=""
-# Set by this script and read by parser helpers sourced from lib.sh.
+# Set by this script and read by parser helpers from lib/knot/core.sh.
 # shellcheck disable=SC2034
 EXPLICIT_CONTEXT=0
 # shellcheck disable=SC2034

@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034,SC2154
 
+# Depends on workspace.sh creating the shared smoke workspace.
 UNSAFE_ROOT="$(mktemp -d)"
 git -C "$UNSAFE_ROOT" init >/dev/null 2>&1
 git -C "$UNSAFE_ROOT" remote add backup https://github.com/realraelrr/knot-agent.git

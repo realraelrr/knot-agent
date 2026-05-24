@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034,SC2154
 
+# Depends on integration-common.sh creating TMP_PARENT.
 install_root="$TMP_PARENT/install-root"
 mkdir -p "$install_root/.skills/knot-setup" "$install_root/.skills/knot-workflow"
 cp -R "$ROOT/bin" "$install_root/bin"

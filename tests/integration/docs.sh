@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034,SC2154
 
+# Depends on integration-common.sh creating TMP_PARENT.
 run_source_doc_checks() {
   local root="$1"
   local strict_docs="$2"

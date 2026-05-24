@@ -1,7 +1,7 @@
 # Release Gate
 
 This is the single entry point for Knot release validation. It explains which
-existing gate to run and when. It does not replace `doctor.sh`, CI,
+existing gate to run and when. It does not replace `bin/knot-doctor.sh`, CI,
 `components.lock`, or the IM smoke SOP.
 
 ## Gate Layers
@@ -73,7 +73,7 @@ from `docs/ops/deployment-inputs.md`.
 ## Release Blockers
 
 - Scaffold CI fails.
-- `doctor.sh` reports a hard failure.
+- `bin/knot-doctor.sh` reports a hard failure.
 - `knot-permission-smoke.sh` fails.
 - A component pin does not match the reviewed component commit.
 - A target IM platform cannot start its configured runtime.
@@ -96,6 +96,6 @@ be reviewed before a final release.
 ## Boundaries
 
 Do not add a wrapper release script unless repeated manual execution becomes a
-real source of mistakes. Keep deterministic checks in `doctor.sh` and
+real source of mistakes. Keep deterministic checks in `bin/knot-doctor.sh` and
 permission smoke, keep live-platform behavior in the IM smoke SOP, and keep
 component-internal tests in their component repositories.
