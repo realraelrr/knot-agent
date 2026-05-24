@@ -27,6 +27,12 @@ Knot Agent 为 Codex 驱动的 agent 提供 workspace、知识布局、权限契
 
 Codex session history 是对话 transcript 的事实来源。Codex cwd/sandbox 是主要文件访问边界。Knot workspace helper 负责身份到 workspace 的路由，delivery helper 负责出站附件边界，Knot event log 只为确定性边界动作记录紧凑审计行。默认不生成 task records。
 
+## 运营
+
+- 发布门禁：[`docs/release-gate.md`](docs/release-gate.md)
+- IM smoke 测试：[`docs/im-smoke-sop.md`](docs/im-smoke-sop.md)
+- 安全模型：[`docs/security-model.md`](docs/security-model.md)
+
 ## License
 
 Apache License 2.0。见 [LICENSE](LICENSE)。
