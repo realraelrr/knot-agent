@@ -66,6 +66,20 @@ Follow `docs/ops/im-smoke-sop.md`.
 - All required rows in `results.tsv` are `pass`.
 - Every `blocked` or `skipped` row has a reason.
 
+## Agent-Owned Preflight
+
+Run before asking the human to send live IM messages:
+
+```bash
+git status --short --branch
+bash bin/knot-doctor.sh --scaffold-only --strict-docs
+bash bin/knot-permission-smoke.sh
+bash bin/knot-doctor.sh --platform dingtalk,feishu,wecom,weixin
+```
+
+The agent should inspect runtime logs, `events.jsonl`, deliverables directories,
+and attachment blocks after each failed or ambiguous row.
+
 ## Human Execution Notes
 
 - Use dedicated test users and test groups.
@@ -74,6 +88,23 @@ Follow `docs/ops/im-smoke-sop.md`.
 - Save screenshots or copied request/response text under `evidence/` when useful.
 - Fill `operator`, `platform_user_id`, `identity_key`, `chat_id`, `status`,
   `actual_result`, and `evidence` for each row.
+- Execute one row at a time and report the result back to the agent before
+  moving to the next failed or ambiguous row.
+
+## Human Row Report Template
+
+```text
+row:
+platform:
+chat type:
+prompt sent:
+received text:
+received attachment:
+can open attachment:
+status: pass|fail|blocked|skipped
+evidence:
+notes:
+```
 
 ## Manual Permission Setup
 

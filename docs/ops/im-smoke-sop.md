@@ -70,6 +70,30 @@ High-risk checks must pass on every platform:
 This matrix is intentionally small. If a platform has adapter-specific changes,
 add one focused regression row for that platform.
 
+## Ownership Split
+
+The agent owns deterministic setup and evidence review. The human owns actions
+that require a logged-in IM client or a real second identity.
+
+Agent-owned work:
+
+- run local release gates;
+- generate the live smoke run plan;
+- inspect runtime logs, `events.jsonl`, deliverables directories, and generated
+  attachment blocks after each reported row;
+- classify failures by likely layer;
+- keep the run report consistent.
+
+Human-owned work:
+
+- send the exact prompt from `results.tsv` in the target IM context;
+- upload or quote the required image/file/message when the row requires it;
+- confirm whether the IM client received the expected text or attachment;
+- provide screenshots or copied request/response text for failed or ambiguous
+  rows;
+- provide a low-privilege or unlisted account for true live unauthorized tests,
+  when available.
+
 ## Automated Permission Gate
 
 Run before live IM smoke:
@@ -103,20 +127,47 @@ IM smoke requirement.
 
 ## Procedure
 
-1. Create a run plan:
+1. Agent runs the automated preflight:
+
+   ```bash
+   git status --short --branch
+   bash bin/knot-doctor.sh --scaffold-only --strict-docs
+   bash bin/knot-permission-smoke.sh
+   bash bin/knot-doctor.sh --platform dingtalk,feishu,wecom,weixin
+   ```
+
+2. Agent creates a run plan:
 
    ```bash
    bash bin/knot-im-smoke-plan.sh
    ```
 
-2. Fill `operator`, `platform_user_id`, `identity_key`, `chat_id`, `status`,
+3. Human executes one row at a time from `results.tsv`.
+4. Fill `operator`, `platform_user_id`, `identity_key`, `chat_id`, `status`,
    `actual_result`, and `evidence` fields as each test is executed.
-3. For every generated file or image response, confirm the user received the
+5. For every generated file or image response, confirm the user received the
    attachment in the IM client, not merely a local file path.
-4. Record evidence paths or links in the run directory.
-5. Mark each row `pass`, `fail`, `blocked`, or `skipped`.
-6. A release final gate passes only when all required rows pass and every
+6. Agent reviews runtime logs, `workspace/conversations/.../events.jsonl`, and
+   deliverables after each failed or ambiguous row.
+7. Record evidence paths or links in the run directory.
+8. Mark each row `pass`, `fail`, `blocked`, or `skipped`.
+9. A release final gate passes only when all required rows pass and every
    skipped row has an explicit reason.
+
+Human report format for each row:
+
+```text
+row:
+platform:
+chat type:
+prompt sent:
+received text:
+received attachment:
+can open attachment:
+status: pass|fail|blocked|skipped
+evidence:
+notes:
+```
 
 ## Manual Permission Checks
 
