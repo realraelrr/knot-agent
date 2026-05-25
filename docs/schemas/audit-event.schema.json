@@ -45,7 +45,9 @@
         "recovery.completed",
         "recovery.failed",
         "memory.pack.generated",
-        "memory.pack.denied"
+        "memory.pack.denied",
+        "memory.patch.applied",
+        "memory.patch.denied"
       ]
     },
     "platform": {
@@ -99,7 +101,10 @@
         "write_failed",
         "memory_identity_unresolved",
         "memory_identity_ambiguous",
-        "memory_workspace_mismatch"
+        "memory_workspace_mismatch",
+        "memory_patch_invalid",
+        "memory_patch_conflict",
+        "memory_content_denied"
       ]
     },
     "resource_kind": {

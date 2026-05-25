@@ -81,7 +81,7 @@ validate_reason_code() {
   local code="$1"
 
   case "$code" in
-    ""|already_initialized|conversation_context_missing|outside_deliverables|conversation_source_denied|unauthorized_group|symlink_denied|invalid_resource|send_failed|recovery_empty|write_failed|memory_identity_unresolved|memory_identity_ambiguous|memory_workspace_mismatch)
+    ""|already_initialized|conversation_context_missing|outside_deliverables|conversation_source_denied|unauthorized_group|symlink_denied|invalid_resource|send_failed|recovery_empty|write_failed|memory_identity_unresolved|memory_identity_ambiguous|memory_workspace_mismatch|memory_patch_invalid|memory_patch_conflict|memory_content_denied)
       ;;
     *)
       die "unsupported reason code: $code"
@@ -91,7 +91,7 @@ validate_reason_code() {
 
 validate_event() {
   case "$EVENT" in
-    conversation.initialized|input.ref.recorded|group.access.allowed|group.access.denied|delivery.verified|delivery.denied|delivery.sent|delivery.failed|recovery.prompt_sent|recovery.completed|recovery.failed|memory.pack.generated|memory.pack.denied)
+    conversation.initialized|input.ref.recorded|group.access.allowed|group.access.denied|delivery.verified|delivery.denied|delivery.sent|delivery.failed|recovery.prompt_sent|recovery.completed|recovery.failed|memory.pack.generated|memory.pack.denied|memory.patch.applied|memory.patch.denied)
       ;;
     *)
       die "unsupported audit event: $EVENT"

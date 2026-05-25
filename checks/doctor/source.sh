@@ -15,6 +15,7 @@ run_source_structure_checks() {
   check_file_exists "$ROOT/.skills/knot-workflow/SKILL.md" "knot-workflow skill"
   check_file_exists "$ROOT/.skills/knot-memory/SKILL.md" "knot-memory skill"
   check_file_exists "$ROOT/lib/knot/core.sh" "Knot core shell library"
+  check_file_exists "$ROOT/lib/knot/memory-direct.sh" "direct memory boundary library"
   check_file_exists "$ROOT/lib/knot/component-lock.sh" "component lock library"
   check_file_exists "$ROOT/checks/doctor/common.sh" "doctor common checks module"
   check_file_exists "$ROOT/checks/doctor/source.sh" "doctor source checks module"
@@ -23,6 +24,7 @@ run_source_structure_checks() {
 
   check_executable "$ROOT/bin/knot-audit.sh" "knot-audit helper"
   check_executable "$ROOT/bin/knot-memory-pack.sh" "knot-memory-pack helper"
+  check_executable "$ROOT/bin/knot-memory-apply.sh" "knot-memory-apply helper"
   check_executable "$ROOT/bin/knot-workspace.sh" "knot-workspace helper"
   check_executable "$ROOT/bin/knot-install.sh" "knot-install helper"
   check_executable "$ROOT/bin/knot-attachment.sh" "knot-attachment helper"
@@ -88,6 +90,7 @@ run_contract_checks() {
   check_file_contains "$ROOT/.skills/knot-memory/SKILL.md" "## Agent Usage" "knot-memory"
   check_file_contains "$ROOT/.skills/knot-memory/SKILL.md" "## Memory Updates" "knot-memory"
   check_file_contains "$ROOT/.skills/knot-memory/SKILL.md" "bin/knot-memory-pack.sh" "knot-memory"
+  check_file_contains "$ROOT/.skills/knot-memory/SKILL.md" "bin/knot-memory-apply.sh" "knot-memory"
   check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/users/<user_slug>/deliverables" "runtime config"
   check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "workspace/groups/<group_slug>/deliverables" "runtime config"
   check_file_contains "$ROOT/.skills/knot-setup/references/runtime-config.md" "KNOT_ROOT=" "runtime config"

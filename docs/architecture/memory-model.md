@@ -1,7 +1,7 @@
 # Knot Memory Model
 
-Status: design spec. Direct-chat memory pack generation is implemented;
-memory patch apply, restricted block filtering, wiki promotion, and group
+Status: design spec. Direct-chat memory pack generation and validated patch
+apply are implemented; restricted block filtering, wiki promotion, and group
 workspace migration are not yet implemented.
 
 ## Goal
@@ -246,7 +246,9 @@ During execution, Codex reads the pack and works in `KNOT_ACTIVE_WORKSPACE`.
 Codex should only propose memory updates in `.knot/memory-patch.md`; only the
 deterministic helper applies validated memory changes.
 
-After Codex finishes, the helper validates the patch target:
+After Codex finishes, the implemented direct-chat helper validates and applies
+patches to actor user memory. The future group-scoped helper will extend the
+same rule set:
 
 - direct chat may patch only actor user memory
 - group chat may patch only the actor's group shard
