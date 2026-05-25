@@ -50,7 +50,9 @@ EOF
 cleanup() {
   [ -z "$TMP_OUTPUT" ] || rm -f "$TMP_OUTPUT"
   [ -z "$TMP_DIFF" ] || rm -f "$TMP_DIFF"
-  [ "$LOCK_HELD" -eq 0 ] || rmdir "$LOCK_DIR" 2>/dev/null || true
+  if [ "$LOCK_HELD" -eq 1 ]; then
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT HUP INT TERM
 
@@ -64,16 +66,26 @@ memory_deny() {
 
 validate_patch_content() {
   local path="$1"
+  local source_block_pattern='^[[:space:]]*```[[:space:]]*(transcript|chat[-_ ]?log|conversation[-_ ]?log|source[-_ ]?document)'
+  local secret_pattern='^[[:space:]]*(export[[:space:]]+)?(api[_-]?key|access[_-]?token|auth[_-]?token|secret|password|bearer[_-]?token)[[:space:]]*[:=][[:space:]]*[^[:space:]]+'
 
-  if grep -Eiq '^[[:space:]]*```[[:space:]]*(transcript|chat[-_ ]?log|conversation[-_ ]?log|source[-_ ]?document)' "$path"; then
+  if grep -Eiq "$source_block_pattern" "$path"; then
     memory_deny memory_content_denied "memory patch contains a transcript or source-document block"
   fi
-  if grep -Eiq '^[[:space:]]*(export[[:space:]]+)?(api[_-]?key|access[_-]?token|auth[_-]?token|secret|password|bearer[_-]?token)[[:space:]]*[:=][[:space:]]*[^[:space:]]+' "$path"; then
+  if grep -Eiq "$secret_pattern" "$path"; then
     memory_deny memory_content_denied "memory patch contains a secrets-looking assignment"
   fi
   if grep -Fq '<!-- knot:restricted' "$path"; then
     memory_deny memory_content_denied "restricted memory markers are not implemented yet"
   fi
+}
+
+acquire_apply_lock() {
+  LOCK_DIR="$USER_WORKSPACE/.knot/memory-apply.lock"
+  if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    memory_deny memory_patch_conflict "another memory patch apply is already in progress"
+  fi
+  LOCK_HELD=1
 }
 
 atomic_replace() {
@@ -196,11 +208,7 @@ EXPECTED_PATCH_PATH="$(absolute_path "$USER_WORKSPACE/.knot/memory-patch.md")" |
 [ "$PATCH_PATH" = "$EXPECTED_PATCH_PATH" ] ||
   memory_deny memory_patch_invalid "memory patch proposal must be in the active runtime context"
 chmod 600 "$PATCH_PATH"
-LOCK_DIR="$USER_WORKSPACE/.knot/memory-apply.lock"
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  memory_deny memory_patch_conflict "another memory patch apply is already in progress"
-fi
-LOCK_HELD=1
+acquire_apply_lock
 
 TARGET_REL="$(sed -n '1s/^target: //p' "$PATCH_PATH")"
 BASE_SHA256="$(sed -n '2s/^base_sha256: //p' "$PATCH_PATH")"

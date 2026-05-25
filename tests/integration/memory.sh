@@ -363,6 +363,14 @@ apply_direct_memory_patch() {
     --conversation-dir "$memory_conversation_dir"
 }
 
+memory_patch_denied_count() {
+  local reason="$1"
+
+  jq -s --arg reason "$reason" \
+    '[.[] | select(.event == "memory.patch.denied" and .reason_code == $reason)] | length' \
+    "$memory_conversation_dir/events.jsonl"
+}
+
 assert_memory_patch_denied_unchanged() {
   local label="$1"
   local expected_reason="$2"
@@ -372,12 +380,12 @@ assert_memory_patch_denied_unchanged() {
   local after_events
 
   before_hash="$(file_sha256 "$target")"
-  before_events="$(jq -s --arg reason "$expected_reason" '[.[] | select(.event == "memory.patch.denied" and .reason_code == $reason)] | length' "$memory_conversation_dir/events.jsonl")"
+  before_events="$(memory_patch_denied_count "$expected_reason")"
   if apply_direct_memory_patch >/dev/null 2>&1; then
     fail "$label"
     return
   fi
-  after_events="$(jq -s --arg reason "$expected_reason" '[.[] | select(.event == "memory.patch.denied" and .reason_code == $reason)] | length' "$memory_conversation_dir/events.jsonl")"
+  after_events="$(memory_patch_denied_count "$expected_reason")"
   if [ "$(file_sha256 "$target")" = "$before_hash" ] &&
     [ "$after_events" -gt "$before_events" ]; then
     ok "$label"
@@ -596,7 +604,7 @@ assert_memory_patch_denied_unchanged \
   "$memory_active_file"
 
 memory_active_before="$(file_sha256 "$memory_active_file")"
-memory_mismatch_before="$(jq -s '[.[] | select(.event == "memory.patch.denied" and .reason_code == "memory_workspace_mismatch")] | length' "$memory_conversation_dir/events.jsonl")"
+memory_mismatch_before="$(memory_patch_denied_count memory_workspace_mismatch)"
 if bash "$ROOT/bin/knot-memory-apply.sh" apply \
   --root "$memory_root" \
   --patch "$memory_patch_file" \
@@ -610,13 +618,13 @@ if bash "$ROOT/bin/knot-memory-apply.sh" apply \
   --conversation-dir "$memory_conversation_dir" >/dev/null 2>&1; then
   fail "knot-memory allowed memory patch for mismatched actor identity"
 elif [ "$(file_sha256 "$memory_active_file")" = "$memory_active_before" ] &&
-  [ "$(jq -s '[.[] | select(.event == "memory.patch.denied" and .reason_code == "memory_workspace_mismatch")] | length' "$memory_conversation_dir/events.jsonl")" -gt "$memory_mismatch_before" ]; then
+  [ "$(memory_patch_denied_count memory_workspace_mismatch)" -gt "$memory_mismatch_before" ]; then
   ok "knot-memory apply fails closed for mismatched actor identity"
 else
   fail "knot-memory apply mismatch denial did not preserve target and audit"
 fi
 
-memory_group_before="$(jq -s '[.[] | select(.event == "memory.patch.denied" and .reason_code == "unauthorized_group")] | length' "$memory_conversation_dir/events.jsonl")"
+memory_group_before="$(memory_patch_denied_count unauthorized_group)"
 if bash "$ROOT/bin/knot-memory-apply.sh" apply \
   --root "$memory_root" \
   --patch "$memory_patch_file" \
@@ -631,7 +639,7 @@ if bash "$ROOT/bin/knot-memory-apply.sh" apply \
   --conversation-dir "$memory_conversation_dir" >/dev/null 2>&1; then
   fail "knot-memory allowed group-scoped memory patch before group support"
 elif [ "$(file_sha256 "$memory_active_file")" = "$memory_active_before" ] &&
-  [ "$(jq -s '[.[] | select(.event == "memory.patch.denied" and .reason_code == "unauthorized_group")] | length' "$memory_conversation_dir/events.jsonl")" -gt "$memory_group_before" ]; then
+  [ "$(memory_patch_denied_count unauthorized_group)" -gt "$memory_group_before" ]; then
   ok "knot-memory apply blocks group scope until implemented"
 else
   fail "knot-memory group denial did not preserve target and audit"
