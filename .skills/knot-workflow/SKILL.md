@@ -16,6 +16,9 @@ Classify the request before acting:
 - **Knowledge query**: the user asks what the organization knows or what a source says.
 - **Execution task**: the user wants analysis, drafting, PPT, HTML, file generation, research, automation, or operations work.
 - **IM delivery**: the user wants a local file or image sent back through chat.
+- **Memory context**: the task depends on actor working memory, memory-pack
+  context, cross-platform IM continuity, or memory update planning; use
+  `knot-memory`.
 
 Use the lightest execution weight that fits:
 
@@ -56,6 +59,8 @@ task crosses an authorization boundary.
   missing or stale, say so and, when allowed, propose a feedback or update path.
 - Wiki maintenance: use available wiki maintenance skills only when the task
   calls for them.
+- Memory context: use `knot-memory`. It owns agent-side memory usage. Do not
+  inline memory protocol details here.
 - User-facing deliverables: use the available spreadsheet, document,
   presentation, PDF, web deck, or Markdown-rendering skill that matches the
   requested output. Use conversion skills instead when the goal is extraction,

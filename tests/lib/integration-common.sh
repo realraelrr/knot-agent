@@ -43,6 +43,39 @@ assert_event_schema() {
   else
     fail "event log rows do not match external audit schema"
   fi
+
+  if python3 - "$path" "$schema" <<'PY' >/dev/null 2>&1
+import json
+import re
+import sys
+
+path, schema_path = sys.argv[1], sys.argv[2]
+schema = json.load(open(schema_path, encoding="utf-8"))
+props = schema["properties"]
+required = set(schema["required"])
+
+for line in open(path, encoding="utf-8"):
+    event = json.loads(line)
+    if set(event) != required:
+        raise SystemExit(1)
+    for key, rule in props.items():
+        value = event[key]
+        if "const" in rule and value != rule["const"]:
+            raise SystemExit(1)
+        if "enum" in rule and value not in rule["enum"]:
+            raise SystemExit(1)
+        if "pattern" in rule and not re.match(rule["pattern"], value):
+            raise SystemExit(1)
+        if rule.get("type") == "integer" and not isinstance(value, int):
+            raise SystemExit(1)
+        if rule.get("type") == "string" and not isinstance(value, str):
+            raise SystemExit(1)
+PY
+  then
+    ok "event log rows satisfy compact audit enum and pattern schema"
+  else
+    fail "event log rows violate compact audit enum or pattern schema"
+  fi
 }
 
 cleanup() {

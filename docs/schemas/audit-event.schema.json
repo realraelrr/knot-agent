@@ -43,7 +43,9 @@
         "delivery.failed",
         "recovery.prompt_sent",
         "recovery.completed",
-        "recovery.failed"
+        "recovery.failed",
+        "memory.pack.generated",
+        "memory.pack.denied"
       ]
     },
     "platform": {
@@ -94,7 +96,10 @@
         "invalid_resource",
         "send_failed",
         "recovery_empty",
-        "write_failed"
+        "write_failed",
+        "memory_identity_unresolved",
+        "memory_identity_ambiguous",
+        "memory_workspace_mismatch"
       ]
     },
     "resource_kind": {
