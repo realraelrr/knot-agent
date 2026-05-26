@@ -25,6 +25,7 @@ cat > "$profile_root/workspace/admin/permissions.md" <<'EOF'
 | User | Workspace | Platform | Platform User ID | Group | Chat ID | Identity Key | Name | Role | Scope | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Direct User | direct-user | feishu | ou/direct-user |  | oc/direct-profile | feishu:user:direct | Direct User | member | session | smoke |
+| Direct User | direct-user | feishu | ou/direct-user | profile-group | oc/group-profile | feishu:user:direct | Direct User | member | session | smoke |
 EOF
 
 profile_workspace_exports="$(bash "$ROOT/bin/knot-workspace.sh" \
@@ -137,6 +138,84 @@ if jq -e 'select(.event == "collab.profile.pack.generated" and .status == "recor
   ok "collaborator profile pack records compact audit event"
 else
   fail "collaborator profile pack did not record compact audit event"
+fi
+
+group_profile_exports="$(bash "$ROOT/bin/knot-workspace.sh" \
+  --root "$profile_root" \
+  --platform feishu \
+  --chat-id "oc/group-profile" \
+  --user-id "ou/direct-user" \
+  --identity-key "feishu:user:direct" \
+  --emit-conversation-initialized)" || {
+  fail "knot-workspace setup for group collaborator profile tests failed"
+  exit 1
+}
+eval "$group_profile_exports"
+group_profile_active_workspace="$KNOT_ACTIVE_WORKSPACE"
+group_profile_actor_workspace="${KNOT_ACTOR_WORKSPACE:-}"
+group_profile_user_workspace="$KNOT_USER_WORKSPACE"
+group_profile_conversation_dir="$KNOT_CONVERSATION_DIR"
+group_profile_pack_file="$group_profile_actor_workspace/.knot/collaborator-profile-pack.md"
+group_profile_patch_file="$group_profile_actor_workspace/.knot/collaborator-profile.patch"
+
+if group_profile_pack_path="$(bash "$ROOT/bin/knot-collaborator-profile-pack.sh" pack \
+  --root "$profile_root" \
+  --platform feishu \
+  --chat-id "oc/group-profile" \
+  --user-id "ou/direct-user" \
+  --identity-key "feishu:user:direct" \
+  --actor-user direct-user \
+  --group-slug profile-group \
+  --active-workspace "$group_profile_active_workspace" \
+  --user-workspace "$group_profile_user_workspace" \
+  --actor-workspace "$group_profile_actor_workspace" \
+  --conversation-dir "$group_profile_conversation_dir")" &&
+  [ "$(absolute_path "$group_profile_pack_path")" = "$(absolute_path "$group_profile_pack_file")" ] &&
+  [ -f "$group_profile_pack_file" ] &&
+  grep -Fq "scope: collaborator_profile" "$group_profile_pack_file" &&
+  grep -Fq "mode: read_only" "$group_profile_pack_file" &&
+  grep -Fq "active_workspace: workspace/groups/profile-group" "$group_profile_pack_file" &&
+  grep -Fq "actor_workspace: workspace/groups/profile-group/work/direct-user" "$group_profile_pack_file" &&
+  grep -Fq "source_profile: workspace/users/direct-user/collaboration/profile.md" "$group_profile_pack_file" &&
+  grep -Fq "Prefers concise status updates" "$group_profile_pack_file" &&
+  [ "$(mode_of "$group_profile_pack_file")" = "600" ]; then
+  ok "collaborator profile group scope writes read-only pack to actor lane"
+else
+  fail "collaborator profile group scope did not write expected read-only pack"
+fi
+
+group_profile_base="$(file_sha256 "$profile_file")"
+cat > "$group_profile_patch_file" <<EOF
+target: $profile_target_rel
+base_sha256: $group_profile_base
+
+--- a/$profile_target_rel
++++ b/$profile_target_rel
+@@ -3,1 +3,2 @@
+ - Prefers concise status updates with concrete verification evidence.
++- group chat must not silently write profile changes.
+EOF
+before_group_apply_hash="$(file_sha256 "$profile_file")"
+before_group_apply_denials="$(profile_denied_count "$group_profile_conversation_dir" collab.profile.patch.denied collab_profile_workspace_mismatch)"
+if bash "$ROOT/bin/knot-collaborator-profile-apply.sh" apply \
+  --root "$profile_root" \
+  --patch "$group_profile_patch_file" \
+  --platform feishu \
+  --chat-id "oc/group-profile" \
+  --user-id "ou/direct-user" \
+  --identity-key "feishu:user:direct" \
+  --actor-user direct-user \
+  --group-slug profile-group \
+  --active-workspace "$group_profile_active_workspace" \
+  --user-workspace "$group_profile_user_workspace" \
+  --actor-workspace "$group_profile_actor_workspace" \
+  --conversation-dir "$group_profile_conversation_dir" >/dev/null 2>&1; then
+  fail "collaborator profile apply allowed group scope mutation"
+elif [ "$(file_sha256 "$profile_file")" = "$before_group_apply_hash" ] &&
+  [ "$(profile_denied_count "$group_profile_conversation_dir" collab.profile.patch.denied collab_profile_workspace_mismatch)" -gt "$before_group_apply_denials" ]; then
+  ok "collaborator profile apply rejects group scope mutation"
+else
+  fail "collaborator profile group scope apply did not preserve target and audit"
 fi
 
 assert_profile_pack_denied_existing_content() {
@@ -720,6 +799,7 @@ else
 fi
 
 assert_event_schema "$profile_conversation_dir/events.jsonl"
+assert_event_schema "$group_profile_conversation_dir/events.jsonl"
 assert_event_schema "$denied_conversation_dir/events.jsonl"
 assert_event_schema "$ambiguous_conversation_dir/events.jsonl"
 assert_event_schema "$mixed_conversation_dir/events.jsonl"

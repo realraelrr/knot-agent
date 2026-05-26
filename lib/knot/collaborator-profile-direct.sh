@@ -150,32 +150,73 @@ collab_profile_deny_if_symlink() {
 
 collab_profile_validate_actor_scope() {
   local expected_user_workspace
+  local expected_group_workspace
+  local expected_actor_workspace
 
   [ -n "$USER_SLUG" ] ||
     collab_profile_deny collab_profile_identity_unresolved "--actor-user or KNOT_ACTOR_USER is required"
+  SCOPE="${SCOPE:-direct}"
   validate_slug "--actor-user" "$USER_SLUG"
   [ -z "$GROUP_SLUG" ] || validate_slug "--group-slug" "$GROUP_SLUG"
+  case "$SCOPE" in
+    direct|group)
+      ;;
+    *)
+      collab_profile_deny collab_profile_workspace_mismatch "KNOT_SCOPE must be direct or group"
+      ;;
+  esac
   collab_profile_validate_permissions_actor_scope
 
   expected_user_workspace="$ROOT/workspace/users/$USER_SLUG"
+  expected_group_workspace=""
+  expected_actor_workspace="$expected_user_workspace"
+  if [ "$SCOPE" = "group" ]; then
+    [ -n "$GROUP_SLUG" ] ||
+      collab_profile_deny collab_profile_workspace_mismatch "group scope requires --group-slug or KNOT_GROUP_SLUG"
+    permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG" ||
+      collab_profile_deny collab_profile_workspace_mismatch "group workspace is not authorized for this actor/context"
+    expected_group_workspace="$ROOT/workspace/groups/$GROUP_SLUG"
+    expected_actor_workspace="$expected_group_workspace/work/$USER_SLUG"
+  fi
+
   [ -n "$USER_WORKSPACE" ] ||
     collab_profile_deny collab_profile_identity_unresolved "--user-workspace or KNOT_USER_WORKSPACE is required"
   [ -n "$ACTIVE_WORKSPACE" ] ||
     collab_profile_deny collab_profile_identity_unresolved "--active-workspace or KNOT_ACTIVE_WORKSPACE is required"
+  [ -n "${ACTOR_WORKSPACE:-}" ] ||
+    ACTOR_WORKSPACE="$expected_actor_workspace"
 
   USER_WORKSPACE="$(absolute_path "$USER_WORKSPACE")" ||
     collab_profile_deny collab_profile_workspace_mismatch "cannot resolve user workspace"
   ACTIVE_WORKSPACE="$(absolute_path "$ACTIVE_WORKSPACE")" ||
     collab_profile_deny collab_profile_workspace_mismatch "cannot resolve active workspace"
+  ACTOR_WORKSPACE="$(absolute_path "$ACTOR_WORKSPACE")" ||
+    collab_profile_deny collab_profile_workspace_mismatch "cannot resolve actor workspace"
   expected_user_workspace="$(absolute_path "$expected_user_workspace")" ||
     collab_profile_deny collab_profile_workspace_mismatch "cannot resolve expected user workspace"
+  expected_actor_workspace="$(absolute_path "$expected_actor_workspace")" ||
+    collab_profile_deny collab_profile_workspace_mismatch "cannot resolve expected actor workspace"
 
   [ "$USER_WORKSPACE" = "$expected_user_workspace" ] ||
     collab_profile_deny collab_profile_workspace_mismatch "user workspace does not match actor"
-  [ "$ACTIVE_WORKSPACE" = "$USER_WORKSPACE" ] ||
-    collab_profile_deny collab_profile_workspace_mismatch "active workspace must equal user workspace for collaborator profile"
+  [ "$ACTOR_WORKSPACE" = "$expected_actor_workspace" ] ||
+    collab_profile_deny collab_profile_workspace_mismatch "actor workspace does not match scope"
+  if [ "$SCOPE" = "direct" ]; then
+    [ "$ACTIVE_WORKSPACE" = "$USER_WORKSPACE" ] ||
+      collab_profile_deny collab_profile_workspace_mismatch "active workspace must equal user workspace for direct collaborator profile"
+  else
+    expected_group_workspace="$(absolute_path "$expected_group_workspace")" ||
+      collab_profile_deny collab_profile_workspace_mismatch "cannot resolve expected group workspace"
+    [ "$ACTIVE_WORKSPACE" = "$expected_group_workspace" ] ||
+      collab_profile_deny collab_profile_workspace_mismatch "active workspace must equal group workspace for group collaborator profile pack"
+  fi
 
   collab_profile_deny_if_symlink "$ROOT/workspace" "workspace root"
   collab_profile_deny_if_symlink "$ROOT/workspace/users" "users root"
   collab_profile_deny_if_symlink "$USER_WORKSPACE" "user workspace"
+  if [ "$SCOPE" = "group" ]; then
+    collab_profile_deny_if_symlink "$ROOT/workspace/groups" "groups root"
+    collab_profile_deny_if_symlink "$ACTIVE_WORKSPACE" "group workspace"
+    collab_profile_deny_if_symlink "$ACTOR_WORKSPACE" "group actor workspace"
+  fi
 }

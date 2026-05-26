@@ -21,6 +21,10 @@ GROUP_SLUG="${KNOT_GROUP_SLUG:-${KNOT_SOURCE_GROUP:-}}"
 CONVERSATION_DIR="${KNOT_CONVERSATION_DIR:-}"
 ACTIVE_WORKSPACE="${KNOT_ACTIVE_WORKSPACE:-}"
 USER_WORKSPACE="${KNOT_USER_WORKSPACE:-}"
+ACTOR_WORKSPACE="${KNOT_ACTOR_WORKSPACE:-}"
+SCOPE="${KNOT_SCOPE:-direct}"
+EXPLICIT_ACTOR_WORKSPACE=0
+EXPLICIT_SCOPE=0
 
 usage() {
   cat <<'EOF'
@@ -34,8 +38,10 @@ Options:
   --identity-key KEY
   --actor-user SLUG
   --group-slug SLUG
+  --scope direct|group
   --active-workspace DIR
   --user-workspace DIR
+  --actor-workspace DIR
   --conversation-dir DIR
   --help, -h
 EOF
@@ -109,6 +115,12 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -gt 0 ] || die "--group-slug requires a value"
       GROUP_SLUG="$1"
       ;;
+    --scope)
+      shift
+      [ "$#" -gt 0 ] || die "--scope requires a value"
+      SCOPE="$1"
+      EXPLICIT_SCOPE=1
+      ;;
     --active-workspace)
       shift
       [ "$#" -gt 0 ] || die "--active-workspace requires a value"
@@ -118,6 +130,12 @@ while [ "$#" -gt 0 ]; do
       shift
       [ "$#" -gt 0 ] || die "--user-workspace requires a value"
       USER_WORKSPACE="$1"
+      ;;
+    --actor-workspace)
+      shift
+      [ "$#" -gt 0 ] || die "--actor-workspace requires a value"
+      ACTOR_WORKSPACE="$1"
+      EXPLICIT_ACTOR_WORKSPACE=1
       ;;
     --conversation-dir)
       shift
@@ -151,21 +169,50 @@ fi
 ROOT="$(cd "$ROOT" && pwd -P)"
 ROOT_REAL="$ROOT"
 
+if [ "$EXPLICIT_SCOPE" -eq 0 ] && [ -n "$ACTIVE_WORKSPACE" ] && [ -n "$USER_WORKSPACE" ]; then
+  ACTIVE_WORKSPACE_CHECK="$(absolute_path "$ACTIVE_WORKSPACE" 2>/dev/null || true)"
+  USER_WORKSPACE_CHECK="$(absolute_path "$USER_WORKSPACE" 2>/dev/null || true)"
+  if [ -n "$ACTIVE_WORKSPACE_CHECK" ] && [ "$ACTIVE_WORKSPACE_CHECK" = "$USER_WORKSPACE_CHECK" ]; then
+    SCOPE="direct"
+    GROUP_SLUG=""
+    if [ "$EXPLICIT_ACTOR_WORKSPACE" -eq 0 ]; then
+      ACTOR_WORKSPACE="$USER_WORKSPACE"
+    fi
+  fi
+fi
+
 collab_profile_validate_actor_scope
 
 umask 077
 
 PROFILE_DIR="$USER_WORKSPACE/collaboration"
-CONTEXT_DIR="$USER_WORKSPACE/.knot"
+CONTEXT_DIR="$ACTOR_WORKSPACE/.knot"
 PACK_PATH="$CONTEXT_DIR/collaborator-profile-pack.md"
-ensure_dir_no_symlink "$USER_WORKSPACE" "user workspace"
-ensure_dir_no_symlink "$PROFILE_DIR" "collaboration profile"
-ensure_dir_no_symlink "$CONTEXT_DIR" "user runtime context"
-chmod 700 "$PROFILE_DIR" "$CONTEXT_DIR"
-
 PROFILE_FILE="$PROFILE_DIR/profile.md"
-collab_profile_ensure_owner_only_file "$PROFILE_FILE"
-collab_profile_validate_content "$PROFILE_FILE"
+PROFILE_REL="workspace/users/$USER_SLUG/collaboration/profile.md"
+ensure_dir_no_symlink "$USER_WORKSPACE" "user workspace"
+if [ "$SCOPE" = "group" ]; then
+  collab_profile_deny_if_symlink "$PROFILE_DIR" "collaboration profile"
+  if [ -e "$PROFILE_DIR" ] && [ ! -d "$PROFILE_DIR" ]; then
+    collab_profile_deny invalid_resource "collaboration profile path is not a directory: $PROFILE_DIR"
+  fi
+  ensure_dir_no_symlink "$ACTOR_WORKSPACE" "group actor workspace"
+  ensure_dir_no_symlink "$CONTEXT_DIR" "group actor runtime context"
+  chmod 700 "$CONTEXT_DIR"
+else
+  ensure_dir_no_symlink "$PROFILE_DIR" "collaboration profile"
+  ensure_dir_no_symlink "$CONTEXT_DIR" "user runtime context"
+  chmod 700 "$PROFILE_DIR" "$CONTEXT_DIR"
+fi
+
+if [ "$SCOPE" = "direct" ]; then
+  collab_profile_ensure_owner_only_file "$PROFILE_FILE"
+elif [ -L "$PROFILE_FILE" ]; then
+  collab_profile_deny symlink_denied "collaborator profile must not be a symlink: $PROFILE_FILE"
+fi
+if [ -f "$PROFILE_FILE" ]; then
+  collab_profile_validate_content "$PROFILE_FILE"
+fi
 
 tmp_pack="$(mktemp "$CONTEXT_DIR/.collaborator-profile-pack.md.tmp.XXXXXX")"
 chmod 600 "$tmp_pack"
@@ -173,12 +220,27 @@ chmod 600 "$tmp_pack"
 {
   printf '# Knot Collaborator Profile Pack\n\n'
   printf 'scope: collaborator_profile\n'
+  if [ "$SCOPE" = "group" ]; then
+    printf 'mode: read_only\n'
+  else
+    printf 'mode: writable\n'
+  fi
   printf 'actor_user: %s\n' "$USER_SLUG"
   printf 'active_workspace: %s\n' "$(collab_profile_relative_to_root "$ACTIVE_WORKSPACE")"
   printf 'user_workspace: %s\n' "$(collab_profile_relative_to_root "$USER_WORKSPACE")"
-  printf 'write_target: %s\n\n' "$(collab_profile_relative_to_root "$PROFILE_FILE")"
+  if [ "$SCOPE" = "group" ]; then
+    printf 'actor_workspace: %s\n' "$(collab_profile_relative_to_root "$ACTOR_WORKSPACE")"
+    printf 'source_profile: %s\n' "$PROFILE_REL"
+    printf 'write_target: read_only\n\n'
+  else
+    printf 'write_target: %s\n\n' "$PROFILE_REL"
+  fi
   printf '## Sources\n\n'
-  write_profile_source "$PROFILE_FILE"
+  if [ -f "$PROFILE_FILE" ]; then
+    write_profile_source "$PROFILE_FILE"
+  else
+    printf '_No collaborator profile has been created for this actor._\n\n'
+  fi
 } > "$tmp_pack"
 
 previous_pack="$(mktemp "$CONTEXT_DIR/.collaborator-profile-pack.md.previous.XXXXXX")"

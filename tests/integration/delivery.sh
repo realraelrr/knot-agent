@@ -3,10 +3,16 @@
 
 # Depends on workspace.sh creating the shared smoke workspace.
 printf 'ok\n' > "$user_workspace/deliverables/result.txt"
-if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null; then
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/direct delivery" --user-id "ou/test user" --user-slug "example-user" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null; then
   ok "knot-attachment allows current user deliverable"
 else
   fail "knot-attachment rejected current user deliverable"
+fi
+
+if bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" >/dev/null 2>&1; then
+  fail "knot-attachment allowed user deliverable in group scope"
+else
+  ok "knot-attachment rejects user deliverable in group scope"
 fi
 
 if bash "$ROOT/bin/knot-attachment.sh" \
@@ -56,13 +62,13 @@ fi
 mkdir -p "$tmp_root/generated"
 printf 'generated\n' > "$tmp_root/generated/image.png"
 if deliver_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png")"; then
-  expected_deliverable="$(resolve_path "$user_workspace/deliverables/image.png")"
-  if [ -f "$user_workspace/deliverables/image.png" ] &&
+  expected_deliverable="$(resolve_path "$group_workspace/deliverables/image.png")"
+  if [ -f "$group_workspace/deliverables/image.png" ] &&
     printf '%s\n' "$deliver_output" | grep -Fq '```cc-connect-attachments' &&
     printf '%s\n' "$deliver_output" | grep -Fq "image: $expected_deliverable"; then
-    ok "knot-deliver copies generated artifact to user deliverables"
+    ok "knot-deliver defaults group scope delivery to group deliverables"
   else
-    fail "knot-deliver did not copy generated artifact to user deliverables"
+    fail "knot-deliver did not default group scope delivery to group deliverables"
   fi
 else
   fail "knot-deliver rejected generated artifact"
@@ -88,7 +94,7 @@ if deliver_output="$(env \
   KNOT_SOURCE_GROUP=example-group \
   KNOT_CHAT_ID="oc/test group" \
   KNOT_IDENTITY_KEY="feishu:user:ou-test" \
-  bash "$ROOT/bin/knot-deliver.sh" --kind image --path "$tmp_root/generated/env.png" --target group --output-name "env-shared.png")"; then
+  bash "$ROOT/bin/knot-deliver.sh" --kind image --path "$tmp_root/generated/env.png" --output-name "env-shared.png")"; then
   if [ -f "$group_workspace/deliverables/env-shared.png" ] &&
     printf '%s\n' "$deliver_output" | grep -Fq "image: $(resolve_path "$group_workspace/deliverables/env-shared.png")"; then
     ok "knot-deliver reads current context from KNOT_* environment"
@@ -148,19 +154,14 @@ else
   fail "knot-deliver identity mismatch rejection had wrong error: $unauthorized_output"
 fi
 
-if deliver_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" --target group --output-name "result-shared.txt")"; then
-  if [ -f "$group_workspace/deliverables/result-shared.txt" ] &&
-    printf '%s\n' "$deliver_output" | grep -Fq "file: $(resolve_path "$group_workspace/deliverables/result-shared.txt")"; then
-    ok "knot-deliver copies user deliverable into group deliverables when target is group"
-  else
-    fail "knot-deliver did not copy user deliverable into group deliverables"
-  fi
+if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind file --path "$user_workspace/deliverables/result.txt" --target group --output-name "result-shared.txt" >/dev/null 2>&1; then
+  fail "knot-deliver allowed user workspace source in group scope"
 else
-  fail "knot-deliver rejected user deliverable targeted to group"
+  ok "knot-deliver rejects user workspace source in group scope"
 fi
 
 ln -s "$tmp_root/escaped-delivery.png" "$user_workspace/deliverables/symlink.png"
-if deliver_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --user-slug "example-user" --group-slug "example-group" --kind image --path "$tmp_root/generated/image.png" --output-name "symlink.png")"; then
+if deliver_output="$(bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/direct delivery" --user-id "ou/test user" --user-slug "example-user" --kind image --path "$tmp_root/generated/image.png" --output-name "symlink.png")"; then
   if [ ! -e "$tmp_root/escaped-delivery.png" ] &&
     [ -f "$user_workspace/deliverables/symlink-1.png" ] &&
     printf '%s\n' "$deliver_output" | grep -Fq "image: $(resolve_path "$user_workspace/deliverables/symlink-1.png")"; then

@@ -1,6 +1,6 @@
 # Collaborator Profile
 
-Status: implemented for direct user workspaces.
+Status: implemented for direct user workspaces and read-only group-chat packs.
 
 ## Goal
 
@@ -40,13 +40,19 @@ workspace/users/<user_slug>/
   .knot/
     collaborator-profile-pack.md
     collaborator-profile.patch
+
+workspace/groups/<group_slug>/work/<user_slug>/
+  .knot/
+    collaborator-profile-pack.md
 ```
 
 `collaboration/profile.md` is the only source of truth. It is created
 owner-only (`0600`) by the pack helper when missing.
 
-`.knot/collaborator-profile-pack.md` is a runtime snapshot. It may be
-regenerated for every session and is never a durable source.
+`.knot/collaborator-profile-pack.md` is a runtime snapshot. In direct scope it
+lives under the user `.knot/` directory. In group scope it is a read-only
+snapshot written under the group actor lane. It may be regenerated for every
+session and is never a durable source.
 
 `.knot/collaborator-profile.patch` is temporary agent output. It is applied only
 through the deterministic helper.
@@ -68,18 +74,22 @@ or replace older bullets rather than append indefinitely.
 ## Runtime Flow
 
 1. The IM glue layer resolves the actor and launches Codex from the actor user
-   workspace.
+   workspace for direct chats, or from the current group workspace for
+   authorized group chats.
 2. The pack helper validates identity, permissions, active workspace, symlinks,
    profile contents, size, and conversation audit target.
-3. The helper creates or tightens `collaboration/profile.md`, writes
-   `.knot/collaborator-profile-pack.md`, and returns success only after the
-   audit event is recorded.
+3. In direct scope, the helper creates or tightens `collaboration/profile.md`,
+   writes `.knot/collaborator-profile-pack.md`, and returns success only after
+   the audit event is recorded. In group scope, the helper reads the actor's
+   user profile and writes a read-only pack to
+   `workspace/groups/<group_slug>/work/<user_slug>/.knot/` without creating or
+   modifying the user profile.
 4. Codex may read the pack as frozen session-start context.
 5. If the session reveals a stable collaborator cue, Codex drafts
    `.knot/collaborator-profile.patch` with `base_sha256`.
-6. The apply helper validates the patch, atomically replaces
-   `collaboration/profile.md`, and rolls the file back if the success audit
-   event cannot be recorded.
+6. The apply helper is direct-scope only. It validates the patch, atomically
+   replaces `collaboration/profile.md`, and rolls the file back if the success
+   audit event cannot be recorded. Group-scope apply is denied.
 
 ## Update Policy
 
@@ -96,7 +106,9 @@ path instead of stretching the profile.
 Helpers enforce the hard rules:
 
 - actor identity must resolve uniquely from `workspace/admin/permissions.md`;
-- `KNOT_ACTIVE_WORKSPACE` must equal the actor user workspace;
+- direct `KNOT_ACTIVE_WORKSPACE` must equal the actor user workspace;
+- group `KNOT_ACTIVE_WORKSPACE` must equal the current authorized group
+  workspace, with the pack written to `KNOT_ACTOR_WORKSPACE`;
 - the profile target must be exactly
   `workspace/users/<user_slug>/collaboration/profile.md`;
 - all new runtime/profile files are owner-only;

@@ -25,7 +25,7 @@ Knot Agent 为 Codex 驱动的 agent 提供 workspace、知识布局、权限契
 
 ## 控制面
 
-Codex session history 是对话 transcript 的事实来源。Codex cwd/sandbox 是主要文件访问边界。Knot workspace helper 负责身份到 workspace 的路由，delivery helper 负责出站附件边界，Knot event log 只为确定性边界动作记录紧凑审计行。默认不生成 task records。
+Codex session history 是对话 transcript 的事实来源。Codex cwd/sandbox 是主要文件访问边界。Knot workspace helper 负责把身份路由到当前私聊用户或群聊工作区，delivery helper 负责出站附件边界，Knot event log 只为确定性边界动作记录紧凑审计行。默认不生成 task records。
 
 ## 企业数据流
 

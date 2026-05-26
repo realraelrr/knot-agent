@@ -33,41 +33,13 @@ Options:
                        Emit one audit event when a new conversation dir is created.
   --help, -h           Show this help.
 
-If --user-slug or --group-slug is omitted, this helper first tries
-workspace/admin/permissions.md, then falls back to a deterministic safe slug.
+If --user-slug or --group-slug is omitted for IM/runtime routing, this helper
+must resolve a unique row from workspace/admin/permissions.md. Explicit slugs
+remain supported for local CLI and scaffold smoke paths.
+
 Prints source-safe shell exports. The caller should start Codex with cwd set to
 KNOT_ACTIVE_WORKSPACE.
 EOF
-}
-
-hash_value() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    printf '%s' "$1" | sha256sum | awk '{print substr($1, 1, 12)}'
-    return
-  fi
-
-  if command -v shasum >/dev/null 2>&1; then
-    printf '%s' "$1" | shasum -a 256 | awk '{print substr($1, 1, 12)}'
-    return
-  fi
-
-  die "sha256sum or shasum is required"
-}
-
-safe_segment() {
-  local raw="$1"
-  local fallback="$2"
-  local max_length="$3"
-  local safe
-  local hash
-
-  safe="$(printf '%s' "$raw" | LC_ALL=C tr -c 'A-Za-z0-9._-' '_' | sed 's/^_*//; s/_*$//; s/__*/_/g' | cut -c "1-$max_length")"
-  if [ -z "$safe" ]; then
-    safe="$fallback"
-  fi
-
-  hash="$(hash_value "$raw")"
-  printf '%s-%s\n' "$safe" "$hash"
 }
 
 trim_field() {
@@ -109,14 +81,36 @@ permissions_lookup() {
 
       if (want == "user" && (identity_match || user_match)) {
         print workspace
-        exit
       }
       if (want == "group" && chat_match && (identity_match || user_match) && group_slug != "") {
         print group_slug
-        exit
       }
     }
   ' "$permissions_file"
+}
+
+permissions_lookup_one() {
+  local want="$1"
+  local label="$2"
+  local required="$3"
+  local matches
+  local count
+
+  matches="$(permissions_lookup "$want" | sed '/^$/d' | trim_field | sort -u)"
+  count="$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d '[:space:]')"
+
+  case "$count" in
+    0)
+      [ "$required" -eq 0 ] && return 0
+      die "$label is not uniquely mapped in workspace/admin/permissions.md"
+      ;;
+    1)
+      printf '%s\n' "$matches"
+      ;;
+    *)
+      die "$label maps to multiple values in workspace/admin/permissions.md"
+      ;;
+  esac
 }
 
 validate_metadata_value() {
@@ -132,7 +126,10 @@ validate_metadata_value() {
 
 emit_exports() {
   print_export KNOT_ROOT "$ROOT"
-  print_export KNOT_ACTIVE_WORKSPACE "$USER_WORKSPACE"
+  print_export KNOT_SCOPE "$KNOT_SCOPE"
+  print_export KNOT_ACTIVE_WORKSPACE "$ACTIVE_WORKSPACE"
+  print_export KNOT_SCOPE_WORKSPACE "$SCOPE_WORKSPACE"
+  print_export KNOT_ACTOR_WORKSPACE "$ACTOR_WORKSPACE"
   print_export KNOT_USER_WORKSPACE "$USER_WORKSPACE"
   print_export KNOT_GROUP_WORKSPACE "$GROUP_WORKSPACE"
   print_export KNOT_CONVERSATION_DIR "$CONVERSATION_DIR"
@@ -252,40 +249,52 @@ validate_metadata_value "--name" "$NAME"
 validate_metadata_value "--group-name" "$GROUP_NAME"
 
 ROOT="$(cd "$ROOT" && pwd)"
-
-if [ -z "$USER_SLUG" ]; then
-  USER_SLUG="$(permissions_lookup user | head -n 1 | trim_field)"
-fi
 PERMISSIONS_FILE="$ROOT/workspace/admin/permissions.md"
-if [ -z "$GROUP_SLUG" ] && [ -n "$CHAT_ID" ]; then
-  GROUP_SLUG="$(permissions_lookup group | head -n 1 | trim_field)"
-fi
-if [ -z "$USER_SLUG" ]; then
-  if [ -n "$NAME" ]; then
-    USER_SLUG="$(safe_segment "$NAME" "user" 60)"
-  else
-    USER_SLUG="$(safe_segment "$PLATFORM-$USER_ID" "user" 60)"
+
+if [ -f "$PERMISSIONS_FILE" ]; then
+  RESOLVED_USER_SLUG="$(permissions_lookup_one user "actor identity" 1)"
+  if [ -z "$USER_SLUG" ]; then
+    USER_SLUG="$RESOLVED_USER_SLUG"
+  elif [ "$USER_SLUG" != "$RESOLVED_USER_SLUG" ]; then
+    die "actor identity resolves to $RESOLVED_USER_SLUG, not --user-slug $USER_SLUG"
   fi
+elif [ -z "$USER_SLUG" ]; then
+  die "--user-slug is required when workspace/admin/permissions.md is missing"
 fi
-if [ -z "$GROUP_SLUG" ] && [ -n "$GROUP_NAME" ] && [ ! -f "$PERMISSIONS_FILE" ]; then
-  GROUP_SLUG="$(safe_segment "$GROUP_NAME" "group" 60)"
+
+if [ -z "$GROUP_SLUG" ] && [ -n "$CHAT_ID" ] && [ -f "$PERMISSIONS_FILE" ]; then
+  GROUP_SLUG="$(permissions_lookup_one group "group context" 0)"
 fi
 
 validate_slug "--user-slug" "$USER_SLUG"
 [ -z "$GROUP_SLUG" ] || validate_slug "--group-slug" "$GROUP_SLUG"
+
+if [ -n "$GROUP_SLUG" ] && [ -f "$PERMISSIONS_FILE" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
+  die "group workspace is not authorized for this actor/context: $GROUP_SLUG"
+fi
+
 USER_WORKSPACE="$ROOT/workspace/users/$USER_SLUG"
 GROUP_WORKSPACE=""
+KNOT_SCOPE="direct"
+SCOPE_WORKSPACE="$USER_WORKSPACE"
+ACTIVE_WORKSPACE="$USER_WORKSPACE"
+ACTOR_WORKSPACE="$USER_WORKSPACE"
 CONVERSATION_DIR=""
 CONVERSATION_SEGMENT=""
 CHAT_ID_HASH=""
 PLATFORM_USER_ID_HASH="sha256:$(sha256_hex_string "$USER_ID")"
 IDENTITY_KEY_HASH=""
-CONTEXT_DIR="$USER_WORKSPACE/.knot"
-CONTEXT_FILE="$CONTEXT_DIR/current-context.sh"
 
 if [ -n "$GROUP_SLUG" ]; then
   GROUP_WORKSPACE="$ROOT/workspace/groups/$GROUP_SLUG"
+  KNOT_SCOPE="group"
+  SCOPE_WORKSPACE="$GROUP_WORKSPACE"
+  ACTIVE_WORKSPACE="$GROUP_WORKSPACE"
+  ACTOR_WORKSPACE="$GROUP_WORKSPACE/work/$USER_SLUG"
 fi
+
+CONTEXT_DIR="$ACTOR_WORKSPACE/.knot"
+CONTEXT_FILE="$CONTEXT_DIR/current-context.sh"
 
 if [ -n "$CHAT_ID" ]; then
   CHAT_ID_HASH="sha256:$(sha256_hex_pair "$PLATFORM" "$CHAT_ID")"
@@ -322,7 +331,9 @@ if [ "$CREATE_DIRS" -eq 1 ]; then
   ensure_dir_no_symlink "$USER_WORKSPACE/deliverables" "user deliverables"
   ensure_dir_no_symlink "$USER_WORKSPACE/.state" "user state"
   ensure_dir_no_symlink "$USER_WORKSPACE/.state/tasks" "user task state"
-  ensure_dir_no_symlink "$CONTEXT_DIR" "user context"
+  if [ "$KNOT_SCOPE" = "direct" ]; then
+    ensure_dir_no_symlink "$CONTEXT_DIR" "user context"
+  fi
 
   if [ ! -f "$USER_WORKSPACE/profile.tsv" ] || [ -n "$NAME" ]; then
     write_kv_file "$USER_WORKSPACE/profile.tsv" \
@@ -342,6 +353,11 @@ if [ "$CREATE_DIRS" -eq 1 ]; then
     ensure_dir_no_symlink "$GROUP_WORKSPACE/deliverables" "group deliverables"
     ensure_dir_no_symlink "$GROUP_WORKSPACE/.state" "group state"
     ensure_dir_no_symlink "$GROUP_WORKSPACE/.state/tasks" "group task state"
+    ensure_dir_no_symlink "$ACTOR_WORKSPACE" "group actor workspace"
+    ensure_dir_no_symlink "$ACTOR_WORKSPACE/inbox" "group actor inbox"
+    ensure_dir_no_symlink "$ACTOR_WORKSPACE/.state" "group actor state"
+    ensure_dir_no_symlink "$ACTOR_WORKSPACE/.state/tasks" "group actor task state"
+    ensure_dir_no_symlink "$CONTEXT_DIR" "group actor context"
 
     if [ ! -f "$GROUP_WORKSPACE/profile.tsv" ] || [ -n "$GROUP_NAME" ]; then
       write_kv_file "$GROUP_WORKSPACE/profile.tsv" \

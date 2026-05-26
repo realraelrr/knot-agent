@@ -225,7 +225,7 @@ syntax.
 Use `bin/knot-workspace.sh` as a preflight helper after cc-connect or
 another IM glue layer has parsed platform, user, and optional group metadata.
 The helper prints source-safe shell exports. Start Codex with cwd set to
-`KNOT_ACTIVE_WORKSPACE`, which must be the actor's user workspace:
+`KNOT_ACTIVE_WORKSPACE`:
 
 ```bash
 eval "$(bash bin/knot-workspace.sh \
@@ -240,14 +240,20 @@ cd "$KNOT_ACTIVE_WORKSPACE"
 Add `--group-slug GROUP_SLUG` and `--group-name GROUP_NAME` only for authorized
 group chat contexts.
 
-For group chats, `KNOT_GROUP_WORKSPACE` exposes the shared group workspace by
-path. It is not a second Codex cwd. `KNOT_CONVERSATION_DIR` is source/audit
-metadata only and must not be used as a work or deliverables directory.
+For direct chats, `KNOT_SCOPE=direct` and `KNOT_ACTIVE_WORKSPACE` is the actor
+user workspace. For authorized group chats, `KNOT_SCOPE=group`,
+`KNOT_ACTIVE_WORKSPACE` and `KNOT_SCOPE_WORKSPACE` are the current group
+workspace, and `KNOT_ACTOR_WORKSPACE` is
+`workspace/groups/<group_slug>/work/<user_slug>` for drafts and task state.
+This actor lane is an agent protocol, not OS-level write isolation.
+
+`KNOT_CONVERSATION_DIR` is source/audit metadata only and must not be used as a
+work or deliverables directory.
 
 Use `bin/knot-attachment.sh` when Codex must send files through IM. It
-validates that the file exists under the current user `deliverables/` directory,
-or under the current group `deliverables/` directory for explicit shared group
-assets, and prints a strict attachment block:
+validates that the file exists under the current direct user's
+`deliverables/` directory, or under the current group `deliverables/` directory
+in group scope, and prints a strict attachment block:
 
 ````text
 ```cc-connect-attachments

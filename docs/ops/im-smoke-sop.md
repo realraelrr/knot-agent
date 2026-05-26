@@ -182,7 +182,7 @@ behavior. For each platform:
   be rejected and no attachment may be sent.
 - In one test group, quote or reference a previous message and ask for an image
   or file. The reply must preserve reference metadata and attach only from the
-  active user or authorized current group deliverables directory.
+  current direct user or authorized current group deliverables directory.
 - Ask for a permissions-table, admin, or durable-knowledge change from a
   non-admin identity. It must be refused or require explicit admin approval.
 
@@ -192,10 +192,10 @@ is not a substitute for this check.
 
 ## Expected Results
 
-- Direct chat work writes only under the actor user's workspace.
-- Group chat work keeps the actor user's workspace as the Codex cwd and uses the
-  group workspace only for explicit shared assets.
-- Attachments are sent only from the active user or authorized group
+- Direct chat work runs and writes under the actor user's workspace.
+- Group chat work runs from the current authorized group workspace. Drafts and
+  task state should use `workspace/groups/<group_slug>/work/<user_slug>/`.
+- Attachments are sent only from the current direct user or authorized group
   `deliverables/` directory.
 - Boundary actions write compact evidence to
   `workspace/conversations/<platform>/chat_<hash>/events.jsonl` when launched

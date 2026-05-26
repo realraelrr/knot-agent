@@ -24,7 +24,8 @@ store, or an external provider integration:
 - Source of truth:
   `workspace/users/<user_slug>/collaboration/profile.md`.
 - Runtime snapshot:
-  `workspace/users/<user_slug>/.knot/collaborator-profile-pack.md`.
+  direct scope: `workspace/users/<user_slug>/.knot/collaborator-profile-pack.md`;
+  group scope: `workspace/groups/<group_slug>/work/<user_slug>/.knot/collaborator-profile-pack.md`.
 - Patch proposal:
   `workspace/users/<user_slug>/.knot/collaborator-profile.patch`.
 - Audit target:
@@ -36,8 +37,8 @@ Do not bypass them by editing the profile manually.
 
 ## Agent Usage
 
-If `.knot/collaborator-profile-pack.md` exists in the active user workspace,
-read it before work where collaboration style matters.
+If `.knot/collaborator-profile-pack.md` exists in the current direct workspace
+or group actor lane, read it before work where collaboration style matters.
 
 If the pack is missing and the runtime context is available, generate it:
 
@@ -49,8 +50,10 @@ bash "$KNOT_ROOT/bin/knot-collaborator-profile-pack.sh" pack \
   --user-id "$KNOT_PLATFORM_USER_ID" \
   --identity-key "$KNOT_IDENTITY_KEY" \
   --actor-user "$KNOT_ACTOR_USER" \
+  --scope "$KNOT_SCOPE" \
   --active-workspace "$KNOT_ACTIVE_WORKSPACE" \
   --user-workspace "$KNOT_USER_WORKSPACE" \
+  --actor-workspace "$KNOT_ACTOR_WORKSPACE" \
   --conversation-dir "$KNOT_CONVERSATION_DIR"
 ```
 
@@ -103,12 +106,16 @@ bash "$KNOT_ROOT/bin/knot-collaborator-profile-apply.sh" apply \
   --user-id "$KNOT_PLATFORM_USER_ID" \
   --identity-key "$KNOT_IDENTITY_KEY" \
   --actor-user "$KNOT_ACTOR_USER" \
+  --scope "$KNOT_SCOPE" \
   --active-workspace "$KNOT_ACTIVE_WORKSPACE" \
   --user-workspace "$KNOT_USER_WORKSPACE" \
+  --actor-workspace "$KNOT_ACTOR_WORKSPACE" \
   --conversation-dir "$KNOT_CONVERSATION_DIR"
 ```
 
-Do not claim the profile changed unless the helper succeeds.
+Do not claim the profile changed unless the helper succeeds. In group scope,
+the profile pack is read-only and apply must be denied; do not silently write
+personal collaborator profile updates from a group chat.
 
 Workflow or SOP improvements must stay separate: propose a visible diff for
 human review, and never silently modify core skills from an IM session.

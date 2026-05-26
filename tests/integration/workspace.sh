@@ -20,7 +20,10 @@ workspace_exports="$(bash "$ROOT/bin/knot-workspace.sh" \
 }
 
 if eval "$workspace_exports" &&
-  [ "$KNOT_ACTIVE_WORKSPACE" = "$tmp_root/workspace/users/example-user" ] &&
+  [ "${KNOT_SCOPE:-}" = "group" ] &&
+  [ "$KNOT_ACTIVE_WORKSPACE" = "$tmp_root/workspace/groups/example-group" ] &&
+  [ "${KNOT_SCOPE_WORKSPACE:-}" = "$tmp_root/workspace/groups/example-group" ] &&
+  [ "${KNOT_ACTOR_WORKSPACE:-}" = "$tmp_root/workspace/groups/example-group/work/example-user" ] &&
   [ "$KNOT_USER_WORKSPACE" = "$tmp_root/workspace/users/example-user" ] &&
   [ "$KNOT_GROUP_WORKSPACE" = "$tmp_root/workspace/groups/example-group" ] &&
   [ -n "$KNOT_CONVERSATION_DIR" ]; then
@@ -31,17 +34,40 @@ fi
 
 user_workspace="$tmp_root/workspace/users/example-user"
 group_workspace="$tmp_root/workspace/groups/example-group"
+actor_workspace="$tmp_root/workspace/groups/example-group/work/example-user"
 conversation_dir="$KNOT_CONVERSATION_DIR"
 chat_hash="$(sha256_hex_pair feishu "oc/test group")"
 expected_conversation_segment="chat_${chat_hash:0:24}"
 
 if [ -d "$user_workspace/deliverables" ] &&
   [ -d "$group_workspace/deliverables" ] &&
+  [ -d "$actor_workspace/.knot" ] &&
   [ -f "$conversation_dir/metadata.tsv" ] &&
   grep -Fq $'actor_user\texample-user' "$conversation_dir/metadata.tsv"; then
   ok "knot-workspace creates user/group workspaces and conversation metadata"
 else
   fail "knot-workspace did not create expected user/group/conversation state"
+fi
+
+direct_exports="$(bash "$ROOT/bin/knot-workspace.sh" \
+  --root "$tmp_root" \
+  --platform feishu \
+  --chat-id "ou/direct chat" \
+  --user-id "ou/direct user" \
+  --user-slug "direct-user" \
+  --identity-key "feishu:user:direct")" || {
+  fail "knot-workspace direct smoke test failed"
+  exit 1
+}
+if eval "$direct_exports" &&
+  [ "${KNOT_SCOPE:-}" = "direct" ] &&
+  [ "$KNOT_ACTIVE_WORKSPACE" = "$tmp_root/workspace/users/direct-user" ] &&
+  [ "${KNOT_SCOPE_WORKSPACE:-}" = "$tmp_root/workspace/users/direct-user" ] &&
+  [ "${KNOT_ACTOR_WORKSPACE:-}" = "$tmp_root/workspace/users/direct-user" ] &&
+  [ -z "$KNOT_GROUP_WORKSPACE" ]; then
+  ok "knot-workspace resolves explicit direct user workspace"
+else
+  fail "knot-workspace direct exports did not resolve expected paths"
 fi
 
 if [ "$(basename "$conversation_dir")" = "$expected_conversation_segment" ] &&
@@ -137,28 +163,45 @@ EOF
 
 if resolved_exports="$(bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:ou/jane" --name "Ignored Name" --group-name "Ignored Group")" &&
   eval "$resolved_exports" &&
-  [ "$KNOT_ACTIVE_WORKSPACE" = "$tmp_root/workspace/users/jane-example" ] &&
+  [ "${KNOT_SCOPE:-}" = "group" ] &&
+  [ "$KNOT_ACTIVE_WORKSPACE" = "$tmp_root/workspace/groups/product-room" ] &&
+  [ "${KNOT_SCOPE_WORKSPACE:-}" = "$tmp_root/workspace/groups/product-room" ] &&
+  [ "${KNOT_ACTOR_WORKSPACE:-}" = "$tmp_root/workspace/groups/product-room/work/jane-example" ] &&
+  [ "$KNOT_USER_WORKSPACE" = "$tmp_root/workspace/users/jane-example" ] &&
   [ "$KNOT_GROUP_WORKSPACE" = "$tmp_root/workspace/groups/product-room" ]; then
   ok "knot-workspace resolves user/group slugs from permissions table"
 else
   fail "knot-workspace did not resolve permissions table slugs"
 fi
 
-if resolved_exports="$(bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/bob" --identity-key "feishu:user:ou/bob" --name "Bob Example" --group-name "Ignored Group")" &&
-  eval "$resolved_exports" &&
-  [ -z "$KNOT_GROUP_WORKSPACE" ]; then
-  ok "knot-workspace requires actor match before exposing permissions group"
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/bob" --identity-key "feishu:user:ou/bob" --name "Bob Example" --group-name "Ignored Group" >/dev/null 2>&1; then
+  fail "knot-workspace allowed unmapped runtime actor fallback"
 else
-  fail "knot-workspace exposed permissions group to unmatched actor"
+  ok "knot-workspace fails closed for unmapped runtime actor"
 fi
 
-if resolved_exports="$(bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:wrong" --name "Jane Example" --group-name "Ignored Group")" &&
-  eval "$resolved_exports" &&
-  [ "$KNOT_ACTIVE_WORKSPACE" != "$tmp_root/workspace/users/jane-example" ] &&
-  [ -z "$KNOT_GROUP_WORKSPACE" ]; then
-  ok "knot-workspace rejects mismatched explicit identity key before permission fallback"
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:wrong" --name "Jane Example" --group-name "Ignored Group" >/dev/null 2>&1; then
+  fail "knot-workspace allowed mismatched identity fallback"
 else
-  fail "knot-workspace resolved permissions row with mismatched explicit identity key"
+  ok "knot-workspace fails closed for mismatched identity key"
+fi
+
+cat >> "$tmp_root/workspace/admin/permissions.md" <<'EOF'
+| Jane Duplicate | jane-duplicate | feishu | ou/jane | product-room | oc/product | feishu:user:ou/jane | Jane Duplicate | member | session | duplicate |
+EOF
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:ou/jane" >/dev/null 2>&1; then
+  fail "knot-workspace allowed ambiguous permissions identity mapping"
+else
+  ok "knot-workspace fails closed for ambiguous permissions identity mapping"
+fi
+
+cat >> "$tmp_root/workspace/admin/permissions.md" <<'EOF'
+| Example Other Group | example-user | feishu | ou/test user | other-group | oc/test group | feishu:user:ou-test | Smoke Test | member | session | duplicate group |
+EOF
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --identity-key "feishu:user:ou-test" >/dev/null 2>&1; then
+  fail "knot-workspace allowed ambiguous permissions group mapping"
+else
+  ok "knot-workspace fails closed for ambiguous permissions group mapping"
 fi
 
 if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id $'oc/bad\tchat' --user-id "ou/test user" --user-slug "bad-meta" >/dev/null 2>&1; then

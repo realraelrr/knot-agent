@@ -44,8 +44,8 @@ be marked blocked only when no second account exists.
 - Whether group deliverables are enabled:
 - Whether outbound delivery requires manual review:
 
-Generated files must be delivered only from active user deliverables or an
-authorized current group deliverables directory.
+Generated files must be delivered only from current direct-user deliverables or
+the current authorized group deliverables directory.
 
 ## Secrets And Runtime Files
 

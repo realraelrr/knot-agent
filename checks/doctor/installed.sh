@@ -204,7 +204,7 @@ run_component_checks() {
   check_dir "$ROOT/components/knot-skills/skills/office-pdf" "office-pdf source"
   check_dir "$ROOT/components/knot-skills/skills/web-ppt" "web-ppt source"
   check_file_exists "$ROOT/components/knot-skills/skills/office-docx/scripts/dotnet/OfficeDocx.Cli/OfficeDocx.Cli.csproj" "office-docx CLI project"
-  check_file_contains "$ROOT/components/knot-skills/skills/web-ppt/SKILL.md" "active user workspace" "web-ppt skill"
+  check_file_contains "$ROOT/components/knot-skills/skills/web-ppt/SKILL.md" "current direct-user workspace" "web-ppt skill"
   check_file_not_contains "$ROOT/components/knot-skills/skills/web-ppt/SKILL.md" "current session" "web-ppt skill"
   check_component_refs_from_lock
 }

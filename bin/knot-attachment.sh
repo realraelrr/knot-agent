@@ -126,7 +126,9 @@ fi
 WORKSPACE_ARGS=(--root "$ROOT" --platform "$PLATFORM" --user-id "$USER_ID" --user-slug "$USER_SLUG" --no-create)
 [ -z "$CHAT_ID" ] || WORKSPACE_ARGS+=(--chat-id "$CHAT_ID")
 [ -z "$GROUP_SLUG" ] || WORKSPACE_ARGS+=(--group-slug "$GROUP_SLUG")
+[ -z "$IDENTITY_KEY" ] || WORKSPACE_ARGS+=(--identity-key "$IDENTITY_KEY")
 WORKSPACE_EXPORTS="$(bash "$SCRIPT_DIR/knot-workspace.sh" "${WORKSPACE_ARGS[@]}")"
+SCOPE="$(workspace_export KNOT_SCOPE "$WORKSPACE_EXPORTS")"
 USER_WORKSPACE="$(workspace_export KNOT_USER_WORKSPACE "$WORKSPACE_EXPORTS")"
 GROUP_WORKSPACE="$(workspace_export KNOT_GROUP_WORKSPACE "$WORKSPACE_EXPORTS")"
 
@@ -155,9 +157,9 @@ if [ -n "$CONVERSATIONS_DIR" ]; then
   esac
 fi
 
-if path_is_under "$ABS_FILE" "$USER_DELIVERABLES_DIR"; then
+if [ "$SCOPE" = "direct" ] && path_is_under "$ABS_FILE" "$USER_DELIVERABLES_DIR"; then
   :
-elif [ -n "$GROUP_DELIVERABLES_DIR" ] && path_is_under "$ABS_FILE" "$GROUP_DELIVERABLES_DIR"; then
+elif [ "$SCOPE" = "group" ] && [ -n "$GROUP_DELIVERABLES_DIR" ] && path_is_under "$ABS_FILE" "$GROUP_DELIVERABLES_DIR"; then
   knot_audit_record group.access.allowed allowed || true
 else
   deny_delivery outside_deliverables

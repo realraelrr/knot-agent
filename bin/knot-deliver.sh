@@ -18,7 +18,7 @@ GROUP_NAME="${KNOT_SOURCE_GROUP_NAME:-}"
 KIND=""
 SOURCE_PATH=""
 OUTPUT_NAME=""
-TARGET="user"
+TARGET=""
 # Set by this script and read by parser helpers from lib/knot/core.sh.
 # shellcheck disable=SC2034
 EXPLICIT_CONTEXT=0
@@ -99,10 +99,16 @@ reject_non_current_workspace_source() {
   if path_is_under "$path" "$USERS_DIR" && ! path_is_under "$path" "$USER_REAL"; then
     deny_delivery_with_message outside_deliverables "source file belongs to another user workspace"
   fi
+  if [ "$SCOPE" = "group" ] && path_is_under "$path" "$USERS_DIR"; then
+    deny_delivery_with_message outside_deliverables "group scope cannot deliver files from user workspaces"
+  fi
 
   if path_is_under "$path" "$GROUPS_DIR"; then
     if [ -z "$GROUP_REAL" ] || ! path_is_under "$path" "$GROUP_REAL"; then
       deny_delivery_with_message outside_deliverables "source file belongs to another group workspace"
+    fi
+    if [ "$SCOPE" = "direct" ]; then
+      deny_delivery_with_message outside_deliverables "direct scope cannot deliver files from group workspaces"
     fi
   fi
 }
@@ -158,16 +164,6 @@ case "$KIND" in
     ;;
 esac
 
-case "$TARGET" in
-  user|group)
-    ;;
-  *)
-    die "--target must be user or group"
-    ;;
-esac
-
-[ "$TARGET" != "group" ] || [ -n "$GROUP_SLUG" ] || die "--target group requires --group-slug"
-
 [ -f "$SOURCE_PATH" ] || deny_delivery invalid_resource
 ROOT="$(cd "$ROOT" && pwd)"
 if [ -n "$GROUP_SLUG" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
@@ -183,8 +179,30 @@ WORKSPACE_ARGS=(--root "$ROOT" --platform "$PLATFORM" --user-id "$USER_ID" --use
 [ -z "$NAME" ] || WORKSPACE_ARGS+=(--name "$NAME")
 [ -z "$GROUP_NAME" ] || WORKSPACE_ARGS+=(--group-name "$GROUP_NAME")
 WORKSPACE_EXPORTS="$(bash "$SCRIPT_DIR/knot-workspace.sh" "${WORKSPACE_ARGS[@]}")"
+SCOPE="$(workspace_export KNOT_SCOPE "$WORKSPACE_EXPORTS")"
 USER_WORKSPACE="$(workspace_export KNOT_USER_WORKSPACE "$WORKSPACE_EXPORTS")"
 GROUP_WORKSPACE="$(workspace_export KNOT_GROUP_WORKSPACE "$WORKSPACE_EXPORTS")"
+
+if [ -z "$TARGET" ]; then
+  if [ "$SCOPE" = "group" ]; then
+    TARGET="group"
+  else
+    TARGET="user"
+  fi
+fi
+
+case "$TARGET" in
+  user|group)
+    ;;
+  *)
+    die "--target must be user or group"
+    ;;
+esac
+
+if [ "$SCOPE" = "group" ] && [ "$TARGET" = "user" ]; then
+  deny_delivery_with_message outside_deliverables "group scope delivery must target current group deliverables"
+fi
+[ "$TARGET" != "group" ] || [ -n "$GROUP_SLUG" ] || die "--target group requires --group-slug"
 
 if [ -L "$USER_WORKSPACE" ] || [ -L "$USER_WORKSPACE/deliverables" ]; then
   deny_delivery_with_message symlink_denied "current user workspace and deliverables must not be symlinks"

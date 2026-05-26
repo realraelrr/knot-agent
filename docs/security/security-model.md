@@ -7,7 +7,8 @@ process sandbox, container boundary, or operating-system access-control layer.
 ## Trust Boundaries
 
 - **Codex execution:** Codex performs the task inside the workspace selected by
-  the IM glue layer or by the operator.
+  the IM glue layer or by the operator. Direct chats launch from the actor user
+  workspace; authorized group chats launch from the current group workspace.
 - **Codex session history:** Codex session history is the transcript source of
   truth for user and model messages.
 - **Knot helpers:** `bin/knot-workspace.sh`, `bin/knot-deliver.sh`,
@@ -15,10 +16,11 @@ process sandbox, container boundary, or operating-system access-control layer.
   `bin/knot-collaborator-profile-apply.sh`, and `bin/knot-audit.sh` provide
   deterministic workspace routing, delivery/profile validation, and compact
   boundary event records that follow `docs/schemas/audit-event.schema.json`.
-- **Workspace data:** `workspace/users/<user_slug>/` is the default private
-  working area for one actor. `workspace/groups/<group_slug>/` is for explicit
-  shared group assets. `workspace/conversations/` is source and audit metadata,
-  not a work or delivery directory.
+- **Workspace data:** `workspace/users/<user_slug>/` is the direct-chat working
+  area for one actor. `workspace/groups/<group_slug>/` is the active shared
+  workspace for authorized group chats, with actor lanes under
+  `workspace/groups/<group_slug>/work/<user_slug>/`. `workspace/conversations/`
+  is source and audit metadata, not a work or delivery directory.
 - **Runtime data:** `runtime/` contains IM configs, logs, sockets, and local
   secrets. It is operator-managed infrastructure, not user deliverable storage.
 - **Shared knowledge:** `workspace/knowledge/` contains approved durable
@@ -28,8 +30,8 @@ process sandbox, container boundary, or operating-system access-control layer.
 
 | Class | Boundary | Enforced by | Meaning |
 |---|---|---|---|
-| Hard guardrail | Workspace routing, deliverable attachment paths, symlink rejection, component lockfile format, static active-workspace config rejection | Deterministic Knot helpers and doctor checks | These checks must pass before the related helper action succeeds. |
-| Soft protocol | User-facing reply style, knowledge-change approval records, use of `.state/`, durable knowledge promotion, admin review expectations | Agent instructions, templates, and human review | These rules guide Codex and operators, but they are not process isolation. |
+| Hard guardrail | Workspace routing, identity ambiguity denial, deliverable attachment paths, symlink rejection, component lockfile format, static active-workspace config rejection | Deterministic Knot helpers and doctor checks | These checks must pass before the related helper action succeeds. |
+| Soft protocol | Group actor-lane writes, user-facing reply style, knowledge-change approval records, use of `.state/`, durable knowledge promotion, admin review expectations | Agent instructions, templates, and human review | These rules guide Codex and operators, but they are not process isolation. |
 | Out of scope | OS tenant isolation, enterprise DLP, platform credential authorization, network egress control, complete sensitive-data classification | External infrastructure and enterprise controls | These require controls outside the default Knot scaffold. |
 
 ## What Knot Prevents
@@ -37,10 +39,10 @@ process sandbox, container boundary, or operating-system access-control layer.
 In the default local setup, Knot's deterministic helpers reject:
 
 - delivery from another user's workspace;
-- delivery from another group's workspace unless the current actor and chat are
-  authorized for that group;
-- attachment blocks that point outside the current user or authorized group
-  `deliverables/` directory;
+- delivery from another group's workspace;
+- group-scope delivery back into a user workspace;
+- attachment blocks that point outside the current direct user or authorized
+  current group `deliverables/` directory;
 - attachments sourced from `workspace/conversations/`;
 - symlink escapes from current workspaces and deliverables directories;
 - static `KNOT_ACTIVE_WORKSPACE` runtime configuration;
@@ -81,7 +83,9 @@ Knot does not, by itself:
 The default workspace model is logical isolation inside one local checkout:
 
 - user work defaults to `workspace/users/<user_slug>/`;
-- explicit shared work uses `workspace/groups/<group_slug>/`;
+- authorized group-chat work launches from `workspace/groups/<group_slug>/`;
+- group-chat drafts and task state should use
+  `workspace/groups/<group_slug>/work/<user_slug>/`;
 - recoverable agent working state can live under `.state/` when needed;
 - conversation metadata and boundary event records live under
   `workspace/conversations/<platform>/chat_<hash>/`;
@@ -93,8 +97,9 @@ or tenant isolation.
 
 ## IM Attachment Boundary
 
-IM outbound files must be delivered from the active user's `deliverables/`
-directory or the authorized current group's `deliverables/` directory. Use
+IM outbound files must be delivered from the active direct user's
+`deliverables/` directory or, in group scope, the authorized current group's
+`deliverables/` directory. Use
 `bin/knot-deliver.sh` to copy generated artifacts into that boundary and
 `bin/knot-attachment.sh` to emit the `cc-connect-attachments` block.
 

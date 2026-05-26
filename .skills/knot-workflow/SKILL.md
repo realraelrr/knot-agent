@@ -48,8 +48,9 @@ task crosses an authorization boundary.
 
 - IM workspace setup: the IM glue layer should call
   `bin/knot-workspace.sh` with parsed platform/user/group metadata before
-  launching Codex. Codex should run from `KNOT_ACTIVE_WORKSPACE`, which must be
-  the actor's `workspace/users/<user_slug>` directory.
+  launching Codex. Codex should run from `KNOT_ACTIVE_WORKSPACE`: direct chats
+  use the actor's `workspace/users/<user_slug>` directory; authorized group
+  chats use the current `workspace/groups/<group_slug>` directory.
 - Raw document to knowledge: use an available conversion skill when conversion
   helps, write intermediates under `workspace/knowledge/processed/`, then use an
   available knowledge-ingest skill for durable knowledge.
@@ -71,11 +72,10 @@ task crosses an authorization boundary.
   only when the task needs them.
 - IM file/image delivery: generation is not delivery. For generated or local
   artifacts, use `bin/knot-deliver.sh` to copy the file into the current
-  user deliverables directory, or into the current group deliverables directory
-  only when the output is explicitly a shared group asset. Then delegate to
-  `bin/knot-attachment.sh` to validate the boundary and print the
-  cc-connect attachment block. Do not answer with only a local path when the
-  user asked to receive the file in IM.
+  direct-user deliverables directory or, in group scope, the current group
+  deliverables directory. Then delegate to `bin/knot-attachment.sh` to validate
+  the boundary and print the cc-connect attachment block. Do not answer with
+  only a local path when the user asked to receive the file in IM.
 - Knowledge feedback from members: append a row to
   `workspace/admin/knowledge-feedback.md`. Durable changes need `Diff`,
   `Status`, and `Execution` before writing knowledge.
@@ -95,16 +95,18 @@ task crosses an authorization boundary.
 
 ## Storage Rules
 
-- User inputs go under the active user workspace `inbox/` unless they are
-  already in place.
+- Direct-chat user inputs go under the active user workspace `inbox/` unless
+  they are already in place.
+- Group-chat drafts, task state, and process files go under
+  `KNOT_ACTOR_WORKSPACE`, which is
+  `workspace/groups/<group_slug>/work/<user_slug>`. The full current group
+  workspace is readable shared context.
 - Approved long-term sources go under `workspace/knowledge/raw/`.
 - Extracted sidecars and OCR outputs go under `workspace/knowledge/processed/`.
-- Final user-facing files go under the active user workspace `deliverables/`,
-  or the current group `deliverables/` only for explicit shared group assets.
-- Drafts and reusable working assets go under the active user workspace `work/`.
-- IM-triggered uploads, drafts, deliverables, and task state go under the actor
-  user's `workspace/users/<user_slug>/` workspace. For group chats, use
-  `KNOT_GROUP_WORKSPACE` only for explicitly shared group assets.
+- Final user-facing files go under the active direct user's `deliverables/`, or
+  the current authorized group `deliverables/` in group scope.
+- Direct-chat drafts and reusable working assets go under the active user
+  workspace `work/`; group-chat drafts use `KNOT_ACTOR_WORKSPACE`.
 - Conversation source and audit metadata goes under
   `workspace/conversations/<platform>/chat_<hash>/`. Do not use conversation
   directories as a Codex cwd, work directory, deliverables directory, or task

@@ -124,14 +124,19 @@ ln -s "$TMP_PARENT/outside-secret.txt" "$TEST_ROOT/workspace/users/attacker-user
 ATTACKER_CONTEXT=(
   --root "$TEST_ROOT"
   --platform feishu
-  --chat-id oc_allowed
+  --chat-id oc_direct
   --user-id ou_attacker
   --user-slug attacker-user
   --identity-key feishu:user:attacker
 )
 
 ATTACKER_GROUP_CONTEXT=(
-  "${ATTACKER_CONTEXT[@]}"
+  --root "$TEST_ROOT"
+  --platform feishu
+  --chat-id oc_allowed
+  --user-id ou_attacker
+  --user-slug attacker-user
+  --identity-key feishu:user:attacker
   --group-slug allowed-group
 )
 
@@ -182,7 +187,7 @@ audit_exports="$(
   bash "$ROOT/bin/knot-workspace.sh" \
     --root "$TEST_ROOT" \
     --platform feishu \
-    --chat-id oc_allowed \
+    --chat-id oc_direct \
     --user-id ou_attacker \
     --user-slug attacker-user \
     --identity-key feishu:user:attacker \
@@ -279,7 +284,9 @@ else
   fail "workspace resolver exposed unauthorized group: $resolver_group"
 fi
 
-wrong_identity_exports="$(
+expect_fail_contains \
+  "workspace resolver rejects mismatched explicit identity key before permission fallback" \
+  "actor identity is not uniquely mapped in workspace/admin/permissions.md" \
   bash "$ROOT/bin/knot-workspace.sh" \
     --root "$TEST_ROOT" \
     --platform feishu \
@@ -288,15 +295,6 @@ wrong_identity_exports="$(
     --identity-key feishu:user:wrong \
     --name Attacker \
     --no-create
-)"
-wrong_identity_user="$(workspace_export KNOT_ACTIVE_WORKSPACE "$wrong_identity_exports")"
-wrong_identity_group="$(workspace_export KNOT_GROUP_WORKSPACE "$wrong_identity_exports")"
-if [ "$wrong_identity_user" != "$TEST_ROOT/workspace/users/attacker-user" ] &&
-  [ -z "$wrong_identity_group" ]; then
-  ok "workspace resolver rejects mismatched explicit identity key before permission fallback"
-else
-  fail "workspace resolver resolved permissions row with mismatched explicit identity key"
-fi
 
 mv "$TEST_ROOT/workspace/users/attacker-user/deliverables" "$TEST_ROOT/workspace/users/attacker-user/deliverables.real"
 mkdir -p "$TMP_PARENT/symlinked-deliverables"

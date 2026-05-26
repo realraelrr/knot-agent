@@ -1,7 +1,7 @@
 # Knot Agent Workspace
 
 Codex sessions for Knot start from this directory, except IM-triggered sessions
-that are launched from the active user workspace prepared by the IM glue layer.
+that are launched from the active workspace prepared by the IM glue layer.
 
 ## Layout
 
@@ -20,6 +20,8 @@ Important workspace paths:
 workspace/knowledge/             approved shared knowledge
 workspace/users/<user_slug>/     active user workspaces
 workspace/groups/<group_slug>/   explicit shared group workspaces
+workspace/groups/<group_slug>/work/<user_slug>/
+                                  group actor lanes for drafts and task state
 workspace/conversations/         IM source and audit metadata
 workspace/admin/                 permissions and knowledge feedback
 workspace/.state/tasks/          root-scoped recoverable task state
@@ -32,8 +34,9 @@ generated files, deliverables, or multi-step delivery. Pure Q&A and small local
 edits can run directly.
 
 When task state is needed, write it under `workspace/.state/tasks/<task_id>/`.
-For IM-triggered work, use
-`workspace/users/<user_slug>/.state/tasks/<task_id>/`.
+For IM-triggered direct chats, use
+`workspace/users/<user_slug>/.state/tasks/<task_id>/`. For IM-triggered group
+chats, use `workspace/groups/<group_slug>/work/<user_slug>/.state/tasks/<task_id>/`.
 
 Treat `.state` as temporary: deliver user-visible results, promote durable
 facts to `workspace/knowledge/` or admin audit records, and keep virtualenvs,
@@ -47,14 +50,26 @@ exports:
 
 ```text
 KNOT_ACTIVE_WORKSPACE
+KNOT_SCOPE
+KNOT_SCOPE_WORKSPACE
+KNOT_ACTOR_WORKSPACE
 KNOT_USER_WORKSPACE
 KNOT_GROUP_WORKSPACE
 KNOT_CONVERSATION_DIR
 ```
 
-The gateway should launch Codex from `KNOT_ACTIVE_WORKSPACE`. Write to the
-active user workspace by default. Write to `KNOT_GROUP_WORKSPACE` only for
-explicit shared group assets.
+The gateway should launch Codex from `KNOT_ACTIVE_WORKSPACE`.
+
+- Direct chats use `KNOT_SCOPE=direct`; active, scope, and actor workspace all
+  point to `workspace/users/<user_slug>`.
+- Authorized group chats use `KNOT_SCOPE=group`; active and scope workspace
+  point to `workspace/groups/<group_slug>`, while `KNOT_ACTOR_WORKSPACE` points
+  to `workspace/groups/<group_slug>/work/<user_slug>`.
+
+In group scope, read the current group workspace as shared context. Put drafts,
+task state, and process files in `KNOT_ACTOR_WORKSPACE`; final group-facing
+deliverables go to the current group `deliverables/` directory through the
+delivery helper. The actor lane is an agent protocol, not OS-level isolation.
 
 `workspace/conversations/<platform>/chat_<hash>/` is source and audit metadata
 only. It is never a Codex cwd, work directory, deliverables directory, or task
@@ -68,8 +83,8 @@ workspace routing.
 
 Read the permissions file before actions that modify system files, modify
 durable knowledge, edit admin files, access another user's workspace, access a
-group workspace, or send files outside the active user or explicit current
-group deliverables.
+group workspace, or send files outside the current direct user or authorized
+current group deliverables.
 
 ## Knowledge
 
@@ -80,8 +95,8 @@ fact. Material knowledge changes require admin approval, a visible diff, and a
 
 ## Delivery
 
-Final user-facing files go under the active user or explicit current group
-`deliverables/` directory. Generation is not delivery.
+Final user-facing files go under the active direct user or current authorized
+group `deliverables/` directory. Generation is not delivery.
 
 Use `bin/knot-deliver.sh` to copy generated artifacts into the correct
 deliverables directory. Use `bin/knot-attachment.sh` to validate an
