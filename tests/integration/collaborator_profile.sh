@@ -64,8 +64,10 @@ pack_collaborator_profile() {
     --user-id "ou/direct-user" \
     --identity-key "feishu:user:direct" \
     --actor-user direct-user \
+    --scope direct \
     --active-workspace "$profile_user_workspace" \
     --user-workspace "$profile_user_workspace" \
+    --actor-workspace "$profile_user_workspace" \
     --conversation-dir "$profile_conversation_dir"
 }
 
@@ -78,8 +80,10 @@ apply_collaborator_profile_patch() {
     --user-id "ou/direct-user" \
     --identity-key "feishu:user:direct" \
     --actor-user direct-user \
+    --scope direct \
     --active-workspace "$profile_user_workspace" \
     --user-workspace "$profile_user_workspace" \
+    --actor-workspace "$profile_user_workspace" \
     --conversation-dir "$profile_conversation_dir"
 }
 
@@ -217,6 +221,85 @@ elif [ "$(file_sha256 "$profile_file")" = "$before_group_apply_hash" ] &&
 else
   fail "collaborator profile group scope apply did not preserve target and audit"
 fi
+
+before_implicit_group_pack_denials="$(profile_denied_count "$profile_conversation_dir" collab.profile.pack.denied collab_profile_workspace_mismatch)"
+if env KNOT_SCOPE= bash "$ROOT/bin/knot-collaborator-profile-pack.sh" pack \
+  --root "$profile_root" \
+  --platform feishu \
+  --chat-id "oc/direct-profile" \
+  --user-id "ou/direct-user" \
+  --identity-key "feishu:user:direct" \
+  --actor-user direct-user \
+  --group-slug profile-group \
+  --active-workspace "$profile_user_workspace" \
+  --user-workspace "$profile_user_workspace" \
+  --conversation-dir "$profile_conversation_dir" >/dev/null 2>&1; then
+  fail "collaborator profile pack inferred direct scope despite group slug"
+elif [ "$(profile_denied_count "$profile_conversation_dir" collab.profile.pack.denied collab_profile_workspace_mismatch)" -gt "$before_implicit_group_pack_denials" ]; then
+  ok "collaborator profile pack rejects missing scope with group slug"
+else
+  fail "collaborator profile pack missing-scope group slug denial was not audited"
+fi
+
+before_direct_group_pack_denials="$(profile_denied_count "$profile_conversation_dir" collab.profile.pack.denied collab_profile_workspace_mismatch)"
+if bash "$ROOT/bin/knot-collaborator-profile-pack.sh" pack \
+  --root "$profile_root" \
+  --platform feishu \
+  --chat-id "oc/direct-profile" \
+  --user-id "ou/direct-user" \
+  --identity-key "feishu:user:direct" \
+  --actor-user direct-user \
+  --group-slug profile-group \
+  --scope direct \
+  --active-workspace "$profile_user_workspace" \
+  --user-workspace "$profile_user_workspace" \
+  --conversation-dir "$profile_conversation_dir" >/dev/null 2>&1; then
+  fail "collaborator profile pack allowed direct scope with group slug"
+elif [ "$(profile_denied_count "$profile_conversation_dir" collab.profile.pack.denied collab_profile_workspace_mismatch)" -gt "$before_direct_group_pack_denials" ]; then
+  ok "collaborator profile pack rejects direct scope with group slug"
+else
+  fail "collaborator profile pack direct-scope group slug denial was not audited"
+fi
+
+implicit_group_apply_backup="$profile_dir/.implicit-group-apply.backup"
+cp "$profile_file" "$implicit_group_apply_backup"
+implicit_group_base="$(file_sha256 "$profile_file")"
+cat > "$profile_patch_file" <<EOF
+target: $profile_target_rel
+base_sha256: $implicit_group_base
+
+--- a/$profile_target_rel
++++ b/$profile_target_rel
+@@ -3,1 +3,2 @@
+ - Prefers concise status updates with concrete verification evidence.
++- implicit group scope must not write profile changes.
+EOF
+before_implicit_group_apply_denials="$(profile_denied_count "$profile_conversation_dir" collab.profile.patch.denied collab_profile_workspace_mismatch)"
+if env KNOT_SCOPE= bash "$ROOT/bin/knot-collaborator-profile-apply.sh" apply \
+  --root "$profile_root" \
+  --patch "$profile_patch_file" \
+  --platform feishu \
+  --chat-id "oc/direct-profile" \
+  --user-id "ou/direct-user" \
+  --identity-key "feishu:user:direct" \
+  --actor-user direct-user \
+  --group-slug profile-group \
+  --active-workspace "$profile_user_workspace" \
+  --user-workspace "$profile_user_workspace" \
+  --conversation-dir "$profile_conversation_dir" >/dev/null 2>&1; then
+  fail "collaborator profile apply inferred direct scope despite group slug"
+  mv "$implicit_group_apply_backup" "$profile_file"
+  chmod 600 "$profile_file"
+elif [ "$(file_sha256 "$profile_file")" = "$implicit_group_base" ] &&
+  [ "$(profile_denied_count "$profile_conversation_dir" collab.profile.patch.denied collab_profile_workspace_mismatch)" -gt "$before_implicit_group_apply_denials" ]; then
+  ok "collaborator profile apply rejects missing scope with group slug"
+  rm -f "$implicit_group_apply_backup"
+else
+  fail "collaborator profile apply missing-scope group slug denial did not preserve target and audit"
+  mv "$implicit_group_apply_backup" "$profile_file"
+  chmod 600 "$profile_file"
+fi
+eval "$profile_workspace_exports"
 
 assert_profile_pack_denied_existing_content() {
   local label="$1"

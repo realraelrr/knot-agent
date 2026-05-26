@@ -22,10 +22,9 @@ CONVERSATION_DIR="${KNOT_CONVERSATION_DIR:-}"
 ACTIVE_WORKSPACE="${KNOT_ACTIVE_WORKSPACE:-}"
 USER_WORKSPACE="${KNOT_USER_WORKSPACE:-}"
 ACTOR_WORKSPACE="${KNOT_ACTOR_WORKSPACE:-}"
-SCOPE="${KNOT_SCOPE:-direct}"
+SCOPE="${KNOT_SCOPE:-}"
 PATCH_PATH=""
 EXPLICIT_ACTOR_WORKSPACE=0
-EXPLICIT_SCOPE=0
 TMP_OUTPUT=""
 TMP_DIFF=""
 TMP_BACKUP=""
@@ -149,7 +148,6 @@ while [ "$#" -gt 0 ]; do
       shift
       [ "$#" -gt 0 ] || die "--scope requires a value"
       SCOPE="$1"
-      EXPLICIT_SCOPE=1
       ;;
     --active-workspace)
       shift
@@ -196,18 +194,6 @@ if [ -L "$ROOT" ]; then
 fi
 ROOT="$(cd "$ROOT" && pwd -P)"
 ROOT_REAL="$ROOT"
-
-if [ "$EXPLICIT_SCOPE" -eq 0 ] && [ -n "$ACTIVE_WORKSPACE" ] && [ -n "$USER_WORKSPACE" ]; then
-  ACTIVE_WORKSPACE_CHECK="$(absolute_path "$ACTIVE_WORKSPACE" 2>/dev/null || true)"
-  USER_WORKSPACE_CHECK="$(absolute_path "$USER_WORKSPACE" 2>/dev/null || true)"
-  if [ -n "$ACTIVE_WORKSPACE_CHECK" ] && [ "$ACTIVE_WORKSPACE_CHECK" = "$USER_WORKSPACE_CHECK" ]; then
-    SCOPE="direct"
-    GROUP_SLUG=""
-    if [ "$EXPLICIT_ACTOR_WORKSPACE" -eq 0 ]; then
-      ACTOR_WORKSPACE="$USER_WORKSPACE"
-    fi
-  fi
-fi
 
 collab_profile_validate_actor_scope
 

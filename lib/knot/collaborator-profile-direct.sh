@@ -155,7 +155,12 @@ collab_profile_validate_actor_scope() {
 
   [ -n "$USER_SLUG" ] ||
     collab_profile_deny collab_profile_identity_unresolved "--actor-user or KNOT_ACTOR_USER is required"
-  SCOPE="${SCOPE:-direct}"
+  if [ -z "${SCOPE:-}" ]; then
+    if [ -n "$GROUP_SLUG" ]; then
+      collab_profile_deny collab_profile_workspace_mismatch "group slug requires explicit group scope"
+    fi
+    SCOPE="direct"
+  fi
   validate_slug "--actor-user" "$USER_SLUG"
   [ -z "$GROUP_SLUG" ] || validate_slug "--group-slug" "$GROUP_SLUG"
   case "$SCOPE" in
@@ -165,6 +170,9 @@ collab_profile_validate_actor_scope() {
       collab_profile_deny collab_profile_workspace_mismatch "KNOT_SCOPE must be direct or group"
       ;;
   esac
+  if [ "$SCOPE" = "direct" ] && [ -n "$GROUP_SLUG" ]; then
+    collab_profile_deny collab_profile_workspace_mismatch "direct scope cannot include a group slug"
+  fi
   collab_profile_validate_permissions_actor_scope
 
   expected_user_workspace="$ROOT/workspace/users/$USER_SLUG"
@@ -177,6 +185,9 @@ collab_profile_validate_actor_scope() {
       collab_profile_deny collab_profile_workspace_mismatch "group workspace is not authorized for this actor/context"
     expected_group_workspace="$ROOT/workspace/groups/$GROUP_SLUG"
     expected_actor_workspace="$expected_group_workspace/work/$USER_SLUG"
+  fi
+  if [ "$SCOPE" = "direct" ] && [ "${EXPLICIT_ACTOR_WORKSPACE:-0}" -eq 0 ]; then
+    ACTOR_WORKSPACE="$expected_actor_workspace"
   fi
 
   [ -n "$USER_WORKSPACE" ] ||
