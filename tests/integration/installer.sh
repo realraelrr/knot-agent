@@ -3,7 +3,9 @@
 
 # Depends on integration-common.sh creating TMP_PARENT.
 install_root="$TMP_PARENT/install-root"
-mkdir -p "$install_root/.skills/knot-setup" "$install_root/.skills/knot-workflow"
+mkdir -p "$install_root/.skills/knot-setup" \
+  "$install_root/.skills/knot-workflow" \
+  "$install_root/.skills/knot-collaborator-profile"
 cp -R "$ROOT/bin" "$install_root/bin"
 cp -R "$ROOT/lib" "$install_root/lib"
 cp -R "$ROOT/checks" "$install_root/checks"
@@ -12,6 +14,7 @@ cp "$ROOT/AGENTS.md" "$install_root/AGENTS.md"
 cp "$ROOT/components.lock" "$install_root/components.lock"
 cp "$ROOT/.gitignore" "$install_root/.gitignore"
 printf '%s\n' 'name: knot-workflow' > "$install_root/.skills/knot-workflow/SKILL.md"
+printf '%s\n' 'name: knot-collaborator-profile' > "$install_root/.skills/knot-collaborator-profile/SKILL.md"
 mkdir -p \
   "$install_root/components/planning-with-files/.codex/skills/planning-with-files" \
   "$install_root/components/docling-skill/.codex/skills/docling-skill" \
@@ -39,6 +42,7 @@ if CODEX_HOME="$install_root/codex-home" bash "$install_root/bin/knot-install.sh
     [ "$(readlink "$install_root/codex-home/skills/docling-skill")" = "$install_root/components/docling-skill/.codex/skills/docling-skill" ] &&
     [ "$(readlink "$install_root/codex-home/skills/md-for-human")" = "$install_root/components/md-for-human/.codex/skills/md-for-human" ] &&
     [ "$(readlink "$install_root/codex-home/skills/handoff")" = "$install_root/components/handoff-skill/.codex/skills/handoff" ] &&
+    [ "$(readlink "$install_root/codex-home/skills/knot-collaborator-profile")" = "$install_root/.skills/knot-collaborator-profile" ] &&
     [ ! -x "$install_root/lib/knot/core.sh" ]; then
     ok "knot-install smoke test creates deterministic local scaffold"
   else
@@ -51,6 +55,7 @@ fi
 repair_root="$TMP_PARENT/repair-root"
 mkdir -p "$repair_root/.skills/knot-setup" \
   "$repair_root/.skills/knot-workflow" \
+  "$repair_root/.skills/knot-collaborator-profile" \
   "$repair_root/workspace/admin" \
   "$repair_root/codex-home"
 cp -R "$ROOT/bin" "$repair_root/bin"
@@ -61,6 +66,7 @@ cp "$ROOT/AGENTS.md" "$repair_root/AGENTS.md"
 cp "$ROOT/components.lock" "$repair_root/components.lock"
 cp "$ROOT/.gitignore" "$repair_root/.gitignore"
 printf '%s\n' 'name: knot-workflow' > "$repair_root/.skills/knot-workflow/SKILL.md"
+printf '%s\n' 'name: knot-collaborator-profile' > "$repair_root/.skills/knot-collaborator-profile/SKILL.md"
 printf '%s\n' 'custom global instructions' > "$repair_root/codex-home/AGENTS.md"
 printf '%s\n' 'custom permissions' > "$repair_root/workspace/admin/permissions.md"
 printf '%s\n' 'custom feedback' > "$repair_root/workspace/admin/knowledge-feedback.md"

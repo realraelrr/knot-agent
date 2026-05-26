@@ -43,7 +43,7 @@ ROOT="$(cd "$ROOT" && pwd)" || {
 . "$ROOT/tests/lib/integration-common.sh"
 
 # Suites are orchestrated in this order and are not standalone entrypoints.
-for suite in workspace memory delivery operations installer docs; do
+for suite in workspace collaborator_profile delivery operations installer docs; do
   # shellcheck source=/dev/null
   . "$ROOT/tests/integration/$suite.sh"
 done

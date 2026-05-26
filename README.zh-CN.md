@@ -39,6 +39,7 @@ Knot 只收窄四类企业集成流：IM 消息、文件、知识和审计证据
 - IM smoke 测试：[`docs/ops/im-smoke-sop.md`](docs/ops/im-smoke-sop.md)
 - 安全模型：[`docs/security/security-model.md`](docs/security/security-model.md)
 - 审计事件 schema：[`docs/schemas/audit-event.schema.json`](docs/schemas/audit-event.schema.json)
+- 协作档案：[`docs/architecture/collaborator-profile.md`](docs/architecture/collaborator-profile.md)
 
 ## License
 

@@ -16,9 +16,9 @@ Classify the request before acting:
 - **Knowledge query**: the user asks what the organization knows or what a source says.
 - **Execution task**: the user wants analysis, drafting, PPT, HTML, file generation, research, automation, or operations work.
 - **IM delivery**: the user wants a local file or image sent back through chat.
-- **Memory context**: the task depends on actor working memory, memory-pack
-  context, cross-platform IM continuity, or memory update planning; use
-  `knot-memory`.
+- **Collaborator profile**: the task depends on the human collaborator's
+  communication style, work habits, repeated corrections, or stable personal
+  workflow cues; use `knot-collaborator-profile`.
 
 Use the lightest execution weight that fits:
 
@@ -59,8 +59,10 @@ task crosses an authorization boundary.
   missing or stale, say so and, when allowed, propose a feedback or update path.
 - Wiki maintenance: use available wiki maintenance skills only when the task
   calls for them.
-- Memory context: use `knot-memory`. It owns agent-side memory usage. Do not
-  inline memory protocol details here.
+- Collaborator profile: use `knot-collaborator-profile` only for personal
+  collaboration preferences and corrections. Enterprise facts belong in
+  reusable knowledge, task progress belongs in task planning, and reusable
+  operations belong in workflow skill or SOP candidates.
 - User-facing deliverables: use the available spreadsheet, document,
   presentation, PDF, web deck, or Markdown-rendering skill that matches the
   requested output. Use conversion skills instead when the goal is extraction,
@@ -77,6 +79,19 @@ task crosses an authorization boundary.
 - Knowledge feedback from members: append a row to
   `workspace/admin/knowledge-feedback.md`. Durable changes need `Diff`,
   `Status`, and `Execution` before writing knowledge.
+
+## Learning Routes
+
+- Personal collaboration style, repeated corrections, and stable individual
+  work preferences may update the collaborator profile through
+  `knot-collaborator-profile`.
+- Enterprise knowledge, policies, facts, and source-backed decisions go through
+  `llm-wiki` and the existing knowledge feedback/review path.
+- Single-task progress, intermediate decisions, blockers, and handoff state go
+  through `planning-with-files` when task tracking is needed.
+- Reusable business procedures and delivery standards become workflow skill or
+  SOP candidates with a human-reviewable diff. Do not silently change core
+  skills from an IM session.
 
 ## Storage Rules
 
@@ -126,8 +141,8 @@ authorization.
 
 ## Boundaries
 
-- The wiki is memory and reference material, not the boundary of what Codex can
-  do.
+- The wiki is durable knowledge and reference material, not the boundary of
+  what Codex can do.
 - Do not turn Knot into a static pipeline. Choose the shortest reliable path
   for the request.
 - Keep conversion and wiki ingest decoupled.

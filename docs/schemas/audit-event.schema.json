@@ -44,10 +44,10 @@
         "recovery.prompt_sent",
         "recovery.completed",
         "recovery.failed",
-        "memory.pack.generated",
-        "memory.pack.denied",
-        "memory.patch.applied",
-        "memory.patch.denied"
+        "collab.profile.pack.generated",
+        "collab.profile.pack.denied",
+        "collab.profile.patch.applied",
+        "collab.profile.patch.denied"
       ]
     },
     "platform": {
@@ -99,12 +99,12 @@
         "send_failed",
         "recovery_empty",
         "write_failed",
-        "memory_identity_unresolved",
-        "memory_identity_ambiguous",
-        "memory_workspace_mismatch",
-        "memory_patch_invalid",
-        "memory_patch_conflict",
-        "memory_content_denied"
+        "collab_profile_identity_unresolved",
+        "collab_profile_identity_ambiguous",
+        "collab_profile_workspace_mismatch",
+        "collab_profile_patch_invalid",
+        "collab_profile_patch_conflict",
+        "collab_profile_content_denied"
       ]
     },
     "resource_kind": {

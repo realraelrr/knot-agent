@@ -6,8 +6,8 @@ DEFAULT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT="${KNOT_ROOT:-$DEFAULT_ROOT}"
 # shellcheck source=lib/knot/core.sh
 . "$DEFAULT_ROOT/lib/knot/core.sh"
-# shellcheck source=lib/knot/memory-direct.sh
-. "$DEFAULT_ROOT/lib/knot/memory-direct.sh"
+# shellcheck source=lib/knot/collaborator-profile-direct.sh
+. "$DEFAULT_ROOT/lib/knot/collaborator-profile-direct.sh"
 
 COMMAND="${1:-}"
 [ "$#" -eq 0 ] || shift
@@ -24,12 +24,13 @@ USER_WORKSPACE="${KNOT_USER_WORKSPACE:-}"
 PATCH_PATH=""
 TMP_OUTPUT=""
 TMP_DIFF=""
+TMP_BACKUP=""
 LOCK_DIR=""
 LOCK_HELD=0
 
 usage() {
   cat <<'EOF'
-Usage: bash bin/knot-memory-apply.sh apply --patch FILE --actor-user SLUG --active-workspace DIR --user-workspace DIR [options]
+Usage: bash bin/knot-collaborator-profile-apply.sh apply --patch FILE --actor-user SLUG --active-workspace DIR --user-workspace DIR [options]
 
 Options:
   --root DIR
@@ -50,40 +51,25 @@ EOF
 cleanup() {
   [ -z "$TMP_OUTPUT" ] || rm -f "$TMP_OUTPUT"
   [ -z "$TMP_DIFF" ] || rm -f "$TMP_DIFF"
+  [ -z "$TMP_BACKUP" ] || rm -f "$TMP_BACKUP"
   if [ "$LOCK_HELD" -eq 1 ]; then
     rmdir "$LOCK_DIR" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT HUP INT TERM
 
-memory_deny() {
+collab_profile_deny() {
   local reason_code="$1"
   local message="$2"
 
-  knot_audit_record memory.patch.denied denied "$reason_code" || true
+  knot_audit_record collab.profile.patch.denied denied "$reason_code" || true
   die "$message"
 }
 
-validate_patch_content() {
-  local path="$1"
-  local source_block_pattern='^[[:space:]]*```[[:space:]]*(transcript|chat[-_ ]?log|conversation[-_ ]?log|source[-_ ]?document)'
-  local secret_pattern='^[[:space:]]*(export[[:space:]]+)?(api[_-]?key|access[_-]?token|auth[_-]?token|secret|password|bearer[_-]?token)[[:space:]]*[:=][[:space:]]*[^[:space:]]+'
-
-  if grep -Eiq "$source_block_pattern" "$path"; then
-    memory_deny memory_content_denied "memory patch contains a transcript or source-document block"
-  fi
-  if grep -Eiq "$secret_pattern" "$path"; then
-    memory_deny memory_content_denied "memory patch contains a secrets-looking assignment"
-  fi
-  if grep -Fq '<!-- knot:restricted' "$path"; then
-    memory_deny memory_content_denied "restricted memory markers are not implemented yet"
-  fi
-}
-
 acquire_apply_lock() {
-  LOCK_DIR="$USER_WORKSPACE/.knot/memory-apply.lock"
+  LOCK_DIR="$USER_WORKSPACE/.knot/collaborator-profile-apply.lock"
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    memory_deny memory_patch_conflict "another memory patch apply is already in progress"
+    collab_profile_deny collab_profile_patch_conflict "another collaborator profile patch apply is already in progress"
   fi
   LOCK_HELD=1
 }
@@ -188,74 +174,81 @@ done
 if [ -L "$ROOT" ]; then
   ROOT="$(cd "$ROOT" && pwd -P)" || die "cannot resolve Knot root"
   ROOT_REAL="$ROOT"
-  memory_deny symlink_denied "Knot root must not be a symlink"
+  collab_profile_deny symlink_denied "Knot root must not be a symlink"
 fi
 ROOT="$(cd "$ROOT" && pwd -P)"
 ROOT_REAL="$ROOT"
 
-memory_validate_direct_scope
+collab_profile_validate_actor_scope
 
-[ -n "$PATCH_PATH" ] || memory_deny memory_patch_invalid "--patch is required"
-memory_deny_if_symlink "$USER_WORKSPACE/memory" "user memory"
-memory_deny_if_symlink "$USER_WORKSPACE/.knot" "user runtime context"
-memory_deny_if_symlink "$PATCH_PATH" "memory patch proposal"
-[ -f "$PATCH_PATH" ] || memory_deny memory_patch_invalid "memory patch proposal is not a file"
+[ -n "$PATCH_PATH" ] || collab_profile_deny collab_profile_patch_invalid "--patch is required"
+collab_profile_deny_if_symlink "$USER_WORKSPACE/collaboration" "collaboration profile"
+collab_profile_deny_if_symlink "$USER_WORKSPACE/.knot" "user runtime context"
+collab_profile_deny_if_symlink "$PATCH_PATH" "collaborator profile patch proposal"
+[ -f "$PATCH_PATH" ] || collab_profile_deny collab_profile_patch_invalid "collaborator profile patch proposal is not a file"
 
 PATCH_PATH="$(absolute_path "$PATCH_PATH")" ||
-  memory_deny memory_patch_invalid "cannot resolve memory patch proposal"
-EXPECTED_PATCH_PATH="$(absolute_path "$USER_WORKSPACE/.knot/memory-patch.md")" ||
-  memory_deny memory_patch_invalid "cannot resolve expected memory patch proposal"
+  collab_profile_deny collab_profile_patch_invalid "cannot resolve collaborator profile patch proposal"
+EXPECTED_PATCH_PATH="$(absolute_path "$USER_WORKSPACE/.knot/collaborator-profile.patch")" ||
+  collab_profile_deny collab_profile_patch_invalid "cannot resolve expected collaborator profile patch proposal"
 [ "$PATCH_PATH" = "$EXPECTED_PATCH_PATH" ] ||
-  memory_deny memory_patch_invalid "memory patch proposal must be in the active runtime context"
+  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch proposal must be in the active runtime context"
 chmod 600 "$PATCH_PATH"
 acquire_apply_lock
 
 TARGET_REL="$(sed -n '1s/^target: //p' "$PATCH_PATH")"
 BASE_SHA256="$(sed -n '2s/^base_sha256: //p' "$PATCH_PATH")"
 [ "$(sed -n '3p' "$PATCH_PATH")" = "" ] ||
-  memory_deny memory_patch_invalid "memory patch metadata must be followed by a blank line"
+  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch metadata must be followed by a blank line"
 [ -n "$TARGET_REL" ] ||
-  memory_deny memory_patch_invalid "memory patch target is missing"
+  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch target is missing"
 printf '%s' "$BASE_SHA256" | grep -Eq '^[0-9a-f]{64}$' ||
-  memory_deny memory_patch_invalid "memory patch base_sha256 is invalid"
+  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch base_sha256 is invalid"
 
 case "$TARGET_REL" in
-  "workspace/users/$USER_SLUG/memory/active.md"|"workspace/users/$USER_SLUG/memory/followups.md")
+  "workspace/users/$USER_SLUG/collaboration/profile.md")
     ;;
   *)
-    memory_deny memory_patch_invalid "memory patch target is not an allowed direct-chat write target"
+    collab_profile_deny collab_profile_patch_invalid "collaborator profile patch target is not the actor profile"
     ;;
 esac
 
 [ "$(sed -n '4p' "$PATCH_PATH")" = "--- a/$TARGET_REL" ] ||
-  memory_deny memory_patch_invalid "memory patch source header does not match target"
+  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch source header does not match target"
 [ "$(sed -n '5p' "$PATCH_PATH")" = "+++ b/$TARGET_REL" ] ||
-  memory_deny memory_patch_invalid "memory patch destination header does not match target"
+  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch destination header does not match target"
 
 TARGET_PATH="$ROOT/$TARGET_REL"
-memory_deny_if_symlink "$TARGET_PATH" "memory patch target"
+collab_profile_deny_if_symlink "$TARGET_PATH" "collaborator profile patch target"
 [ -f "$TARGET_PATH" ] ||
-  memory_deny memory_patch_invalid "memory patch target is not an existing file"
+  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch target is not an existing file"
 [ "$(file_sha256 "$TARGET_PATH")" = "$BASE_SHA256" ] ||
-  memory_deny memory_patch_conflict "memory patch base hash no longer matches target"
-if grep -Fq '<!-- knot:restricted' "$PATCH_PATH"; then
-  memory_deny memory_content_denied "restricted memory marker edits are not implemented yet"
-fi
+  collab_profile_deny collab_profile_patch_conflict "collaborator profile patch base hash no longer matches target"
 
-TMP_DIFF="$(mktemp "$USER_WORKSPACE/.knot/.memory-patch.diff.XXXXXX")"
-TMP_OUTPUT="$(mktemp "$USER_WORKSPACE/memory/.memory-apply.md.XXXXXX")"
+TMP_DIFF="$(mktemp "$USER_WORKSPACE/.knot/.collaborator-profile.patch.diff.XXXXXX")"
+TMP_OUTPUT="$(mktemp "$USER_WORKSPACE/collaboration/.collaborator-profile-apply.md.XXXXXX")"
 chmod 600 "$TMP_DIFF" "$TMP_OUTPUT"
 tail -n +4 "$PATCH_PATH" > "$TMP_DIFF"
 
 if ! /usr/bin/patch -s -f -F 0 -o "$TMP_OUTPUT" "$TARGET_PATH" "$TMP_DIFF" >/dev/null 2>&1; then
-  memory_deny memory_patch_invalid "memory patch is not an applicable unified diff"
+  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch is not an applicable unified diff"
 fi
 
-validate_patch_content "$TMP_OUTPUT"
+collab_profile_validate_content "$TMP_OUTPUT"
+TMP_BACKUP="$(mktemp "$USER_WORKSPACE/collaboration/.collaborator-profile-before.md.XXXXXX")"
+cp "$TARGET_PATH" "$TMP_BACKUP"
+chmod 600 "$TMP_BACKUP"
 atomic_replace "$TMP_OUTPUT" "$TARGET_PATH" ||
-  memory_deny write_failed "cannot atomically replace memory target"
+  collab_profile_deny write_failed "cannot atomically replace collaborator profile"
 TMP_OUTPUT=""
 chmod 600 "$TARGET_PATH"
 
-knot_audit_record memory.patch.applied recorded || true
+if ! knot_audit_record collab.profile.patch.applied recorded; then
+  atomic_replace "$TMP_BACKUP" "$TARGET_PATH" ||
+    die "cannot restore collaborator profile after audit failure"
+  TMP_BACKUP=""
+  die "cannot record collaborator profile patch apply event"
+fi
+rm -f "$TMP_BACKUP"
+TMP_BACKUP=""
 printf '%s\n' "$TARGET_PATH"

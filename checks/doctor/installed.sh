@@ -182,6 +182,7 @@ run_skill_link_checks() {
   check_skill_link "handoff" "$ROOT/components/handoff-skill/.codex/skills/handoff"
   check_skill_link "knot-setup" "$ROOT/.skills/knot-setup"
   check_skill_link "knot-workflow" "$ROOT/.skills/knot-workflow"
+  check_skill_link "knot-collaborator-profile" "$ROOT/.skills/knot-collaborator-profile"
   check_skill_link "wiki-ingest" "$ROOT/components/obsidian-wiki/.skills/wiki-ingest"
   check_skill_link "wiki-query" "$ROOT/components/obsidian-wiki/.skills/wiki-query"
   check_skill_link "wiki-status" "$ROOT/components/obsidian-wiki/.skills/wiki-status"

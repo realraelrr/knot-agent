@@ -11,9 +11,10 @@ process sandbox, container boundary, or operating-system access-control layer.
 - **Codex session history:** Codex session history is the transcript source of
   truth for user and model messages.
 - **Knot helpers:** `bin/knot-workspace.sh`, `bin/knot-deliver.sh`,
-  `bin/knot-attachment.sh`, and `bin/knot-audit.sh` provide
-  deterministic workspace routing, delivery validation, and compact boundary
-  event records that follow `docs/schemas/audit-event.schema.json`.
+  `bin/knot-attachment.sh`, `bin/knot-collaborator-profile-pack.sh`,
+  `bin/knot-collaborator-profile-apply.sh`, and `bin/knot-audit.sh` provide
+  deterministic workspace routing, delivery/profile validation, and compact
+  boundary event records that follow `docs/schemas/audit-event.schema.json`.
 - **Workspace data:** `workspace/users/<user_slug>/` is the default private
   working area for one actor. `workspace/groups/<group_slug>/` is for explicit
   shared group assets. `workspace/conversations/` is source and audit metadata,
@@ -43,7 +44,10 @@ In the default local setup, Knot's deterministic helpers reject:
 - attachments sourced from `workspace/conversations/`;
 - symlink escapes from current workspaces and deliverables directories;
 - static `KNOT_ACTIVE_WORKSPACE` runtime configuration;
-- component lockfile rows that point outside the pinned component layout.
+- component lockfile rows that point outside the pinned component layout;
+- collaborator profile snapshots or patches containing marked transcript/source
+  document blocks, secrets-looking assignments, or content beyond the bounded
+  profile size.
 
 ## What Knot Does Not Prevent
 

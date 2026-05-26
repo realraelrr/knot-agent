@@ -13,6 +13,7 @@ Back up durable data:
 - `checks/`
 - `.skills/knot-setup/`
 - `.skills/knot-workflow/`
+- `.skills/knot-collaborator-profile/`
 - `workspace/knowledge/`
 - `workspace/admin/`
 - workspace identity metadata:

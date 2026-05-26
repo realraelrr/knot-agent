@@ -92,6 +92,7 @@ stage_if_exists "lib"
 stage_if_exists "checks"
 stage_if_exists ".skills/knot-setup"
 stage_if_exists ".skills/knot-workflow"
+stage_if_exists ".skills/knot-collaborator-profile"
 stage_if_exists "workspace/knowledge"
 stage_if_exists "workspace/admin"
 stage_workspace_metadata
