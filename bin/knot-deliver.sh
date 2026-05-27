@@ -132,6 +132,11 @@ done
 require_knot_context
 [ -n "$KIND" ] || die "--kind is required"
 [ -n "$SOURCE_PATH" ] || die "--path is required"
+case "$SOURCE_PATH" in
+  *$'\n'*|*$'\r'*)
+    knot_delivery_deny deliver invalid_resource "$KIND" "$SOURCE_PATH" "$GROUP_SLUG"
+    ;;
+esac
 
 case "$KIND" in
   image|file)
@@ -148,6 +153,9 @@ if [ -n "$GROUP_SLUG" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$
 fi
 SOURCE_ABS="$(resolve_path "$SOURCE_PATH")" || die "cannot resolve file path: $SOURCE_PATH"
 SOURCE_LOCATION_ABS="$(absolute_path "$SOURCE_PATH")" || die "cannot resolve source path location: $SOURCE_PATH"
+if find "$SOURCE_ABS" -maxdepth 0 -type f -links +1 -print -quit | grep -q .; then
+  knot_delivery_deny deliver hardlink_denied "$KIND" "$SOURCE_PATH" "$GROUP_SLUG"
+fi
 
 WORKSPACE_ARGS=(--root "$ROOT" --platform "$PLATFORM" --user-id "$USER_ID" --user-slug "$USER_SLUG")
 [ -z "$CHAT_ID" ] || WORKSPACE_ARGS+=(--chat-id "$CHAT_ID")

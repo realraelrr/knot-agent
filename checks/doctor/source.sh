@@ -123,6 +123,7 @@ run_contract_checks() {
   check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "\`operator\`" "permissions template"
   check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "\`admin\`" "permissions template"
   check_file_contains "$ROOT/.skills/knot-setup/references/permissions.template.md" "\`member\`" "permissions template"
+  check_permissions_table_schema "$ROOT/.skills/knot-setup/references/permissions.template.md" "permissions template"
   check_file_contains "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "$KNOWLEDGE_FEEDBACK_HEADER" "knowledge feedback template"
   check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "## Scope" "backup policy template"
   check_file_contains "$ROOT/.skills/knot-setup/references/backup-policy.template.md" "## Rules" "backup policy template"

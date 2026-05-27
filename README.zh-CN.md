@@ -36,9 +36,11 @@ Knot 只收窄四类企业集成流：IM 消息、文件、知识和审计证据
 - 发布门禁：[`docs/ops/release-gate.md`](docs/ops/release-gate.md)
 - 组件同步：[`docs/ops/component-sync.md`](docs/ops/component-sync.md)
 - 部署输入：[`docs/ops/deployment-inputs.md`](docs/ops/deployment-inputs.md)
+- 部署等级：[`docs/ops/deployment-profiles.md`](docs/ops/deployment-profiles.md)
 - IM smoke 测试：[`docs/ops/im-smoke-sop.md`](docs/ops/im-smoke-sop.md)
 - 安全模型：[`docs/security/security-model.md`](docs/security/security-model.md)
 - 审计事件 schema：[`docs/schemas/audit-event.schema.json`](docs/schemas/audit-event.schema.json)
+- 审计事件语义：[`docs/schemas/audit-event-semantics.md`](docs/schemas/audit-event-semantics.md)
 - 工作风格：[`docs/architecture/working-style.md`](docs/architecture/working-style.md)
 
 ## License

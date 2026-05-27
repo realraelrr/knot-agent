@@ -51,6 +51,7 @@ mkdir -p \
   "$doc_root/.skills/working-style" \
   "$doc_root/.skills/knot-workflow" \
   "$doc_root/docs/ops" \
+  "$doc_root/docs/schemas" \
   "$doc_root/docs/security" \
   "$doc_root/workspace/admin"
 cp "$ROOT/checks/doctor/common.sh" "$doc_root/checks/doctor/common.sh"
@@ -63,6 +64,8 @@ cp "$ROOT/.skills/working-style/SKILL.md" "$doc_root/.skills/working-style/SKILL
 cp "$ROOT/.skills/knot-workflow/SKILL.md" "$doc_root/.skills/knot-workflow/SKILL.md"
 cp "$ROOT/.skills/knot-setup/references/"*.md "$doc_root/.skills/knot-setup/references/"
 cp "$ROOT/docs/ops/im-smoke-sop.md" "$doc_root/docs/ops/im-smoke-sop.md"
+cp "$ROOT/docs/ops/deployment-profiles.md" "$doc_root/docs/ops/deployment-profiles.md"
+cp "$ROOT/docs/schemas/audit-event-semantics.md" "$doc_root/docs/schemas/audit-event-semantics.md"
 cp "$ROOT/docs/security/security-model.md" "$doc_root/docs/security/security-model.md"
 cp "$ROOT/.skills/knot-setup/references/permissions.template.md" "$doc_root/workspace/admin/permissions.md"
 cp "$ROOT/.skills/knot-setup/references/knowledge-feedback.template.md" "$doc_root/workspace/admin/knowledge-feedback.md"
@@ -106,3 +109,24 @@ if run_workspace_doc_checks "$doc_root" 1 >/dev/null 2>&1; then
 else
   ok "strict-docs rejects altered installed advisory wording"
 fi
+
+permissions_before="$(mktemp "$TMP_PARENT/permissions-before.XXXXXX")"
+cp "$doc_root/workspace/admin/permissions.md" "$permissions_before"
+sed 's/| Example Admin | admin | knowledge |/| Example Admin | owner | knowledge |/' "$permissions_before" > "$doc_root/workspace/admin/permissions.md"
+if run_workspace_doc_checks "$doc_root" 0 >/dev/null 2>&1; then
+  fail "permissions schema allowed unknown role"
+else
+  ok "permissions schema rejects unknown role"
+fi
+cp "$permissions_before" "$doc_root/workspace/admin/permissions.md"
+
+cat >>"$doc_root/workspace/admin/permissions.md" <<'EOF'
+| Duplicate | duplicate | feishu | ou_duplicate | duplicate-group | oc_duplicate | feishu:user:duplicate | Duplicate | member | session | duplicate test |
+| Duplicate | duplicate | feishu | ou_duplicate | duplicate-group | oc_duplicate | feishu:user:duplicate | Duplicate | member | session | duplicate test |
+EOF
+if run_workspace_doc_checks "$doc_root" 0 >/dev/null 2>&1; then
+  fail "permissions schema allowed duplicate actor context"
+else
+  ok "permissions schema rejects duplicate actor context"
+fi
+cp "$permissions_before" "$doc_root/workspace/admin/permissions.md"

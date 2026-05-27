@@ -275,6 +275,32 @@ else
   ok "knot-deliver rejects runtime secret source"
 fi
 
+if ln "$tmp_root/runtime/.env" "$user_workspace/work/env-hardlink" 2>/dev/null; then
+  if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/direct delivery" --user-id "ou/test user" --user-slug "example-user" --kind file --path "$user_workspace/work/env-hardlink" >/dev/null 2>&1; then
+    fail "knot-deliver allowed hardlinked source"
+  else
+    ok "knot-deliver rejects hardlinked source"
+  fi
+  if ln "$tmp_root/runtime/.env" "$user_workspace/deliverables/env-hardlink.txt" 2>/dev/null &&
+    bash "$ROOT/bin/knot-attachment.sh" --root "$tmp_root" --platform feishu --chat-id "oc/direct delivery" --user-id "ou/test user" --user-slug "example-user" --kind file --path "$user_workspace/deliverables/env-hardlink.txt" >/dev/null 2>&1; then
+    fail "knot-attachment allowed hardlinked deliverable"
+  else
+    ok "knot-attachment rejects hardlinked deliverable"
+  fi
+else
+  ok "knot-deliver hardlink source test skipped because filesystem refused hardlink"
+  ok "knot-attachment hardlink deliverable test skipped because filesystem refused hardlink"
+fi
+
+newline_source="$user_workspace/work/newline
+name.txt"
+printf 'newline\n' > "$newline_source"
+if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/direct delivery" --user-id "ou/test user" --user-slug "example-user" --kind file --path "$newline_source" >/dev/null 2>&1; then
+  fail "knot-deliver allowed source path with newline"
+else
+  ok "knot-deliver rejects source path with newline"
+fi
+
 if bash "$ROOT/bin/knot-deliver.sh" --root "$tmp_root" --platform feishu --chat-id "oc/direct delivery" --user-id "ou/test user" --user-slug "example-user" --kind file --path "$tmp_root/workspace/admin/permissions.md" >/dev/null 2>&1; then
   fail "knot-deliver allowed admin metadata source"
 else

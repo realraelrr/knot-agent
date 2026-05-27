@@ -31,6 +31,13 @@ knot_delivery_message_for_reason_code() {
     invalid_resource)
       printf 'file not found: %s\n' "$resource_path"
       ;;
+    hardlink_denied)
+      if [ "$command" = "attachment" ]; then
+        printf 'attachment must not be a hardlink: %s\n' "$resource_path"
+      else
+        printf 'delivery source must not be a hardlink: %s\n' "$resource_path"
+      fi
+      ;;
     *)
       printf '%s\n' "$denied_message"
       ;;

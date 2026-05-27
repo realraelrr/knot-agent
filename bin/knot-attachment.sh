@@ -67,6 +67,11 @@ done
 require_knot_context
 [ -n "$KIND" ] || die "--kind is required"
 [ -n "$FILE_PATH" ] || die "--path is required"
+case "$FILE_PATH" in
+  *$'\n'*|*$'\r'*)
+    knot_delivery_deny attachment invalid_resource "$KIND" "$FILE_PATH" "$GROUP_SLUG"
+    ;;
+esac
 
 case "$KIND" in
   image|file)
@@ -106,6 +111,9 @@ fi
 
 ABS_FILE="$(resolve_path "$FILE_PATH")" || die "cannot resolve file path: $FILE_PATH"
 CONVERSATIONS_DIR="$(resolve_path "$ROOT/workspace/conversations" 2>/dev/null || true)"
+if find "$ABS_FILE" -maxdepth 0 -type f -links +1 -print -quit | grep -q .; then
+  knot_delivery_deny attachment hardlink_denied "$KIND" "$FILE_PATH" "$GROUP_SLUG"
+fi
 
 if [ -n "$CONVERSATIONS_DIR" ]; then
   case "$ABS_FILE" in

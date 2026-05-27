@@ -81,7 +81,7 @@ validate_reason_code() {
   local code="$1"
 
   case "$code" in
-    ""|already_initialized|conversation_context_missing|outside_deliverables|conversation_source_denied|unauthorized_group|symlink_denied|invalid_resource|send_failed|recovery_empty|write_failed|working_style_identity_unresolved|working_style_identity_ambiguous|working_style_workspace_mismatch|working_style_patch_invalid|working_style_patch_conflict|working_style_content_denied)
+    ""|already_initialized|conversation_context_missing|outside_deliverables|conversation_source_denied|unauthorized_group|symlink_denied|hardlink_denied|invalid_resource|attachment_read_failed|attachment_hash_mismatch|send_failed|recovery_empty|write_failed|working_style_identity_unresolved|working_style_identity_ambiguous|working_style_workspace_mismatch|working_style_patch_invalid|working_style_patch_conflict|working_style_content_denied)
       ;;
     *)
       die "unsupported reason code: $code"

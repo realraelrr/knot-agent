@@ -258,6 +258,7 @@ run_workspace_contract_checks() {
     check_file_contains "$WORKSPACE/admin/permissions.md" "\`operator\`" "permissions"
     check_file_contains "$WORKSPACE/admin/permissions.md" "\`admin\`" "permissions"
     check_file_contains "$WORKSPACE/admin/permissions.md" "\`member\`" "permissions"
+    check_permissions_table_schema "$WORKSPACE/admin/permissions.md" "permissions"
     check_file_contains_doc_lint "$WORKSPACE/admin/permissions.md" "agent operating contract, not a security sandbox" "permissions"
     check_file_contains_doc_lint "$WORKSPACE/admin/permissions.md" "Platform + Platform User ID" "permissions"
   fi
