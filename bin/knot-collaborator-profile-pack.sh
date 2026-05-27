@@ -76,6 +76,31 @@ write_profile_source() {
   printf '```\n\n'
 }
 
+initialize_structured_profile_if_empty() {
+  local path="$1"
+
+  [ -s "$path" ] && return 0
+  cat > "$path" <<EOF
+---
+version: 1
+updated: $(date -u '+%Y-%m-%d')
+reviewed:
+---
+# Collaborator Profile
+
+## Communication
+
+## Evidence And Review
+
+## Delivery
+
+## Recurring Workflows
+
+## Avoid
+EOF
+  chmod 600 "$path"
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root)
@@ -193,6 +218,7 @@ fi
 
 if [ "$SCOPE" = "direct" ]; then
   collab_profile_ensure_owner_only_file "$PROFILE_FILE"
+  initialize_structured_profile_if_empty "$PROFILE_FILE"
 elif [ -L "$PROFILE_FILE" ]; then
   collab_profile_deny symlink_denied "collaborator profile must not be a symlink: $PROFILE_FILE"
 fi

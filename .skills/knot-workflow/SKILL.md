@@ -52,8 +52,9 @@ task crosses an authorization boundary.
   use the actor's `workspace/users/<user_slug>` directory; authorized group
   chats use the current `workspace/groups/<group_slug>` directory.
 - Raw document to knowledge: use an available conversion skill when conversion
-  helps, write intermediates under `workspace/knowledge/processed/`, then use an
-  available knowledge-ingest skill for durable knowledge.
+  helps, write intermediates under the active workspace, then use an available
+  knowledge-ingest skill to produce a reviewable proposal. Durable knowledge is
+  approved through the GitHub-backed knowledge repo, not by direct local writes.
 - Direct knowledge ingest: use an available knowledge-ingest skill when the
   source is already clean text or Markdown. Do not force a conversion step.
 - Knowledge query: use an available knowledge-query skill first. If evidence is
@@ -77,8 +78,10 @@ task crosses an authorization boundary.
   the boundary and print the cc-connect attachment block. Do not answer with
   only a local path when the user asked to receive the file in IM.
 - Knowledge feedback from members: append a row to
-  `workspace/admin/knowledge-feedback.md`. Durable changes need `Diff`,
-  `Status`, and `Execution` before writing knowledge.
+  `workspace/admin/knowledge-feedback.md` and use `bin/knot-knowledge.sh propose`
+  to create a proposal bundle or PR source. Durable changes need
+  `Diff`, `Status`, and `Execution`; only explicit admins may run the approval
+  path.
 
 ## Learning Routes
 
@@ -86,9 +89,12 @@ task crosses an authorization boundary.
   work preferences may update the collaborator profile through
   `knot-collaborator-profile`.
 - Enterprise knowledge, policies, facts, and source-backed decisions go through
-  `llm-wiki` and the existing knowledge feedback/review path.
+  `llm-wiki` and the GitHub-backed knowledge feedback/review path. Knot runtime
+  should read only the approved main mirror or a pinned approved commit.
 - Single-task progress, intermediate decisions, blockers, and handoff state go
-  through `planning-with-files` when task tracking is needed.
+  through `planning-with-files` when task tracking is needed. Use
+  `bin/knot-planning.sh` so the task lands in the direct, group actor-lane, or
+  root `.state/tasks/` lifecycle.
 - Reusable business procedures and delivery standards become workflow skill or
   SOP candidates with a human-reviewable diff. Do not silently change core
   skills from an IM session.
@@ -101,8 +107,10 @@ task crosses an authorization boundary.
   `KNOT_ACTOR_WORKSPACE`, which is
   `workspace/groups/<group_slug>/work/<user_slug>`. The full current group
   workspace is readable shared context.
-- Approved long-term sources go under `workspace/knowledge/raw/`.
-- Extracted sidecars and OCR outputs go under `workspace/knowledge/processed/`.
+- Approved long-term knowledge lives in the configured GitHub knowledge repo;
+  `workspace/knowledge/vault/` is the default local approved mirror.
+- Extracted sidecars and OCR outputs stay separate from approved knowledge and
+  should remain in the active workspace until they become reviewable proposals.
 - Final user-facing files go under the active direct user's `deliverables/`, or
   the current authorized group `deliverables/` in group scope.
 - Direct-chat drafts and reusable working assets go under the active user
@@ -113,8 +121,8 @@ task crosses an authorization boundary.
   state root.
 - Do not put temporary work in the Knot root.
 - Treat `.state` as temporary: deliver user-facing results, promote durable
-  facts to `workspace/knowledge/` or admin audit records, and keep virtualenvs,
-  caches, and large intermediates out of it.
+  facts through the approved knowledge flow, and keep virtualenvs, caches, and
+  large intermediates out of it.
 
 ## Evidence Priority
 
@@ -124,7 +132,9 @@ task crosses an authorization boundary.
   instructions require external verification.
 - Clearly distinguish local knowledge from external evidence.
 - Do not write external claims into durable knowledge without admin approval and
-  a knowledge-feedback row with diff, status, and execution.
+  a knowledge-feedback row with diff, status, and execution. GitHub branch
+  protection and CODEOWNERS review are the hard durable-knowledge boundary;
+  local helpers are an audit and mistake-prevention layer.
 
 ## Backup Boundary
 

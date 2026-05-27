@@ -30,11 +30,19 @@ be marked blocked only when no second account exists.
 
 ## Knowledge And Admin Boundaries
 
+- GitHub knowledge repo URL:
+- Approved knowledge ref, normally `main`:
+- Local approved mirror path, normally `workspace/knowledge/vault/`:
+- Proposal remote or fork policy:
 - Who may approve durable knowledge changes:
 - Who may edit `workspace/admin/permissions.md`:
 - Who reviews `workspace/admin/knowledge-feedback.md`:
 - Which knowledge sources are approved for ingestion:
 - Which sources are explicitly out of scope:
+
+The deployment is not ready for durable knowledge writes until the knowledge
+repo has protected `main`, required review, required CI, and member/proposal
+credentials without approve, merge, or `main` write permission.
 
 ## Delivery Boundaries
 

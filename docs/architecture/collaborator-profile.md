@@ -40,6 +40,7 @@ workspace/users/<user_slug>/
   .knot/
     collaborator-profile-pack.md
     collaborator-profile.patch
+    collaborator-profile-conflicts.json
 
 workspace/groups/<group_slug>/work/<user_slug>/
   .knot/
@@ -57,6 +58,9 @@ session and is never a durable source.
 `.knot/collaborator-profile.patch` is temporary agent output. It is applied only
 through the deterministic helper.
 
+`.knot/collaborator-profile-conflicts.json` is a redacted lint sidecar for
+deterministic conflict hints. It must not contain full preference bullets.
+
 ## Profile Contents
 
 The profile records only durable collaboration cues:
@@ -70,6 +74,12 @@ The profile records only durable collaboration cues:
 
 The full rendered profile must stay under 1600 characters. Updates should merge
 or replace older bullets rather than append indefinitely.
+
+Structured profiles may use only `version`, `updated`, and `reviewed`
+frontmatter keys. Body sections are fixed to `Communication`,
+`Evidence And Review`, `Delivery`, `Recurring Workflows`, and `Avoid`, with at
+most five bullets per section. Profiles over 1200 characters should produce a
+compact recommendation, but compaction is still only a patch proposal.
 
 ## Runtime Flow
 
@@ -115,7 +125,7 @@ Helpers enforce the hard rules:
 - patches must include a matching `base_sha256`;
 - path traversal, absolute paths, symlinks, non-profile targets, malformed
   diffs, raw transcript blocks, source-document blocks, secrets-looking
-  additions, and oversized output are denied;
+  additions, invalid structured schema, and oversized output are denied;
 - apply uses temporary output in the same directory and atomic replacement;
 - successful pack generation and patch application require compact audit
   events; denied actions write audit events when the audit target is valid.

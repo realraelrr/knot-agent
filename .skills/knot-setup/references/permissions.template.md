@@ -38,6 +38,8 @@ Example row:
   `session`, or a department label such as `dept:after_sales`.
 - Members must not modify durable knowledge directly.
 - Members may append feedback to `knowledge-feedback.md`.
+- Knowledge approval requires an explicit `admin` role. `operator` does not
+  imply durable knowledge approval.
 - Admins record visible diffs, status, and execution before updating durable
   knowledge.
 - Operators handle system-level changes.

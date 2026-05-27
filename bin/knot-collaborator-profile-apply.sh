@@ -79,28 +79,6 @@ acquire_apply_lock() {
   LOCK_HELD=1
 }
 
-atomic_replace() {
-  local source="$1"
-  local target="$2"
-
-  python3 - "$source" "$target" <<'PY'
-import os
-import sys
-
-source, target = sys.argv[1:]
-with open(source, "rb+") as output:
-    output.flush()
-    os.fsync(output.fileno())
-os.chmod(source, 0o600)
-os.replace(source, target)
-directory = os.open(os.path.dirname(target), os.O_DIRECTORY)
-try:
-    os.fsync(directory)
-finally:
-    os.close(directory)
-PY
-}
-
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root)
@@ -254,21 +232,32 @@ if ! /usr/bin/patch -s -f -F 0 -o "$TMP_OUTPUT" "$TARGET_PATH" "$TMP_DIFF" >/dev
   collab_profile_deny collab_profile_patch_invalid "collaborator profile patch is not an applicable unified diff"
 fi
 
-collab_profile_validate_content "$TMP_OUTPUT"
+collab_profile_validate_content "$TMP_OUTPUT" write
 TMP_BACKUP="$(mktemp "$USER_WORKSPACE/collaboration/.collaborator-profile-before.md.XXXXXX")"
 cp "$TARGET_PATH" "$TMP_BACKUP"
 chmod 600 "$TMP_BACKUP"
-atomic_replace "$TMP_OUTPUT" "$TARGET_PATH" ||
+knot_atomic_replace "$TMP_OUTPUT" "$TARGET_PATH" ||
   collab_profile_deny write_failed "cannot atomically replace collaborator profile"
 TMP_OUTPUT=""
 chmod 600 "$TARGET_PATH"
 
 if ! knot_audit_record collab.profile.patch.applied recorded; then
-  atomic_replace "$TMP_BACKUP" "$TARGET_PATH" ||
+  knot_atomic_replace "$TMP_BACKUP" "$TARGET_PATH" ||
     die "cannot restore collaborator profile after audit failure"
   TMP_BACKUP=""
   die "cannot record collaborator profile patch apply event"
 fi
 rm -f "$TMP_BACKUP"
 TMP_BACKUP=""
+if [ -x "$KNOT_COMMAND_ROOT/bin/knot-collaborator-profile-lint.sh" ] &&
+  ! bash "$KNOT_COMMAND_ROOT/bin/knot-collaborator-profile-lint.sh" lint \
+    --root "$ROOT" \
+    --profile "$TARGET_PATH" \
+    --require-structured \
+    --write-sidecar \
+    --scope direct \
+    --actor-user "$USER_SLUG" \
+    --user-workspace "$USER_WORKSPACE" >/dev/null 2>&1; then
+  printf 'WARN collaborator profile applied but conflict sidecar refresh failed\n' >&2
+fi
 printf '%s\n' "$TARGET_PATH"

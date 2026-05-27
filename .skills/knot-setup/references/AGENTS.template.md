@@ -17,7 +17,7 @@ downloads, or outputs in the repository root.
 Important workspace paths:
 
 ```text
-workspace/knowledge/             approved shared knowledge
+workspace/knowledge/             approved knowledge mirror and local state
 workspace/users/<user_slug>/     active user workspaces
 workspace/groups/<group_slug>/   explicit shared group workspaces
 workspace/groups/<group_slug>/work/<user_slug>/
@@ -33,14 +33,15 @@ Use `knot-workflow` before Knot tasks that involve knowledge, IM, attachments,
 generated files, deliverables, or multi-step delivery. Pure Q&A and small local
 edits can run directly.
 
-When task state is needed, write it under `workspace/.state/tasks/<task_id>/`.
-For IM-triggered direct chats, use
-`workspace/users/<user_slug>/.state/tasks/<task_id>/`. For IM-triggered group
-chats, use `workspace/groups/<group_slug>/work/<user_slug>/.state/tasks/<task_id>/`.
+When task state is needed, use `bin/knot-planning.sh` so the plan lands under
+the scope-aware task root. Root/operator tasks use
+`workspace/.state/tasks/<task_id>/`. IM-triggered direct chats use
+`workspace/users/<user_slug>/.state/tasks/<task_id>/`. IM-triggered group chats
+use `workspace/groups/<group_slug>/work/<user_slug>/.state/tasks/<task_id>/`.
 
 Treat `.state` as temporary: deliver user-visible results, promote durable
-facts to `workspace/knowledge/` or admin audit records, and keep virtualenvs,
-caches, and large intermediates out of it.
+facts through the approved knowledge flow, and keep virtualenvs, caches, and
+large intermediates out of it.
 
 ## Active Workspaces
 
@@ -88,9 +89,20 @@ current group deliverables.
 
 ## Knowledge
 
-Shared durable knowledge lives under `workspace/knowledge/`. Keep conversion
-sidecars and wiki ingest decoupled. Treat feedback as a signal, not verified
-fact. Material knowledge changes require admin approval, a visible diff, and a
+Shared durable knowledge is approved from the configured GitHub knowledge repo:
+`main` is the authoritative approved ref, and `workspace/knowledge/vault/` is
+the default local mirror. Knot should read only the approved mirror or a pinned
+approved commit, never a proposal branch.
+
+Use `bin/knot-knowledge.sh` for status, approved sync, member proposals,
+admin review, and backup checks. Only identities with explicit `Role=admin` in
+`workspace/admin/permissions.md` may approve durable knowledge; `operator` does
+not imply knowledge approval. Members may create proposal branches, fork PRs, or
+patch bundles only.
+
+Keep conversion sidecars and knowledge ingest decoupled. Treat feedback as a
+signal, not verified fact. Material knowledge changes require admin approval, a
+visible diff, GitHub server-side branch protection, and a
 `workspace/admin/knowledge-feedback.md` row with status and execution.
 
 ## Delivery

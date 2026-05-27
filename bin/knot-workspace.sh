@@ -42,77 +42,6 @@ KNOT_ACTIVE_WORKSPACE.
 EOF
 }
 
-trim_field() {
-  sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
-}
-
-permissions_lookup() {
-  local want="$1"
-  local permissions_file="$ROOT/workspace/admin/permissions.md"
-
-  [ -f "$permissions_file" ] || return 0
-
-  awk -F'|' \
-    -v want="$want" \
-    -v platform="$PLATFORM" \
-    -v user_id="$USER_ID" \
-    -v chat_id="$CHAT_ID" \
-    -v identity_key="$IDENTITY_KEY" '
-    function trim(s) {
-      gsub(/^[ \t]+|[ \t]+$/, "", s)
-      return s
-    }
-    NR < 3 || $0 !~ /^\|/ { next }
-    {
-      user = trim($2)
-      workspace = trim($3)
-      row_platform = trim($4)
-      row_user_id = trim($5)
-      group_slug = trim($6)
-      row_chat_id = trim($7)
-      row_identity_key = trim($8)
-      if (user == "User" || user == "---" || workspace == "") {
-        next
-      }
-
-      identity_match = (identity_key != "" && row_identity_key != "" && row_identity_key == identity_key)
-      user_match = (identity_key == "" && row_platform == platform && row_user_id == user_id)
-      chat_match = (chat_id != "" && row_platform == platform && row_chat_id == chat_id)
-
-      if (want == "user" && (identity_match || user_match)) {
-        print workspace
-      }
-      if (want == "group" && chat_match && (identity_match || user_match) && group_slug != "") {
-        print group_slug
-      }
-    }
-  ' "$permissions_file"
-}
-
-permissions_lookup_one() {
-  local want="$1"
-  local label="$2"
-  local required="$3"
-  local matches
-  local count
-
-  matches="$(permissions_lookup "$want" | sed '/^$/d' | trim_field | sort -u)"
-  count="$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d '[:space:]')"
-
-  case "$count" in
-    0)
-      [ "$required" -eq 0 ] && return 0
-      die "$label is not uniquely mapped in workspace/admin/permissions.md"
-      ;;
-    1)
-      printf '%s\n' "$matches"
-      ;;
-    *)
-      die "$label maps to multiple values in workspace/admin/permissions.md"
-      ;;
-  esac
-}
-
 validate_metadata_value() {
   local label="$1"
   local value="$2"
@@ -252,7 +181,10 @@ ROOT="$(cd "$ROOT" && pwd)"
 PERMISSIONS_FILE="$ROOT/workspace/admin/permissions.md"
 
 if [ -f "$PERMISSIONS_FILE" ]; then
-  RESOLVED_USER_SLUG="$(permissions_lookup_one user "actor identity" 1)"
+  RESOLVED_USER_SLUG="$(permissions_unique_or_empty \
+    "actor identity" \
+    "$(permissions_actor_workspaces "$ROOT" "$PLATFORM" "$USER_ID" "$IDENTITY_KEY")" \
+    1)"
   if [ -z "$USER_SLUG" ]; then
     USER_SLUG="$RESOLVED_USER_SLUG"
   elif [ "$USER_SLUG" != "$RESOLVED_USER_SLUG" ]; then
@@ -263,7 +195,10 @@ elif [ -z "$USER_SLUG" ]; then
 fi
 
 if [ -z "$GROUP_SLUG" ] && [ -n "$CHAT_ID" ] && [ -f "$PERMISSIONS_FILE" ]; then
-  GROUP_SLUG="$(permissions_lookup_one group "group context" 0)"
+  GROUP_SLUG="$(permissions_unique_or_empty \
+    "group context" \
+    "$(permissions_groups_for_actor_chat "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY")" \
+    0)"
 fi
 
 validate_slug "--user-slug" "$USER_SLUG"
@@ -273,7 +208,7 @@ if [ -n "$GROUP_SLUG" ] && [ -f "$PERMISSIONS_FILE" ] && ! permissions_group_aut
   die "group workspace is not authorized for this actor/context: $GROUP_SLUG"
 fi
 
-USER_WORKSPACE="$ROOT/workspace/users/$USER_SLUG"
+USER_WORKSPACE="$(knot_scope_user_workspace "$ROOT" "$USER_SLUG")"
 GROUP_WORKSPACE=""
 KNOT_SCOPE="direct"
 SCOPE_WORKSPACE="$USER_WORKSPACE"
@@ -286,11 +221,11 @@ PLATFORM_USER_ID_HASH="sha256:$(sha256_hex_string "$USER_ID")"
 IDENTITY_KEY_HASH=""
 
 if [ -n "$GROUP_SLUG" ]; then
-  GROUP_WORKSPACE="$ROOT/workspace/groups/$GROUP_SLUG"
+  GROUP_WORKSPACE="$(knot_scope_group_workspace "$ROOT" "$GROUP_SLUG")"
   KNOT_SCOPE="group"
   SCOPE_WORKSPACE="$GROUP_WORKSPACE"
   ACTIVE_WORKSPACE="$GROUP_WORKSPACE"
-  ACTOR_WORKSPACE="$GROUP_WORKSPACE/work/$USER_SLUG"
+  ACTOR_WORKSPACE="$(knot_scope_actor_workspace "$ROOT" group "$USER_SLUG" "$GROUP_SLUG")"
 fi
 
 CONTEXT_DIR="$ACTOR_WORKSPACE/.knot"

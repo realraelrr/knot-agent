@@ -51,8 +51,14 @@ profile_target_rel="workspace/users/direct-user/collaboration/profile.md"
 
 mkdir -p "$profile_dir"
 cat > "$profile_file" <<'EOF'
+---
+version: 1
+updated: 2026-01-01
+reviewed: 2026-01-01
+---
 # Collaborator Profile
 
+## Communication
 - Prefers concise status updates with concrete verification evidence.
 EOF
 
@@ -195,7 +201,7 @@ base_sha256: $group_profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,1 +3,2 @@
+@@ -9,1 +9,2 @@
  - Prefers concise status updates with concrete verification evidence.
 +- group chat must not silently write profile changes.
 EOF
@@ -270,7 +276,7 @@ base_sha256: $implicit_group_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,1 +3,2 @@
+@@ -9,1 +9,2 @@
  - Prefers concise status updates with concrete verification evidence.
 +- implicit group scope must not write profile changes.
 EOF
@@ -614,7 +620,7 @@ base_sha256: $profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,1 +3,2 @@
+@@ -9,1 +9,2 @@
  - Prefers concise status updates with concrete verification evidence.
 +- Prefers direct technical challenge when assumptions look weak.
 EOF
@@ -636,7 +642,30 @@ base_sha256: $profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,3 @@
+@@ -1,10 +1,2 @@
+----
+-version: 1
+-updated: 2026-01-01
+-reviewed: 2026-01-01
+----
+-# Collaborator Profile
+-
+-## Communication
+ - Prefers concise status updates with concrete verification evidence.
+ - Prefers direct technical challenge when assumptions look weak.
+EOF
+assert_profile_patch_denied_unchanged \
+  "collaborator profile rejects patch output that removes structured schema" \
+  collab_profile_content_denied
+
+profile_base="$(file_sha256 "$profile_file")"
+cat > "$profile_patch_file" <<EOF
+target: $profile_target_rel
+base_sha256: $profile_base
+
+--- a/$profile_target_rel
++++ b/$profile_target_rel
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 +- Audit failure must not land.
@@ -668,7 +697,7 @@ base_sha256: 0000000000000000000000000000000000000000000000000000000000000000
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,3 @@
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 + stale write must not land.
@@ -684,7 +713,7 @@ base_sha256: $profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,3 @@
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 + concurrent write must not land.
@@ -715,7 +744,7 @@ base_sha256: $profile_base
 
 --- a/$profile_file
 +++ b/$profile_file
-@@ -3,2 +3,3 @@
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 + absolute path must not land.
@@ -759,7 +788,7 @@ base_sha256: $profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,4 @@
+@@ -9,2 +9,4 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 +\`\`\`transcript
@@ -776,7 +805,7 @@ base_sha256: $profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,3 @@
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 +API_KEY=secret-value
@@ -792,7 +821,7 @@ base_sha256: $profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,3 @@
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 +- access_token=secret-value
@@ -808,7 +837,7 @@ base_sha256: $profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,3 @@
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 +\`\`\`source-document
@@ -825,7 +854,7 @@ base_sha256: $profile_base
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,3 @@
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 +$long_profile_line
@@ -865,7 +894,7 @@ base_sha256: $(file_sha256 "$profile_symlink_outside")
 
 --- a/$profile_target_rel
 +++ b/$profile_target_rel
-@@ -3,2 +3,3 @@
+@@ -9,2 +9,3 @@
  - Prefers concise status updates with concrete verification evidence.
  - Prefers direct technical challenge when assumptions look weak.
 + symlink write must not land.

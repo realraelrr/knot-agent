@@ -120,7 +120,7 @@ esac
 
 [ -f "$FILE_PATH" ] || deny_delivery invalid_resource
 ROOT="$(cd "$ROOT" && pwd)"
-if [ -n "$GROUP_SLUG" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
+if [ -n "$GROUP_SLUG" ] && ! permissions_can_use_group "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
   deny_group_access
 fi
 WORKSPACE_ARGS=(--root "$ROOT" --platform "$PLATFORM" --user-id "$USER_ID" --user-slug "$USER_SLUG" --no-create)

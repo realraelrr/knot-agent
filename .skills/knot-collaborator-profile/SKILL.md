@@ -28,12 +28,15 @@ store, or an external provider integration:
   group scope: `workspace/groups/<group_slug>/work/<user_slug>/.knot/collaborator-profile-pack.md`.
 - Patch proposal:
   `workspace/users/<user_slug>/.knot/collaborator-profile.patch`.
+- Conflict sidecar:
+  `workspace/users/<user_slug>/.knot/collaborator-profile-conflicts.json`.
 - Audit target:
   `workspace/conversations/<platform>/chat_<hash>/events.jsonl`.
 
 The deterministic helpers own identity resolution, path checks, base-hash
-validation, atomic apply, file permissions, content scanning, and audit events.
-Do not bypass them by editing the profile manually.
+validation, schema linting, conflict hints, atomic apply, file permissions,
+content scanning, and audit events. Do not bypass them by editing the profile
+manually.
 
 ## Agent Usage
 
@@ -71,6 +74,17 @@ Only record concise, durable collaboration cues:
 
 Keep the complete profile under 1600 characters. Prefer replacing or merging
 old bullets over appending forever.
+
+When the profile uses structured frontmatter, only `version`, `updated`, and
+`reviewed` are valid keys. Body sections are limited to `Communication`,
+`Evidence And Review`, `Delivery`, `Recurring Workflows`, and `Avoid`, with at
+most five bullets per section. Do not add enterprise facts, task notes, SOPs, or
+raw history.
+
+Run `bin/knot-collaborator-profile-lint.sh lint` for schema checks, length
+checks, deterministic conflict hints, and redacted conflict sidecars. Profiles
+above 1200 characters should be compacted by patch proposal only; apply still
+goes through the normal direct-scope helper and its validation.
 
 ## Self-Evolution Updates
 

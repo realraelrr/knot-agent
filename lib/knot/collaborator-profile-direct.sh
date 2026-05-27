@@ -35,6 +35,7 @@ collab_profile_ensure_owner_only_file() {
 
 collab_profile_validate_content() {
   local path="$1"
+  local validation_mode="${2:-read}"
   local source_block_pattern='^[[:space:]]*```[[:space:]]*(transcript|chat[-_ ]?log|conversation[-_ ]?log|source[-_ ]?document)'
   local secret_pattern='^[[:space:]]*([-*+][[:space:]]+|[0-9]+[.)][[:space:]]+)?(export[[:space:]]+)?(api[_-]?key|access[_-]?token|auth[_-]?token|secret|password|bearer[_-]?token)[[:space:]]*[:=][[:space:]]*[^[:space:]]+'
   local char_count
@@ -48,58 +49,22 @@ collab_profile_validate_content() {
   char_count="$(wc -m < "$path" | tr -d '[:space:]')"
   [ "$char_count" -le 1600 ] ||
     collab_profile_deny collab_profile_content_denied "collaborator profile exceeds 1600 characters"
-}
-
-collab_profile_permissions_actor_workspace_by_identity_key() {
-  local permissions_file="$ROOT/workspace/admin/permissions.md"
-
-  [ -f "$permissions_file" ] || return 0
-  awk -F'|' \
-    -v identity_key="$IDENTITY_KEY" '
-    function trim(s) {
-      gsub(/^[ \t]+|[ \t]+$/, "", s)
-      return s
-    }
-    NR < 3 || $0 !~ /^\|/ { next }
-    {
-      workspace = trim($3)
-      row_identity_key = trim($8)
-      if (workspace == "Workspace" || workspace == "---" || workspace == "") {
-        next
-      }
-
-      if (identity_key != "" && row_identity_key != "" && row_identity_key == identity_key) {
-        print workspace
-      }
-    }
-  ' "$permissions_file" | sort -u
-}
-
-collab_profile_permissions_actor_workspace_by_platform_user() {
-  local permissions_file="$ROOT/workspace/admin/permissions.md"
-
-  [ -f "$permissions_file" ] || return 0
-  awk -F'|' \
-    -v platform="$PLATFORM" \
-    -v user_id="$USER_ID" '
-    function trim(s) {
-      gsub(/^[ \t]+|[ \t]+$/, "", s)
-      return s
-    }
-    NR < 3 || $0 !~ /^\|/ { next }
-    {
-      workspace = trim($3)
-      row_platform = trim($4)
-      row_user_id = trim($5)
-      if (workspace == "Workspace" || workspace == "---" || workspace == "") {
-        next
-      }
-
-      if (platform != "" && user_id != "" && row_platform == platform && row_user_id == user_id) {
-        print workspace
-      }
-    }
-  ' "$permissions_file" | sort -u
+  if [ -x "$KNOT_COMMAND_ROOT/bin/knot-collaborator-profile-lint.sh" ]; then
+    if [ "$validation_mode" = "write" ]; then
+      if ! bash "$KNOT_COMMAND_ROOT/bin/knot-collaborator-profile-lint.sh" lint \
+        --root "$ROOT" \
+        --profile "$path" \
+        --require-structured >/dev/null 2>&1; then
+        collab_profile_deny collab_profile_content_denied "collaborator profile schema validation failed"
+      fi
+    elif [ "$(sed -n '1p' "$path")" = "---" ] &&
+      ! bash "$KNOT_COMMAND_ROOT/bin/knot-collaborator-profile-lint.sh" lint \
+        --root "$ROOT" \
+        --profile "$path" \
+        --enforce-if-frontmatter >/dev/null 2>&1; then
+      collab_profile_deny collab_profile_content_denied "collaborator profile schema validation failed"
+    fi
+  fi
 }
 
 collab_profile_validate_identity_matches_actor() {
@@ -132,10 +97,10 @@ collab_profile_validate_permissions_actor_scope() {
   [ -f "$permissions_file" ] ||
     collab_profile_deny collab_profile_identity_unresolved "permissions source of truth is missing"
   if [ -n "$IDENTITY_KEY" ]; then
-    collab_profile_validate_identity_matches_actor "identity key" "$(collab_profile_permissions_actor_workspace_by_identity_key)" 1
-    collab_profile_validate_identity_matches_actor "platform user id" "$(collab_profile_permissions_actor_workspace_by_platform_user)" 0
+    collab_profile_validate_identity_matches_actor "identity key" "$(permissions_actor_workspaces_by_identity_key "$ROOT" "$IDENTITY_KEY")" 1
+    collab_profile_validate_identity_matches_actor "platform user id" "$(permissions_actor_workspaces_by_platform_user "$ROOT" "$PLATFORM" "$USER_ID")" 0
   else
-    collab_profile_validate_identity_matches_actor "platform user id" "$(collab_profile_permissions_actor_workspace_by_platform_user)" 1
+    collab_profile_validate_identity_matches_actor "platform user id" "$(permissions_actor_workspaces_by_platform_user "$ROOT" "$PLATFORM" "$USER_ID")" 1
   fi
 }
 
@@ -181,7 +146,7 @@ collab_profile_validate_actor_scope() {
   if [ "$SCOPE" = "group" ]; then
     [ -n "$GROUP_SLUG" ] ||
       collab_profile_deny collab_profile_workspace_mismatch "group scope requires --group-slug or KNOT_GROUP_SLUG"
-    permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG" ||
+    permissions_can_use_group "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG" ||
       collab_profile_deny collab_profile_workspace_mismatch "group workspace is not authorized for this actor/context"
     expected_group_workspace="$ROOT/workspace/groups/$GROUP_SLUG"
     expected_actor_workspace="$expected_group_workspace/work/$USER_SLUG"

@@ -13,9 +13,12 @@ process sandbox, container boundary, or operating-system access-control layer.
   truth for user and model messages.
 - **Knot helpers:** `bin/knot-workspace.sh`, `bin/knot-deliver.sh`,
   `bin/knot-attachment.sh`, `bin/knot-collaborator-profile-pack.sh`,
-  `bin/knot-collaborator-profile-apply.sh`, and `bin/knot-audit.sh` provide
-  deterministic workspace routing, delivery/profile validation, and compact
-  boundary event records that follow `docs/schemas/audit-event.schema.json`.
+  `bin/knot-collaborator-profile-apply.sh`,
+  `bin/knot-collaborator-profile-lint.sh`, `bin/knot-knowledge.sh`,
+  `bin/knot-planning.sh`, and `bin/knot-audit.sh` provide deterministic
+  workspace routing, delivery/profile validation, knowledge proposal checks,
+  planning lifecycle checks, and compact boundary event records that follow
+  `docs/schemas/audit-event.schema.json`.
 - **Workspace data:** `workspace/users/<user_slug>/` is the direct-chat working
   area for one actor. `workspace/groups/<group_slug>/` is the active shared
   workspace for authorized group chats, with actor lanes under
@@ -23,15 +26,17 @@ process sandbox, container boundary, or operating-system access-control layer.
   is source and audit metadata, not a work or delivery directory.
 - **Runtime data:** `runtime/` contains IM configs, logs, sockets, and local
   secrets. It is operator-managed infrastructure, not user deliverable storage.
-- **Shared knowledge:** `workspace/knowledge/` contains approved durable
-  knowledge. Material changes require admin approval and an audit row.
+- **Shared knowledge:** the configured GitHub knowledge repo is the durable
+  source. Its protected `main` ref is the approved knowledge boundary, and
+  `workspace/knowledge/vault/` is the default local mirror. Material changes
+  require explicit admin approval and review evidence.
 
 ## Boundary Classes
 
 | Class | Boundary | Enforced by | Meaning |
 |---|---|---|---|
-| Hard guardrail | Workspace routing, identity ambiguity denial, deliverable attachment paths, symlink rejection, component lockfile format, static active-workspace config rejection | Deterministic Knot helpers and doctor checks | These checks must pass before the related helper action succeeds. |
-| Soft protocol | Group actor-lane writes, user-facing reply style, knowledge-change approval records, use of `.state/`, durable knowledge promotion, admin review expectations | Agent instructions, templates, and human review | These rules guide Codex and operators, but they are not process isolation. |
+| Hard guardrail | Workspace routing, identity ambiguity denial, deliverable attachment paths, symlink rejection, component lockfile format, static active-workspace config rejection, GitHub branch protection for the knowledge repo | Deterministic Knot helpers, doctor checks, and GitHub server-side rules | These checks must pass before the related helper action succeeds or an approved knowledge change can land. |
+| Soft protocol | Group actor-lane writes, user-facing reply style, knowledge-change proposal records, use of `.state/`, durable knowledge promotion, admin review expectations | Agent instructions, templates, local helpers, and human review | These rules guide Codex and operators, but local helpers are not process isolation. |
 | Out of scope | OS tenant isolation, enterprise DLP, platform credential authorization, network egress control, complete sensitive-data classification | External infrastructure and enterprise controls | These require controls outside the default Knot scaffold. |
 
 ## What Knot Prevents
@@ -49,7 +54,14 @@ In the default local setup, Knot's deterministic helpers reject:
 - component lockfile rows that point outside the pinned component layout;
 - collaborator profile snapshots or patches containing marked transcript/source
   document blocks, secrets-looking assignments, or content beyond the bounded
-  profile size.
+  profile size;
+- structured collaborator profiles with invalid frontmatter, invalid sections,
+  too many bullets, or deterministic conflict sidecars containing raw
+  preference text;
+- planning archive or expiration of active, pinned, open-phase, or current
+  task-pointer plans;
+- local knowledge proposal writes that target the approved mirror or are made
+  with member credentials carrying GitHub tokens.
 
 ## What Knot Does Not Prevent
 
@@ -62,6 +74,8 @@ Knot does not, by itself:
 - guarantee that an LLM will never mention internal paths or system details;
 - validate live IM credentials or platform-side authorization without live
   smoke testing;
+- make multiple GitHub identities secure when every session runs as the same
+  operating-system user with access to the same keychain and files;
 - classify all sensitive data in logs, prompts, uploaded files, or generated
   outputs;
 - replace enterprise DLP, SIEM, EDR, MDM, secret vaults, or legal/compliance
@@ -86,10 +100,12 @@ The default workspace model is logical isolation inside one local checkout:
 - authorized group-chat work launches from `workspace/groups/<group_slug>/`;
 - group-chat drafts and task state should use
   `workspace/groups/<group_slug>/work/<user_slug>/`;
-- recoverable agent working state can live under `.state/` when needed;
+- recoverable agent working state should be created through
+  `bin/knot-planning.sh` under the scope-aware `.state/tasks/<task_id>/` root;
 - conversation metadata and boundary event records live under
   `workspace/conversations/<platform>/chat_<hash>/`;
-- approved durable knowledge lives under `workspace/knowledge/`.
+- approved durable knowledge is read from the protected GitHub knowledge repo's
+  approved ref, mirrored locally under `workspace/knowledge/vault/` by default.
 
 This model is appropriate for trusted operators, demos, pilots, and internal
 teams where the local OS account is already trusted. It is not equivalent to OS
@@ -112,9 +128,13 @@ helper contract.
 - Operators maintain code, runtime config, platform credentials, backup remotes,
   and release checks.
 - Admins maintain `workspace/admin/permissions.md` and approve durable
-  knowledge changes.
+  knowledge changes. `operator` does not imply knowledge approval unless the
+  identity also has explicit `Role=admin`.
 - Knowledge changes require a human-reviewable diff, approval status, execution
-  evidence, and a row in `workspace/admin/knowledge-feedback.md`.
+  evidence, GitHub protected-branch enforcement, and a row in
+  `workspace/admin/knowledge-feedback.md`.
+- Member or proposal-bot credentials must not have merge, approve, or `main`
+  write permission on the knowledge repo.
 - Live IM rollout requires platform smoke tests because local helper tests do
   not prove platform identity mapping.
 - Permission-table changes must be reviewed as access-control changes, even

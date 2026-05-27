@@ -34,6 +34,10 @@ User and group workspace content is not backed up by default. Only the
 allowlisted identity and conversation metadata files are staged from those
 trees.
 
+The GitHub knowledge repo remains the authoritative approved knowledge source.
+`workspace/knowledge/` is backed up as a secondary rollback mirror and local
+state checkpoint, not as the primary approval system.
+
 ## Rules
 
 - Use a customer-controlled git remote named `backup`.

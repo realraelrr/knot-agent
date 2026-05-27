@@ -256,6 +256,41 @@ path_is_under() {
   esac
 }
 
+knot_path_is_high_risk() {
+  local path="$1"
+
+  case "$path" in
+    .github/*|CODEOWNERS|*/CODEOWNERS|docs/schemas/*|bin/knot-*|lib/knot/*|.skills/*|components/knot-skills/*|.skills/knot-setup/references/permissions.template.md|workspace/admin/permissions.md)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+knot_atomic_replace() {
+  local source="$1"
+  local target="$2"
+
+  python3 - "$source" "$target" <<'PY'
+import os
+import sys
+
+source, target = sys.argv[1:]
+with open(source, "rb+") as output:
+    output.flush()
+    os.fsync(output.fileno())
+os.chmod(source, 0o600)
+os.replace(source, target)
+directory = os.open(os.path.dirname(target), os.O_DIRECTORY)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+}
+
 # Call as parse_knot_context_arg "$@". The shifts below only affect this
 # function's argument copy; callers consume their "$@" via KNOT_ARG_CONSUMED.
 # shellcheck disable=SC2034
@@ -367,54 +402,9 @@ require_knot_context() {
   [ -n "$USER_SLUG" ] || die "--user-slug is required"
 }
 
-permissions_group_authorized() {
-  local root="$1"
-  local platform="$2"
-  local user_id="$3"
-  local chat_id="$4"
-  local identity_key="$5"
-  local group_slug="$6"
-  local permissions_file="$root/workspace/admin/permissions.md"
-
-  [ -n "$group_slug" ] || return 0
-  [ -n "$chat_id" ] || return 1
-  [ -f "$permissions_file" ] || return 1
-
-  awk -F'|' \
-    -v platform="$platform" \
-    -v user_id="$user_id" \
-    -v chat_id="$chat_id" \
-    -v identity_key="$identity_key" \
-    -v group_slug="$group_slug" '
-    function trim(s) {
-      gsub(/^[ \t]+|[ \t]+$/, "", s)
-      return s
-    }
-    NR < 3 || $0 !~ /^\|/ { next }
-    {
-      workspace = trim($3)
-      row_platform = trim($4)
-      row_user_id = trim($5)
-      row_group = trim($6)
-      row_chat_id = trim($7)
-      row_identity_key = trim($8)
-
-      if (workspace == "Workspace" || workspace == "---" || row_group == "") {
-        next
-      }
-
-      if (identity_key != "") {
-        actor_match = (row_identity_key == identity_key)
-      } else {
-        actor_match = (row_platform == platform && row_user_id == user_id)
-      }
-      chat_match = (chat_id != "" && row_chat_id == chat_id)
-
-      if (row_platform == platform && row_group == group_slug && chat_match && actor_match) {
-        found = 1
-        exit
-      }
-    }
-    END { exit found ? 0 : 1 }
-  ' "$permissions_file"
-}
+# shellcheck source=lib/knot/permissions.sh
+. "$KNOT_CORE_DIR/permissions.sh"
+# shellcheck source=lib/knot/scope.sh
+. "$KNOT_CORE_DIR/scope.sh"
+# shellcheck source=lib/knot/manifest.sh
+. "$KNOT_CORE_DIR/manifest.sh"
