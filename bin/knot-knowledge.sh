@@ -233,6 +233,11 @@ case "$COMMAND" in
     fi
     slug="$(slugify_title "$TITLE")"
     [ -n "$slug" ] || slug="proposal"
+    ensure_dir_no_symlink "$ROOT/workspace" "workspace root"
+    ensure_dir_no_symlink "$ROOT/workspace/users" "users root"
+    ensure_dir_no_symlink "$actor_workspace" "actor workspace"
+    ensure_dir_no_symlink "$actor_workspace/.knot" "actor knowledge proposal context"
+    ensure_dir_no_symlink "$actor_workspace/.knot/knowledge-proposals" "actor knowledge proposal root"
     proposal_dir="$actor_workspace/.knot/knowledge-proposals/$(date -u '+%Y%m%dT%H%M%SZ')-$slug"
     mkdir -p "$proposal_dir"
     copy_proposal_files "$SOURCE" "$proposal_dir"

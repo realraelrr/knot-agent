@@ -16,7 +16,6 @@ GROUP_SLUG="${KNOT_GROUP_SLUG:-${KNOT_SOURCE_GROUP:-}}"
 TASK_ID="${PLAN_ID:-}"
 NOW="$(timestamp_utc)"
 APPLY=0
-DRY_RUN=1
 
 usage() {
   cat <<'EOF'
@@ -288,6 +287,7 @@ expire_one() {
   local expires_epoch
   local now_epoch
   local tombstone
+  local tmp_tombstone
 
   id="$(basename "$dir")"
   assert_task_tree_safe "$dir"
@@ -312,11 +312,18 @@ expire_one() {
 
   ensure_dir_no_symlink "$(tombstone_root)" "planning tombstone root"
   tombstone="$(tombstone_root)/$id.json"
-  jq --arg expired_at "$NOW" \
+  [ ! -e "$tombstone" ] && [ ! -L "$tombstone" ] ||
+    die "planning tombstone already exists or is unsafe: $tombstone"
+  tmp_tombstone="$(mktemp "$(tombstone_root)/.$id.json.tmp.XXXXXX")"
+  if ! jq --arg expired_at "$NOW" \
     --arg archive_path "${dir#"$ROOT/"}" \
     --arg manifest_sha256 "$(file_sha256 "$dir/archive-manifest.tsv")" \
     --rawfile manifest_tsv "$dir/archive-manifest.tsv" \
-    '. + {expired_at: $expired_at, archive_path: $archive_path, manifest_sha256: $manifest_sha256, manifest_tsv: $manifest_tsv}' "$meta" > "$tombstone"
+    '. + {expired_at: $expired_at, archive_path: $archive_path, manifest_sha256: $manifest_sha256, manifest_tsv: $manifest_tsv}' "$meta" > "$tmp_tombstone"; then
+    rm -f "$tmp_tombstone"
+    die "cannot write planning tombstone"
+  fi
+  knot_atomic_replace "$tmp_tombstone" "$tombstone"
   rm -rf "$dir"
   printf 'expired: %s\n' "$id"
 }
@@ -336,9 +343,9 @@ while [ "$#" -gt 0 ]; do
     --now)
       shift; [ "$#" -gt 0 ] || die "--now requires a value"; NOW="$1" ;;
     --dry-run)
-      APPLY=0; DRY_RUN=1 ;;
+      APPLY=0 ;;
     --apply)
-      APPLY=1; DRY_RUN=0 ;;
+      APPLY=1 ;;
     --help|-h)
       usage; exit 0 ;;
     *)
@@ -362,6 +369,7 @@ case "$COMMAND" in
   init)
     dir="$(task_dir)"
     [ ! -e "$dir" ] && [ ! -L "$dir" ] || die "task already exists: $dir"
+    [ ! -L "$(active_file)" ] || die "planning active task pointer must not be a symlink"
     ensure_dir_no_symlink "$(task_root)" "planning task root"
     mkdir -p "$dir"
     write_default_plan "$dir"

@@ -10,6 +10,25 @@ cat > "$planning_root/workspace/admin/permissions.md" <<'EOF'
 | Direct User | direct-user | feishu | ou/direct | planning-group | oc/group | feishu:user:direct | Direct User | member | session | smoke |
 EOF
 
+planning_active_symlink_root="$TMP_PARENT/planning-active-symlink-root"
+planning_active_symlink_sink="$TMP_PARENT/planning-active-symlink-sink.txt"
+mkdir -p "$planning_active_symlink_root/workspace/users/direct-user/.state/tasks"
+printf '%s\n' 'outside active pointer sentinel' > "$planning_active_symlink_sink"
+ln -s "$planning_active_symlink_sink" "$planning_active_symlink_root/workspace/users/direct-user/.state/tasks/.active_task"
+if bash "$ROOT/bin/knot-planning.sh" init \
+  --root "$planning_active_symlink_root" \
+  --scope direct \
+  --actor-user direct-user \
+  --task-id escaped-init \
+  --now 2026-01-01T00:00:00Z >/dev/null 2>&1; then
+  fail "planning init wrote active task through symlink"
+elif grep -Fxq 'outside active pointer sentinel' "$planning_active_symlink_sink" &&
+  [ ! -e "$planning_active_symlink_root/workspace/users/direct-user/.state/tasks/escaped-init" ]; then
+  ok "planning init rejects symlinked active task pointer"
+else
+  fail "planning init modified outside active pointer or created task on symlink denial"
+fi
+
 if direct_task="$(bash "$ROOT/bin/knot-planning.sh" init \
   --root "$planning_root" \
   --scope direct \
@@ -161,6 +180,24 @@ else
   ok "planning cleanup rejects expiration with invalid manifest hash"
 fi
 cp "$archive_plan_backup" "$archive_path/task_plan.md"
+tombstone_escape="$TMP_PARENT/planning-tombstone-escape.txt"
+printf '%s\n' 'outside tombstone sentinel' > "$tombstone_escape"
+mkdir -p "$planning_root/workspace/users/direct-user/.state/task-tombstones"
+ln -s "$tombstone_escape" "$planning_root/workspace/users/direct-user/.state/task-tombstones/task-direct.json"
+if bash "$ROOT/bin/knot-planning.sh" cleanup expire --apply \
+  --root "$planning_root" \
+  --scope direct \
+  --actor-user direct-user \
+  --now 2026-04-15T00:00:00Z >/dev/null 2>&1; then
+  fail "planning cleanup wrote tombstone through symlink"
+elif grep -Fxq 'outside tombstone sentinel' "$tombstone_escape" &&
+  [ -d "$archive_path" ]; then
+  ok "planning cleanup rejects symlinked tombstone target"
+else
+  fail "planning cleanup modified outside tombstone target or archive on symlink denial"
+fi
+rm -f "$planning_root/workspace/users/direct-user/.state/task-tombstones/task-direct.json"
+
 if expire_output="$(bash "$ROOT/bin/knot-planning.sh" cleanup expire --apply \
   --root "$planning_root" \
   --scope direct \

@@ -135,6 +135,46 @@ else
 fi
 
 printf '%s\n' 'draft knowledge' > "$knowledge_root/workspace/users/member-user/work/proposal/draft.md"
+knowledge_symlink_sink="$TMP_PARENT/knowledge-proposal-symlink-sink"
+mkdir -p "$knowledge_symlink_sink"
+ln -s "$knowledge_symlink_sink" "$knowledge_root/workspace/users/member-user/.knot"
+if bash "$ROOT/bin/knot-knowledge.sh" propose \
+  --root "$knowledge_root" \
+  --source "$knowledge_root/workspace/users/member-user/work/proposal" \
+  --title "symlink-proposal" \
+  --platform feishu \
+  --user-id ou/member \
+  --identity-key feishu:user:member \
+  --actor-user member-user >/dev/null 2>&1; then
+  fail "knowledge helper allowed proposal through symlinked .knot"
+elif [ ! -e "$knowledge_symlink_sink/knowledge-proposals" ]; then
+  ok "knowledge helper rejects symlinked proposal runtime context"
+else
+  fail "knowledge helper wrote proposal outside workspace through symlinked .knot"
+fi
+rm -f "$knowledge_root/workspace/users/member-user/.knot"
+
+knowledge_actor_symlink_sink="$TMP_PARENT/knowledge-actor-symlink-sink"
+mkdir -p "$knowledge_actor_symlink_sink"
+rmdir "$knowledge_root/workspace/users/admin-user"
+ln -s "$knowledge_actor_symlink_sink" "$knowledge_root/workspace/users/admin-user"
+if bash "$ROOT/bin/knot-knowledge.sh" propose \
+  --root "$knowledge_root" \
+  --source "$knowledge_root/workspace/users/member-user/work/proposal" \
+  --title "symlink-actor-workspace" \
+  --platform feishu \
+  --user-id ou/admin \
+  --identity-key feishu:user:admin \
+  --actor-user admin-user >/dev/null 2>&1; then
+  fail "knowledge helper allowed proposal through symlinked actor workspace"
+elif [ ! -e "$knowledge_actor_symlink_sink/.knot" ]; then
+  ok "knowledge helper rejects symlinked proposal actor workspace"
+else
+  fail "knowledge helper wrote proposal outside workspace through symlinked actor workspace"
+fi
+rm -f "$knowledge_root/workspace/users/admin-user"
+mkdir -p "$knowledge_root/workspace/users/admin-user"
+
 if proposal_output="$(bash "$ROOT/bin/knot-knowledge.sh" propose \
   --root "$knowledge_root" \
   --source "$knowledge_root/workspace/users/member-user/work/proposal" \

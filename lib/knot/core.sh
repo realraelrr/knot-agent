@@ -260,7 +260,7 @@ knot_path_is_high_risk() {
   local path="$1"
 
   case "$path" in
-    .github/*|CODEOWNERS|*/CODEOWNERS|docs/schemas/*|bin/knot-*|lib/knot/*|.skills/*|components/knot-skills/*|.skills/knot-setup/references/permissions.template.md|workspace/admin/permissions.md)
+    .github/*|CODEOWNERS|*/CODEOWNERS|docs/schemas/*|bin/knot-*|lib/knot/*|.skills/*|components/knot-skills/*|workspace/admin/permissions.md)
       return 0
       ;;
     *)
