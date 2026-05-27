@@ -35,6 +35,44 @@ permissions_actor_workspaces_by_identity_key() {
   ' "$permissions_file" | sed '/^$/d' | sort -u
 }
 
+permissions_actor_workspaces_by_identity_context() {
+  local root="$1"
+  local platform="$2"
+  local user_id="$3"
+  local identity_key="$4"
+  local permissions_file
+
+  [ -n "$identity_key" ] || return 0
+  permissions_file="$(permissions_file_for_root "$root")"
+  [ -f "$permissions_file" ] || return 0
+
+  awk -F'|' \
+    -v platform="$platform" \
+    -v user_id="$user_id" \
+    -v identity_key="$identity_key" '
+    function trim(s) {
+      gsub(/^[ \t]+|[ \t]+$/, "", s)
+      return s
+    }
+    NR < 3 || $0 !~ /^\|/ { next }
+    {
+      workspace = trim($3)
+      row_platform = trim($4)
+      row_user_id = trim($5)
+      row_identity_key = trim($8)
+      if (workspace == "Workspace" || workspace == "---" || workspace == "") {
+        next
+      }
+      if (row_identity_key != "" &&
+          row_identity_key == identity_key &&
+          (row_platform == "" || platform == "" || row_platform == platform) &&
+          (row_user_id == "" || user_id == "" || row_user_id == user_id)) {
+        print workspace
+      }
+    }
+  ' "$permissions_file" | sed '/^$/d' | sort -u
+}
+
 permissions_actor_workspaces_by_platform_user() {
   local root="$1"
   local platform="$2"
@@ -72,7 +110,7 @@ permissions_actor_workspaces() {
   local identity_key="$4"
 
   if [ -n "$identity_key" ]; then
-    permissions_actor_workspaces_by_identity_key "$root" "$identity_key"
+    permissions_actor_workspaces_by_identity_context "$root" "$platform" "$user_id" "$identity_key"
   else
     permissions_actor_workspaces_by_platform_user "$root" "$platform" "$user_id"
   fi
@@ -110,7 +148,9 @@ permissions_groups_for_actor_chat() {
         next
       }
       if (identity_key != "") {
-        actor_match = (row_identity_key == identity_key)
+        actor_match = (row_identity_key != "" &&
+          row_identity_key == identity_key &&
+          (row_user_id == "" || user_id == "" || row_user_id == user_id))
       } else {
         actor_match = (row_platform == platform && row_user_id == user_id)
       }
@@ -152,7 +192,10 @@ permissions_actor_roles() {
         next
       }
       if (identity_key != "") {
-        actor_match = (row_identity_key != "" && row_identity_key == identity_key)
+        actor_match = (row_identity_key != "" &&
+          row_identity_key == identity_key &&
+          (row_platform == "" || platform == "" || row_platform == platform) &&
+          (row_user_id == "" || user_id == "" || row_user_id == user_id))
       } else {
         actor_match = (row_platform == platform && row_user_id == user_id)
       }

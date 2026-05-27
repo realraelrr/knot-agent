@@ -19,13 +19,6 @@ KIND=""
 SOURCE_PATH=""
 OUTPUT_NAME=""
 TARGET=""
-# Set by this script and read by parser helpers from lib/knot/core.sh.
-# shellcheck disable=SC2034
-EXPLICIT_CONTEXT=0
-# shellcheck disable=SC2034
-EXPLICIT_IDENTITY_KEY=0
-# shellcheck disable=SC2034
-EXPLICIT_GROUP_SLUG=0
 # shellcheck disable=SC2034
 KNOT_PARSE_NAMES=1
 
@@ -113,6 +106,25 @@ reject_non_current_workspace_source() {
   fi
 }
 
+source_is_allowed() {
+  local path="$1"
+
+  if [ "$SCOPE" = "direct" ]; then
+    path_is_under "$path" "$USER_WORK_DIR" ||
+      path_is_under "$path" "$USER_INBOX_DIR" ||
+      path_is_under "$path" "$USER_DELIVERABLES_DIR"
+    return
+  fi
+
+  if path_is_under "$path" "$ACTOR_REAL/.knot" ||
+    path_is_under "$path" "$ACTOR_REAL/.state"; then
+    return 1
+  fi
+
+  path_is_under "$path" "$ACTOR_REAL" ||
+    path_is_under "$path" "$GROUP_DELIVERABLES_DIR"
+}
+
 while [ "$#" -gt 0 ]; do
   if parse_knot_context_arg "$@"; then
     shift "$KNOT_ARG_CONSUMED"
@@ -154,7 +166,6 @@ done
 require_knot_context
 [ -n "$KIND" ] || die "--kind is required"
 [ -n "$SOURCE_PATH" ] || die "--path is required"
-clear_implicit_identity_key
 
 case "$KIND" in
   image|file)
@@ -182,6 +193,7 @@ WORKSPACE_EXPORTS="$(bash "$SCRIPT_DIR/knot-workspace.sh" "${WORKSPACE_ARGS[@]}"
 SCOPE="$(workspace_export KNOT_SCOPE "$WORKSPACE_EXPORTS")"
 USER_WORKSPACE="$(workspace_export KNOT_USER_WORKSPACE "$WORKSPACE_EXPORTS")"
 GROUP_WORKSPACE="$(workspace_export KNOT_GROUP_WORKSPACE "$WORKSPACE_EXPORTS")"
+ACTOR_WORKSPACE="$(workspace_export KNOT_ACTOR_WORKSPACE "$WORKSPACE_EXPORTS")"
 
 if [ -z "$TARGET" ]; then
   if [ "$SCOPE" = "group" ]; then
@@ -213,6 +225,7 @@ if [ -n "$GROUP_WORKSPACE" ] && { [ -L "$GROUP_WORKSPACE" ] || [ -L "$GROUP_WORK
 fi
 
 USER_REAL="$(resolve_path "$USER_WORKSPACE")" || die "cannot resolve user workspace"
+ACTOR_REAL="$(resolve_path "$ACTOR_WORKSPACE")" || die "cannot resolve actor workspace"
 GROUP_REAL=""
 if [ -n "$GROUP_WORKSPACE" ]; then
   GROUP_REAL="$(resolve_path "$GROUP_WORKSPACE")" || die "cannot resolve group workspace"
@@ -222,6 +235,8 @@ GROUPS_DIR="$(resolve_path "$ROOT/workspace/groups")" || die "cannot resolve gro
 CONVERSATIONS_DIR="$(resolve_path "$ROOT/workspace/conversations" 2>/dev/null || true)"
 
 USER_DELIVERABLES_DIR="$(resolve_path "$USER_WORKSPACE/deliverables")" || die "cannot resolve user deliverables directory"
+USER_WORK_DIR="$(resolve_path "$USER_WORKSPACE/work")" || die "cannot resolve user work directory"
+USER_INBOX_DIR="$(resolve_path "$USER_WORKSPACE/inbox")" || die "cannot resolve user inbox directory"
 GROUP_DELIVERABLES_DIR=""
 if [ -n "$GROUP_WORKSPACE" ]; then
   GROUP_DELIVERABLES_DIR="$(resolve_path "$GROUP_WORKSPACE/deliverables")" || die "cannot resolve group deliverables directory"
@@ -229,6 +244,8 @@ fi
 
 reject_non_current_workspace_source "$SOURCE_ABS"
 reject_non_current_workspace_source "$SOURCE_LOCATION_ABS"
+source_is_allowed "$SOURCE_ABS" && source_is_allowed "$SOURCE_LOCATION_ABS" ||
+  deny_delivery_with_message outside_deliverables "source file is outside approved delivery sources for the current context"
 
 if [ -z "$OUTPUT_NAME" ]; then
   OUTPUT_NAME="$(basename "$SOURCE_ABS")"
@@ -245,11 +262,13 @@ if [ "$TARGET" = "group" ]; then
   DEST_DIR="$GROUP_DELIVERABLES_DIR"
 fi
 
+COPIED_DEST=0
 if path_is_under "$SOURCE_ABS" "$DEST_DIR"; then
   DEST_PATH="$SOURCE_ABS"
 else
   DEST_PATH="$(unique_path "$DEST_DIR" "$OUTPUT_NAME")"
   cp -p "$SOURCE_ABS" "$DEST_PATH"
+  COPIED_DEST=1
 fi
 
 ATTACH_ARGS=(--root "$ROOT" --platform "$PLATFORM" --user-id "$USER_ID" --user-slug "$USER_SLUG" --kind "$KIND" --path "$DEST_PATH")
@@ -257,4 +276,12 @@ ATTACH_ARGS=(--root "$ROOT" --platform "$PLATFORM" --user-id "$USER_ID" --user-s
 [ -z "$GROUP_SLUG" ] || ATTACH_ARGS+=(--group-slug "$GROUP_SLUG")
 [ -z "$IDENTITY_KEY" ] || ATTACH_ARGS+=(--identity-key "$IDENTITY_KEY")
 [ -z "$CONVERSATION_DIR" ] || ATTACH_ARGS+=(--conversation-dir "$CONVERSATION_DIR")
-bash "$SCRIPT_DIR/knot-attachment.sh" "${ATTACH_ARGS[@]}"
+if bash "$SCRIPT_DIR/knot-attachment.sh" "${ATTACH_ARGS[@]}"; then
+  :
+else
+  status=$?
+  if [ "$COPIED_DEST" -eq 1 ]; then
+    rm -f -- "$DEST_PATH"
+  fi
+  exit "$status"
+fi

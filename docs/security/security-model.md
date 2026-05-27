@@ -45,6 +45,10 @@ In the default local setup, Knot's deterministic helpers reject:
 
 - delivery from another user's workspace;
 - delivery from another group's workspace;
+- delivery from source paths outside the current direct user's `work/`,
+  `inbox/`, or `deliverables/` directories, or outside the current group actor
+  lane and group `deliverables/` directory in group scope;
+- delivery from actor lane `.knot/` or `.state/` internal state;
 - group-scope delivery back into a user workspace;
 - attachment blocks that point outside the current direct user or authorized
   current group `deliverables/` directory;
@@ -117,9 +121,13 @@ IM outbound files must be delivered from the active direct user's
 `bin/knot-deliver.sh` to copy generated artifacts into that boundary and
 `bin/knot-attachment.sh` to emit the `cc-connect-attachments` block.
 
-Files from `runtime/`, `workspace/conversations/`, another user's workspace, or
-another group's workspace are not valid outbound attachments in the default
-helper contract.
+`bin/knot-deliver.sh` accepts source files only from the current direct user's
+`work/`, `inbox/`, or `deliverables/` directories, or in group scope from the
+current group actor lane excluding `.knot/` and `.state/`, or current group
+`deliverables/` directory. Files from `runtime/`, `workspace/admin/`,
+`workspace/conversations/`, repository metadata, another user's workspace,
+another group's workspace, or arbitrary root paths are not valid outbound
+sources in the default helper contract.
 
 ## Admin And Operator Responsibilities
 

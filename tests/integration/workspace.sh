@@ -174,34 +174,73 @@ else
   fail "knot-workspace did not resolve permissions table slugs"
 fi
 
-if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/bob" --identity-key "feishu:user:ou/bob" --name "Bob Example" --group-name "Ignored Group" >/dev/null 2>&1; then
+unmapped_chat_id="oc/unmapped-audit"
+unmapped_hash="$(sha256_hex_pair feishu "$unmapped_chat_id")"
+unmapped_audit_dir="$tmp_root/workspace/conversations/feishu/chat_${unmapped_hash:0:24}"
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "$unmapped_chat_id" --user-id "ou/bob" --identity-key "feishu:user:ou/bob" --name "Bob Example" --group-name "Ignored Group" >/dev/null 2>&1; then
   fail "knot-workspace allowed unmapped runtime actor fallback"
+elif [ -f "$unmapped_audit_dir/events.jsonl" ] &&
+  jq -e 'select(.event == "group.access.denied" and .reason_code == "unauthorized_group")' "$unmapped_audit_dir/events.jsonl" >/dev/null; then
+  ok "knot-workspace audits unmapped runtime actor denial"
 else
-  ok "knot-workspace fails closed for unmapped runtime actor"
+  fail "knot-workspace did not audit unmapped runtime actor denial"
 fi
 
-if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:wrong" --name "Jane Example" --group-name "Ignored Group" >/dev/null 2>&1; then
+no_create_chat_id="oc/unmapped-no-create"
+no_create_hash="$(sha256_hex_pair feishu "$no_create_chat_id")"
+no_create_audit_dir="$tmp_root/workspace/conversations/feishu/chat_${no_create_hash:0:24}"
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "$no_create_chat_id" --user-id "ou/nobody" --identity-key "feishu:user:ou/nobody" --no-create >/dev/null 2>&1; then
+  fail "knot-workspace allowed unmapped actor during no-create routing"
+elif [ ! -e "$no_create_audit_dir" ]; then
+  ok "knot-workspace no-create denial does not write audit state"
+else
+  fail "knot-workspace no-create denial wrote audit state"
+fi
+
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/wrong-identity" --user-id "ou/jane" --identity-key "feishu:user:wrong" --name "Jane Example" --group-name "Ignored Group" >/dev/null 2>&1; then
   fail "knot-workspace allowed mismatched identity fallback"
 else
   ok "knot-workspace fails closed for mismatched identity key"
 fi
 
+identity_conflict_chat_id="oc/identity-conflict"
+identity_conflict_hash="$(sha256_hex_pair feishu "$identity_conflict_chat_id")"
+identity_conflict_audit_dir="$tmp_root/workspace/conversations/feishu/chat_${identity_conflict_hash:0:24}"
+if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "$identity_conflict_chat_id" --user-id "ou/not-jane" --identity-key "feishu:user:ou/jane" --name "Jane Example" --group-name "Ignored Group" >/dev/null 2>&1; then
+  fail "knot-workspace allowed conflicting platform user id with valid identity key"
+elif [ -f "$identity_conflict_audit_dir/events.jsonl" ] &&
+  jq -e 'select(.event == "group.access.denied" and .reason_code == "unauthorized_group")' "$identity_conflict_audit_dir/events.jsonl" >/dev/null; then
+  ok "knot-workspace audits conflicting platform user id with identity key"
+else
+  fail "knot-workspace did not audit conflicting platform user id with identity key"
+fi
+
 cat >> "$tmp_root/workspace/admin/permissions.md" <<'EOF'
 | Jane Duplicate | jane-duplicate | feishu | ou/jane | product-room | oc/product | feishu:user:ou/jane | Jane Duplicate | member | session | duplicate |
 EOF
+duplicate_actor_hash="$(sha256_hex_pair feishu "oc/product")"
+duplicate_actor_audit_dir="$tmp_root/workspace/conversations/feishu/chat_${duplicate_actor_hash:0:24}"
 if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/product" --user-id "ou/jane" --identity-key "feishu:user:ou/jane" >/dev/null 2>&1; then
   fail "knot-workspace allowed ambiguous permissions identity mapping"
+elif [ -f "$duplicate_actor_audit_dir/events.jsonl" ] &&
+  jq -e 'select(.event == "group.access.denied" and .reason_code == "unauthorized_group")' "$duplicate_actor_audit_dir/events.jsonl" >/dev/null; then
+  ok "knot-workspace audits ambiguous permissions identity denial"
 else
-  ok "knot-workspace fails closed for ambiguous permissions identity mapping"
+  fail "knot-workspace did not audit ambiguous permissions identity denial"
 fi
 
 cat >> "$tmp_root/workspace/admin/permissions.md" <<'EOF'
 | Example Other Group | example-user | feishu | ou/test user | other-group | oc/test group | feishu:user:ou-test | Smoke Test | member | session | duplicate group |
 EOF
+ambiguous_group_hash="$(sha256_hex_pair feishu "oc/test group")"
+ambiguous_group_audit_dir="$tmp_root/workspace/conversations/feishu/chat_${ambiguous_group_hash:0:24}"
 if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id "oc/test group" --user-id "ou/test user" --identity-key "feishu:user:ou-test" >/dev/null 2>&1; then
   fail "knot-workspace allowed ambiguous permissions group mapping"
+elif [ -f "$ambiguous_group_audit_dir/events.jsonl" ] &&
+  jq -e 'select(.event == "group.access.denied" and .reason_code == "unauthorized_group")' "$ambiguous_group_audit_dir/events.jsonl" >/dev/null; then
+  ok "knot-workspace audits ambiguous permissions group denial"
 else
-  ok "knot-workspace fails closed for ambiguous permissions group mapping"
+  fail "knot-workspace did not audit ambiguous permissions group denial"
 fi
 
 if bash "$ROOT/bin/knot-workspace.sh" --root "$tmp_root" --platform feishu --chat-id $'oc/bad\tchat' --user-id "ou/test user" --user-slug "bad-meta" >/dev/null 2>&1; then

@@ -96,6 +96,53 @@ append_unique_tsv_line() {
   fi
 }
 
+deny_routing() {
+  local message="$1"
+
+  if [ "$CREATE_DIRS" -eq 1 ] && [ -n "$CONVERSATION_DIR" ]; then
+    ensure_dir_no_symlink "$ROOT/workspace" "workspace root"
+    ensure_dir_no_symlink "$ROOT/workspace/conversations" "conversations root"
+    ensure_dir_no_symlink "$ROOT/workspace/conversations/$PLATFORM" "platform conversations"
+    ensure_dir_no_symlink "$CONVERSATION_DIR" "conversation audit directory"
+    if ! bash "$SCRIPT_DIR/knot-audit.sh" record \
+      --root "$ROOT" \
+      --conversation-dir "$CONVERSATION_DIR" \
+      --event group.access.denied \
+      --platform "$PLATFORM" \
+      --chat-id-hash "$CHAT_ID_HASH" \
+      --user-id-hash "$PLATFORM_USER_ID_HASH" \
+      --identity-key-hash "$IDENTITY_KEY_HASH" \
+      --actor-user "$USER_SLUG" \
+      --group-slug "$GROUP_SLUG" \
+      --status denied \
+      --reason-code unauthorized_group; then
+      die "workspace routing denied but audit event could not be recorded: $message"
+    fi
+  fi
+  die "$message"
+}
+
+routing_unique_or_empty() {
+  local label="$1"
+  local values="$2"
+  local required="${3:-0}"
+  local count
+
+  count="$(printf '%s\n' "$values" | sed '/^$/d' | wc -l | tr -d '[:space:]')"
+  case "$count" in
+    0)
+      [ "$required" -eq 0 ] && return 0
+      deny_routing "$label is not uniquely mapped in workspace/admin/permissions.md"
+      ;;
+    1)
+      printf '%s\n' "$values" | sed '/^$/d' | head -n 1
+      ;;
+    *)
+      deny_routing "$label maps to multiple values in workspace/admin/permissions.md"
+      ;;
+  esac
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root)
@@ -179,23 +226,38 @@ validate_metadata_value "--group-name" "$GROUP_NAME"
 
 ROOT="$(cd "$ROOT" && pwd)"
 PERMISSIONS_FILE="$ROOT/workspace/admin/permissions.md"
+CONVERSATION_DIR=""
+CONVERSATION_SEGMENT=""
+CHAT_ID_HASH=""
+PLATFORM_USER_ID_HASH="sha256:$(sha256_hex_string "$USER_ID")"
+IDENTITY_KEY_HASH=""
+
+if [ -n "$CHAT_ID" ]; then
+  CHAT_ID_HASH="sha256:$(sha256_hex_pair "$PLATFORM" "$CHAT_ID")"
+  CONVERSATION_SEGMENT="chat_${CHAT_ID_HASH#sha256:}"
+  CONVERSATION_SEGMENT="${CONVERSATION_SEGMENT:0:29}"
+  CONVERSATION_DIR="$ROOT/workspace/conversations/$PLATFORM/$CONVERSATION_SEGMENT"
+fi
+if [ -n "$IDENTITY_KEY" ]; then
+  IDENTITY_KEY_HASH="sha256:$(sha256_hex_string "$IDENTITY_KEY")"
+fi
 
 if [ -f "$PERMISSIONS_FILE" ]; then
-  RESOLVED_USER_SLUG="$(permissions_unique_or_empty \
+  RESOLVED_USER_SLUG="$(routing_unique_or_empty \
     "actor identity" \
     "$(permissions_actor_workspaces "$ROOT" "$PLATFORM" "$USER_ID" "$IDENTITY_KEY")" \
     1)"
   if [ -z "$USER_SLUG" ]; then
     USER_SLUG="$RESOLVED_USER_SLUG"
   elif [ "$USER_SLUG" != "$RESOLVED_USER_SLUG" ]; then
-    die "actor identity resolves to $RESOLVED_USER_SLUG, not --user-slug $USER_SLUG"
+    deny_routing "actor identity resolves to $RESOLVED_USER_SLUG, not --user-slug $USER_SLUG"
   fi
 elif [ -z "$USER_SLUG" ]; then
   die "--user-slug is required when workspace/admin/permissions.md is missing"
 fi
 
 if [ -z "$GROUP_SLUG" ] && [ -n "$CHAT_ID" ] && [ -f "$PERMISSIONS_FILE" ]; then
-  GROUP_SLUG="$(permissions_unique_or_empty \
+  GROUP_SLUG="$(routing_unique_or_empty \
     "group context" \
     "$(permissions_groups_for_actor_chat "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY")" \
     0)"
@@ -205,7 +267,7 @@ validate_slug "--user-slug" "$USER_SLUG"
 [ -z "$GROUP_SLUG" ] || validate_slug "--group-slug" "$GROUP_SLUG"
 
 if [ -n "$GROUP_SLUG" ] && [ -f "$PERMISSIONS_FILE" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
-  die "group workspace is not authorized for this actor/context: $GROUP_SLUG"
+  deny_routing "group workspace is not authorized for this actor/context: $GROUP_SLUG"
 fi
 
 USER_WORKSPACE="$(knot_scope_user_workspace "$ROOT" "$USER_SLUG")"
@@ -214,11 +276,6 @@ KNOT_SCOPE="direct"
 SCOPE_WORKSPACE="$USER_WORKSPACE"
 ACTIVE_WORKSPACE="$USER_WORKSPACE"
 ACTOR_WORKSPACE="$USER_WORKSPACE"
-CONVERSATION_DIR=""
-CONVERSATION_SEGMENT=""
-CHAT_ID_HASH=""
-PLATFORM_USER_ID_HASH="sha256:$(sha256_hex_string "$USER_ID")"
-IDENTITY_KEY_HASH=""
 
 if [ -n "$GROUP_SLUG" ]; then
   GROUP_WORKSPACE="$(knot_scope_group_workspace "$ROOT" "$GROUP_SLUG")"
@@ -230,16 +287,6 @@ fi
 
 CONTEXT_DIR="$ACTOR_WORKSPACE/.knot"
 CONTEXT_FILE="$CONTEXT_DIR/current-context.sh"
-
-if [ -n "$CHAT_ID" ]; then
-  CHAT_ID_HASH="sha256:$(sha256_hex_pair "$PLATFORM" "$CHAT_ID")"
-  CONVERSATION_SEGMENT="chat_${CHAT_ID_HASH#sha256:}"
-  CONVERSATION_SEGMENT="${CONVERSATION_SEGMENT:0:29}"
-  CONVERSATION_DIR="$ROOT/workspace/conversations/$PLATFORM/$CONVERSATION_SEGMENT"
-fi
-if [ -n "$IDENTITY_KEY" ]; then
-  IDENTITY_KEY_HASH="sha256:$(sha256_hex_string "$IDENTITY_KEY")"
-fi
 
 if [ -L "$USER_WORKSPACE" ]; then
   die "user workspace must not be a symlink: $USER_WORKSPACE"

@@ -114,6 +114,13 @@ Use `bin/knot-deliver.sh` to copy generated artifacts into the correct
 deliverables directory. Use `bin/knot-attachment.sh` to validate an
 existing deliverable and print the `cc-connect-attachments` block.
 
+`bin/knot-deliver.sh` only accepts source files from the current direct user's
+`work/`, `inbox/`, or `deliverables/` directories, or in group scope from the
+current group actor lane `work/<user_slug>/` excluding `.knot/` and `.state/`,
+or the current group `deliverables/` directory. `bin/knot-attachment.sh` only
+emits attachment blocks for files already inside the active direct user or
+authorized current group `deliverables/` directory.
+
 When sending a local file or image through IM, use:
 
 ````text

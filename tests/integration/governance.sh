@@ -1,6 +1,8 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034,SC2154
 
+clear_knot_env
+
 governance_root="$TMP_PARENT/governance-root"
 mkdir -p "$governance_root/workspace/admin" \
   "$governance_root/workspace/users/admin-user/deliverables" \

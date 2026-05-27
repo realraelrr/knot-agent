@@ -108,6 +108,8 @@ rejects:
 - another user's deliverables
 - another group's deliverables
 - `workspace/conversations/` metadata as a deliverable source
+- root-level, runtime, admin, and repository metadata paths as deliverable
+  sources
 - symlink escapes from deliverables
 - group access with a mismatched actor or explicit identity key
 

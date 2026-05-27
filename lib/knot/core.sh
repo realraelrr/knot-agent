@@ -93,14 +93,18 @@ knot_audit_deny_delivery() {
   local resource_path="$3"
   local message="$4"
 
-  knot_audit_record delivery.denied denied "$reason_code" "$resource_kind" "$resource_path" || true
+  if ! knot_audit_record delivery.denied denied "$reason_code" "$resource_kind" "$resource_path"; then
+    die "delivery denied but audit event could not be recorded: $message"
+  fi
   die "$message"
 }
 
 knot_audit_deny_group_access() {
   local message="$1"
 
-  knot_audit_record group.access.denied denied unauthorized_group || true
+  if ! knot_audit_record group.access.denied denied unauthorized_group; then
+    die "group access denied but audit event could not be recorded: $message"
+  fi
   die "$message"
 }
 
@@ -292,7 +296,6 @@ parse_knot_context_arg() {
       [ "$#" -gt 0 ] || die "--root requires a value"
       value="$1"
       ROOT="$value"
-      EXPLICIT_CONTEXT=1
       KNOT_ARG_CONSUMED=2
       ;;
     --platform)
@@ -300,7 +303,6 @@ parse_knot_context_arg() {
       [ "$#" -gt 0 ] || die "--platform requires a value"
       value="$1"
       PLATFORM="$value"
-      EXPLICIT_CONTEXT=1
       KNOT_ARG_CONSUMED=2
       ;;
     --chat-id)
@@ -308,7 +310,6 @@ parse_knot_context_arg() {
       [ "$#" -gt 0 ] || die "--chat-id requires a value"
       value="$1"
       CHAT_ID="$value"
-      EXPLICIT_CONTEXT=1
       KNOT_ARG_CONSUMED=2
       ;;
     --conversation-dir)
@@ -323,7 +324,6 @@ parse_knot_context_arg() {
       [ "$#" -gt 0 ] || die "--user-id requires a value"
       value="$1"
       USER_ID="$value"
-      EXPLICIT_CONTEXT=1
       KNOT_ARG_CONSUMED=2
       ;;
     --user-slug)
@@ -331,7 +331,6 @@ parse_knot_context_arg() {
       [ "$#" -gt 0 ] || die "--user-slug requires a value"
       value="$1"
       USER_SLUG="$value"
-      EXPLICIT_CONTEXT=1
       KNOT_ARG_CONSUMED=2
       ;;
     --group-slug)
@@ -339,8 +338,6 @@ parse_knot_context_arg() {
       [ "$#" -gt 0 ] || die "--group-slug requires a value"
       value="$1"
       GROUP_SLUG="$value"
-      EXPLICIT_CONTEXT=1
-      EXPLICIT_GROUP_SLUG=1
       KNOT_ARG_CONSUMED=2
       ;;
     --identity-key)
@@ -348,7 +345,6 @@ parse_knot_context_arg() {
       [ "$#" -gt 0 ] || die "--identity-key requires a value"
       value="$1"
       IDENTITY_KEY="$value"
-      EXPLICIT_IDENTITY_KEY=1
       KNOT_ARG_CONSUMED=2
       ;;
     --name)
@@ -371,16 +367,6 @@ parse_knot_context_arg() {
       return 1
       ;;
   esac
-}
-
-# shellcheck disable=SC2034
-clear_implicit_identity_key() {
-  if [ "${EXPLICIT_CONTEXT:-0}" -eq 1 ] && [ "${EXPLICIT_IDENTITY_KEY:-0}" -eq 0 ]; then
-    IDENTITY_KEY=""
-  fi
-  if [ "${EXPLICIT_CONTEXT:-0}" -eq 1 ] && [ "${EXPLICIT_GROUP_SLUG:-0}" -eq 0 ]; then
-    GROUP_SLUG=""
-  fi
 }
 
 require_knot_context() {

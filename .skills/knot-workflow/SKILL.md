@@ -74,9 +74,13 @@ task crosses an authorization boundary.
 - IM file/image delivery: generation is not delivery. For generated or local
   artifacts, use `bin/knot-deliver.sh` to copy the file into the current
   direct-user deliverables directory or, in group scope, the current group
-  deliverables directory. Then delegate to `bin/knot-attachment.sh` to validate
-  the boundary and print the cc-connect attachment block. Do not answer with
-  only a local path when the user asked to receive the file in IM.
+  deliverables directory. Source files must already live under the current
+  direct user's `work/`, `inbox/`, or `deliverables/` directory, or in group
+  scope under the current group actor lane excluding `.knot/` and `.state/`, or
+  the group `deliverables/` directory. Then delegate to
+  `bin/knot-attachment.sh` to validate the boundary and print the cc-connect
+  attachment block. Do not answer with only a local path when the user asked to
+  receive the file in IM.
 - Knowledge feedback from members: append a row to
   `workspace/admin/knowledge-feedback.md` and use `bin/knot-knowledge.sh propose`
   to create a local proposal bundle. Durable changes need `Diff`, `Status`,

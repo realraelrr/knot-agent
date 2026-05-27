@@ -54,6 +54,11 @@ without approve, merge, or `main` write permission.
 Generated files must be delivered only from current direct-user deliverables or
 the current authorized group deliverables directory.
 
+Source files passed to `bin/knot-deliver.sh` must come from the current direct
+user's `work/`, `inbox/`, or `deliverables/` directories, or in group scope
+from the current group actor lane excluding `.knot/` and `.state/`, or current
+group `deliverables/` directory.
+
 ## Secrets And Runtime Files
 
 - Location of platform runtime configs:

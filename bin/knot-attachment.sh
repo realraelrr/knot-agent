@@ -15,13 +15,6 @@ IDENTITY_KEY="${KNOT_IDENTITY_KEY:-}"
 CONVERSATION_DIR="${KNOT_CONVERSATION_DIR:-}"
 KIND=""
 FILE_PATH=""
-# Set by this script and read by parser helpers from lib/knot/core.sh.
-# shellcheck disable=SC2034
-EXPLICIT_CONTEXT=0
-# shellcheck disable=SC2034
-EXPLICIT_IDENTITY_KEY=0
-# shellcheck disable=SC2034
-EXPLICIT_GROUP_SLUG=0
 
 usage() {
   cat <<'EOF'
@@ -108,7 +101,6 @@ done
 require_knot_context
 [ -n "$KIND" ] || die "--kind is required"
 [ -n "$FILE_PATH" ] || die "--path is required"
-clear_implicit_identity_key
 
 case "$KIND" in
   image|file)
@@ -160,12 +152,12 @@ fi
 if [ "$SCOPE" = "direct" ] && path_is_under "$ABS_FILE" "$USER_DELIVERABLES_DIR"; then
   :
 elif [ "$SCOPE" = "group" ] && [ -n "$GROUP_DELIVERABLES_DIR" ] && path_is_under "$ABS_FILE" "$GROUP_DELIVERABLES_DIR"; then
-  knot_audit_record group.access.allowed allowed || true
+  knot_audit_record group.access.allowed allowed
 else
   deny_delivery outside_deliverables
 fi
 
-knot_audit_record delivery.verified allowed "" "$KIND" "$ABS_FILE" || true
+knot_audit_record delivery.verified allowed "" "$KIND" "$ABS_FILE"
 
 printf '```cc-connect-attachments\n'
 printf '%s: %s\n' "$KIND" "$ABS_FILE"

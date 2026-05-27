@@ -102,9 +102,9 @@ mkdir -p \
   "$TEST_ROOT/workspace/users/attacker-user/deliverables" \
   "$TEST_ROOT/workspace/users/victim-user/deliverables" \
   "$TEST_ROOT/workspace/groups/allowed-group/deliverables" \
+  "$TEST_ROOT/workspace/groups/allowed-group/work/attacker-user" \
   "$TEST_ROOT/workspace/groups/victim-group/deliverables" \
-  "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000" \
-  "$TEST_ROOT/generated"
+  "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000"
 
 cat > "$TEST_ROOT/workspace/admin/permissions.md" <<'EOF'
 | User | Workspace | Platform | Platform User ID | Group | Chat ID | Identity Key | Name | Role | Scope | Notes |
@@ -117,7 +117,7 @@ printf 'attacker own deliverable\n' > "$TEST_ROOT/workspace/users/attacker-user/
 printf 'victim private sentinel\n' > "$TEST_ROOT/workspace/users/victim-user/deliverables/private-sentinel.txt"
 printf 'victim group sentinel\n' > "$TEST_ROOT/workspace/groups/victim-group/deliverables/group-private.txt"
 printf 'conversation metadata\n' > "$TEST_ROOT/workspace/conversations/feishu/chat_000000000000000000000000/metadata.txt"
-printf 'generated artifact\n' > "$TEST_ROOT/generated/report.txt"
+printf 'generated artifact\n' > "$TEST_ROOT/workspace/groups/allowed-group/work/attacker-user/report.txt"
 printf 'external secret\n' > "$TMP_PARENT/outside-secret.txt"
 ln -s "$TMP_PARENT/outside-secret.txt" "$TEST_ROOT/workspace/users/attacker-user/deliverables/outside-link.txt"
 
@@ -193,8 +193,7 @@ audit_exports="$(
     --identity-key feishu:user:attacker \
     --emit-conversation-initialized
 )"
-eval "$audit_exports"
-AUDIT_CONVERSATION_DIR="$KNOT_CONVERSATION_DIR"
+AUDIT_CONVERSATION_DIR="$(workspace_export KNOT_CONVERSATION_DIR "$audit_exports")"
 
 expect_fail_contains \
   "another user's workspace file delivery denial can be audited" \
@@ -236,7 +235,7 @@ expect_ok \
   bash "$ROOT/bin/knot-deliver.sh" "${ATTACKER_GROUP_CONTEXT[@]}" \
     --kind file \
     --target group \
-    --path "$TEST_ROOT/generated/report.txt"
+    --path "$TEST_ROOT/workspace/groups/allowed-group/work/attacker-user/report.txt"
 
 expect_fail_contains \
   "unauthorized group target is rejected" \
@@ -244,7 +243,7 @@ expect_fail_contains \
   bash "$ROOT/bin/knot-deliver.sh" "${VICTIM_GROUP_CONTEXT[@]}" \
     --kind file \
     --target group \
-    --path "$TEST_ROOT/generated/report.txt"
+    --path "$TEST_ROOT/workspace/groups/allowed-group/work/attacker-user/report.txt"
 
 expect_fail_contains \
   "wrong explicit identity key is rejected even when platform user id matches" \
@@ -252,7 +251,7 @@ expect_fail_contains \
   bash "$ROOT/bin/knot-deliver.sh" "${WRONG_IDENTITY_CONTEXT[@]}" \
     --kind file \
     --target group \
-    --path "$TEST_ROOT/generated/report.txt"
+    --path "$TEST_ROOT/workspace/groups/allowed-group/work/attacker-user/report.txt"
 
 expect_fail_contains \
   "another group's deliverable cannot be attached" \
