@@ -16,16 +16,18 @@ GROUP_SLUG="${KNOT_GROUP_SLUG:-${KNOT_SOURCE_GROUP:-}}"
 TASK_ID="${PLAN_ID:-}"
 NOW="$(timestamp_utc)"
 APPLY=0
+CLEANUP_ACTION="scan"
 
 usage() {
   cat <<'EOF'
 Usage: bash bin/knot-planning.sh COMMAND [options]
 
 Commands:
-  init | resolve | close | restore
+  init
+  resolve
+  close
   cleanup scan
-  cleanup archive --dry-run|--apply
-  cleanup expire --dry-run|--apply
+  cleanup delete --dry-run|--apply
 
 Options:
   --root DIR
@@ -51,18 +53,6 @@ epoch_utc() {
 
 task_root() {
   knot_scope_task_root "$ROOT" "$SCOPE" "$USER_SLUG" "$GROUP_SLUG"
-}
-
-state_root() {
-  knot_scope_state_root "$ROOT" "$SCOPE" "$USER_SLUG" "$GROUP_SLUG"
-}
-
-archive_root() {
-  knot_scope_task_archive_root "$ROOT" "$SCOPE" "$USER_SLUG" "$GROUP_SLUG"
-}
-
-tombstone_root() {
-  knot_scope_task_tombstone_root "$ROOT" "$SCOPE" "$USER_SLUG" "$GROUP_SLUG"
 }
 
 active_file() {
@@ -99,6 +89,7 @@ task_dir() {
 
 write_default_plan() {
   local dir="$1"
+
   cat > "$dir/task_plan.md" <<'EOF'
 # Task Plan
 
@@ -134,8 +125,6 @@ write_meta() {
   local created_at="$3"
   local updated_at="$4"
   local closed_at="${5:-}"
-  local archived_at="${6:-}"
-  local expires_at="${7:-}"
 
   cat > "$path" <<EOF
 {
@@ -146,9 +135,7 @@ write_meta() {
   "status": "$status",
   "created_at": "$created_at",
   "updated_at": "$updated_at",
-  "closed_at": "$closed_at",
-  "archived_at": "$archived_at",
-  "expires_at": "$expires_at"
+  "closed_at": "$closed_at"
 }
 EOF
 }
@@ -160,7 +147,7 @@ update_meta_field() {
 
   tmp="$(mktemp "$file.tmp.XXXXXX")"
   jq "$jq_expr" "$file" > "$tmp"
-  mv "$tmp" "$file"
+  knot_atomic_replace "$tmp" "$file"
 }
 
 assert_task_tree_safe() {
@@ -176,61 +163,59 @@ assert_task_tree_safe() {
 is_active_task() {
   local id="$1"
   local active=""
+
   [ ! -L "$(active_file)" ] || die "planning active task pointer must not be a symlink"
   [ -f "$(active_file)" ] && active="$(tr -d '\r\n' < "$(active_file)")"
   [ "$id" = "$active" ] || { [ -n "${PLAN_ID:-}" ] && [ "$id" = "$PLAN_ID" ]; }
 }
 
-write_archive_manifest() {
-  local dir="$1"
+task_age_days() {
+  local timestamp="$1"
+  local timestamp_epoch
+  local now_epoch
 
-  knot_manifest_write_dir "$dir" "$dir/archive-manifest.tsv"
+  timestamp_epoch="$(epoch_utc "$timestamp")"
+  now_epoch="$(epoch_utc "$NOW")"
+  printf '%s\n' $(( (now_epoch - timestamp_epoch) / 86400 ))
 }
 
-verify_archive_manifest() {
-  local dir="$1"
-
-  assert_task_tree_safe "$dir"
-  knot_manifest_verify_dir "$dir" "$dir/archive-manifest.tsv" "planning archive manifest"
-}
-
-report_stale_one() {
+report_scan_one() {
   local dir="$1"
   local id
   local meta
   local status
   local updated_at
-  local updated_epoch
-  local now_epoch
-  local age_days
+  local closed_at
 
   assert_task_tree_safe "$dir"
   id="$(basename "$dir")"
   meta="$dir/task.meta.json"
   [ -f "$meta" ] || return 0
   status="$(json_value "$meta" status)"
-  updated_at="$(json_value "$meta" updated_at)"
-  [ "$status" = "active" ] || return 0
-  ! is_active_task "$id" || return 0
-  [ -n "$updated_at" ] || return 0
-  updated_epoch="$(epoch_utc "$updated_at")"
-  now_epoch="$(epoch_utc "$NOW")"
-  age_days=$(( (now_epoch - updated_epoch) / 86400 ))
-  [ "$age_days" -ge 7 ] || return 0
-  printf 'stale %s\n' "$id"
+
+  case "$status" in
+    active)
+      ! is_active_task "$id" || return 0
+      updated_at="$(json_value "$meta" updated_at)"
+      [ -n "$updated_at" ] || return 0
+      [ "$(task_age_days "$updated_at")" -ge 7 ] || return 0
+      printf 'stale %s\n' "$id"
+      ;;
+    closed)
+      closed_at="$(json_value "$meta" closed_at)"
+      [ -n "$closed_at" ] || return 0
+      [ "$(task_age_days "$closed_at")" -ge 7 ] || return 0
+      printf 'delete %s\n' "$id"
+      ;;
+  esac
 }
 
-archive_one() {
+delete_one() {
   local dir="$1"
   local id
   local meta
   local status
   local closed_at
-  local closed_epoch
-  local now_epoch
-  local age_days
-  local dest
-  local expires
 
   id="$(basename "$dir")"
   assert_task_tree_safe "$dir"
@@ -241,74 +226,15 @@ archive_one() {
   [ "$status" = "closed" ] || return 0
   ! is_active_task "$id" || return 0
   [ -n "$closed_at" ] || return 0
-  closed_epoch="$(epoch_utc "$closed_at")"
-  now_epoch="$(epoch_utc "$NOW")"
-  age_days=$(( (now_epoch - closed_epoch) / 86400 ))
-  [ "$age_days" -ge 7 ] || return 0
+  [ "$(task_age_days "$closed_at")" -ge 7 ] || return 0
 
   if [ "$APPLY" -eq 0 ]; then
-    printf 'archive %s\n' "$id"
+    printf 'delete %s\n' "$id"
     return 0
   fi
 
-  dest="$(archive_root)/$id"
-  [ ! -e "$dest" ] && [ ! -L "$dest" ] || die "archive destination already exists: $dest"
-  ensure_dir_no_symlink "$(archive_root)" "planning archive root"
-  mv "$dir" "$dest"
-  TASK_ID="$id"
-  expires="$(date -u -j -v+90d -f '%Y-%m-%dT%H:%M:%SZ' "$NOW" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null ||
-    date -u -d "$NOW + 90 days" '+%Y-%m-%dT%H:%M:%SZ')"
-  update_meta_field "$dest/task.meta.json" ".status = \"archived\" | .archived_at = \"$NOW\" | .expires_at = \"$expires\" | .updated_at = \"$NOW\""
-  write_archive_manifest "$dest"
-  printf 'archived: %s\n' "$dest"
-}
-
-expire_one() {
-  local dir="$1"
-  local id
-  local meta
-  local status
-  local expires_at
-  local expires_epoch
-  local now_epoch
-  local tombstone
-  local tmp_tombstone
-
-  id="$(basename "$dir")"
-  assert_task_tree_safe "$dir"
-  meta="$dir/task.meta.json"
-  [ -f "$meta" ] || return 0
-  status="$(json_value "$meta" status)"
-  [ "$status" = "archived" ] || return 0
-  ! is_active_task "$id" || return 0
-  expires_at="$(json_value "$meta" expires_at)"
-  [ -n "$expires_at" ] || return 0
-  expires_epoch="$(epoch_utc "$expires_at")"
-  now_epoch="$(epoch_utc "$NOW")"
-  [ "$now_epoch" -ge "$expires_epoch" ] || return 0
-  verify_archive_manifest "$dir"
-
-  if [ "$APPLY" -eq 0 ]; then
-    printf 'expire %s\n' "$id"
-    return 0
-  fi
-
-  ensure_dir_no_symlink "$(tombstone_root)" "planning tombstone root"
-  tombstone="$(tombstone_root)/$id.json"
-  [ ! -e "$tombstone" ] && [ ! -L "$tombstone" ] ||
-    die "planning tombstone already exists or is unsafe: $tombstone"
-  tmp_tombstone="$(mktemp "$(tombstone_root)/.$id.json.tmp.XXXXXX")"
-  if ! jq --arg expired_at "$NOW" \
-    --arg archive_path "${dir#"$ROOT/"}" \
-    --arg manifest_sha256 "$(file_sha256 "$dir/archive-manifest.tsv")" \
-    --rawfile manifest_tsv "$dir/archive-manifest.tsv" \
-    '. + {expired_at: $expired_at, archive_path: $archive_path, manifest_sha256: $manifest_sha256, manifest_tsv: $manifest_tsv}' "$meta" > "$tmp_tombstone"; then
-    rm -f "$tmp_tombstone"
-    die "cannot write planning tombstone"
-  fi
-  knot_atomic_replace "$tmp_tombstone" "$tombstone"
   rm -rf "$dir"
-  printf 'expired: %s\n' "$id"
+  printf 'deleted: %s\n' "$id"
 }
 
 while [ "$#" -gt 0 ]; do
@@ -332,8 +258,9 @@ while [ "$#" -gt 0 ]; do
     --help|-h)
       usage; exit 0 ;;
     *)
-      if [ "$COMMAND" = "cleanup" ] && [ -z "${CLEANUP_ACTION:-}" ]; then
+      if [ "$COMMAND" = "cleanup" ] && [ -z "${CLEANUP_ACTION_SET:-}" ]; then
         CLEANUP_ACTION="$1"
+        CLEANUP_ACTION_SET=1
       else
         die "unknown argument: $1"
       fi
@@ -345,8 +272,6 @@ done
 [ -n "$COMMAND" ] || die "command is required"
 ROOT="$(cd "$ROOT" && pwd -P)"
 reject_symlink_components "$(task_root)"
-reject_symlink_components "$(archive_root)"
-reject_symlink_components "$(tombstone_root)"
 
 case "$COMMAND" in
   init)
@@ -363,6 +288,9 @@ case "$COMMAND" in
   resolve)
     root_dir="$(task_root)"
     active=""
+    if [ -n "${PLAN_ID:-}" ]; then
+      validate_slug "PLAN_ID" "$PLAN_ID"
+    fi
     if [ -n "${PLAN_ID:-}" ] && [ -d "$root_dir/$PLAN_ID" ] && [ ! -L "$root_dir/$PLAN_ID" ]; then
       assert_task_tree_safe "$root_dir/$PLAN_ID"
       printf '%s\n' "$root_dir/$PLAN_ID"
@@ -388,64 +316,21 @@ case "$COMMAND" in
     fi
     printf '%s\n' "$dir"
     ;;
-  restore)
-    validate_slug "--task-id" "$TASK_ID"
-    src="$(archive_root)/$TASK_ID"
-    dest="$(task_root)/$TASK_ID"
-    [ -d "$src" ] && [ ! -L "$src" ] || die "archive not found or is unsafe: $src"
-    [ ! -e "$dest" ] && [ ! -L "$dest" ] || die "task destination already exists: $dest"
-    verify_archive_manifest "$src"
-    ensure_dir_no_symlink "$(task_root)" "planning task root"
-    mv "$src" "$dest"
-    update_meta_field "$dest/task.meta.json" ".status = \"closed\" | .updated_at = \"$NOW\""
-    rm -f "$dest/archive-manifest.tsv"
-    printf '%s\n' "$dest"
-    ;;
   cleanup)
-    action="${CLEANUP_ACTION:-scan}"
-    case "$action" in
-      scan|archive)
+    case "$CLEANUP_ACTION" in
+      scan|delete)
         [ -d "$(task_root)" ] || exit 0
-        matched=0
         for dir in "$(task_root)"/*; do
           [ -d "$dir" ] || continue
-          if [ "$action" = "scan" ]; then
-            before_output="$(report_stale_one "$dir")"
-            if [ -z "$before_output" ]; then
-              saved_apply="$APPLY"
-              APPLY=0
-              before_output="$(archive_one "$dir")"
-              APPLY="$saved_apply"
-            fi
+          if [ "$CLEANUP_ACTION" = "scan" ]; then
+            report_scan_one "$dir"
           else
-            before_output="$(archive_one "$dir")"
-          fi
-          if [ -n "$before_output" ]; then
-            matched=1
-            printf '%s\n' "$before_output"
+            delete_one "$dir"
           fi
         done
-        if [ "$action" = "archive" ] && [ "$APPLY" -eq 1 ] && [ "$matched" -eq 0 ]; then
-          die "no archive candidates"
-        fi
-        ;;
-      expire)
-        [ -d "$(archive_root)" ] || exit 0
-        matched=0
-        for dir in "$(archive_root)"/*; do
-          [ -d "$dir" ] || continue
-          before_output="$(expire_one "$dir")"
-          if [ -n "$before_output" ]; then
-            matched=1
-            printf '%s\n' "$before_output"
-          fi
-        done
-        if [ "$APPLY" -eq 1 ] && [ "$matched" -eq 0 ]; then
-          die "no expire candidates"
-        fi
         ;;
       *)
-        die "unknown cleanup action: $action"
+        die "unknown cleanup action: $CLEANUP_ACTION"
         ;;
     esac
     ;;

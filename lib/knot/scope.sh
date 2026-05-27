@@ -65,15 +65,3 @@ knot_scope_task_root() {
       ;;
   esac
 }
-
-knot_scope_state_root() {
-  dirname "$(knot_scope_task_root "$@")"
-}
-
-knot_scope_task_archive_root() {
-  printf '%s\n' "$(knot_scope_state_root "$@")/task-archives"
-}
-
-knot_scope_task_tombstone_root() {
-  printf '%s\n' "$(knot_scope_state_root "$@")/task-tombstones"
-}

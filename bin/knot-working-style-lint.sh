@@ -10,18 +10,18 @@ ROOT="${KNOT_ROOT:-$DEFAULT_ROOT}"
 COMMAND="${1:-}"
 [ "$#" -eq 0 ] || shift
 
-PROFILE_PATH=""
+STYLE_PATH=""
 ENFORCE_IF_FRONTMATTER=0
 REQUIRE_STRUCTURED=0
 ALLOWED_SECTIONS="Communication|Evidence And Review|Delivery|Recurring Workflows|Avoid"
 
 usage() {
   cat <<'EOF'
-Usage: bash bin/knot-collaborator-profile-lint.sh lint --profile FILE [options]
+Usage: bash bin/knot-working-style-lint.sh lint --style FILE [options]
 
 Options:
   --root DIR
-  --profile FILE
+  --style FILE
   --enforce-if-frontmatter
   --require-structured
 EOF
@@ -32,19 +32,19 @@ deny() {
   exit 1
 }
 
-profile_has_frontmatter() {
-  [ "$(sed -n '1p' "$PROFILE_PATH")" = "---" ]
+style_has_frontmatter() {
+  [ "$(sed -n '1p' "$STYLE_PATH")" = "---" ]
 }
 
 frontmatter_end_line() {
-  awk 'NR > 1 && $0 == "---" { print NR; exit }' "$PROFILE_PATH"
+  awk 'NR > 1 && $0 == "---" { print NR; exit }' "$STYLE_PATH"
 }
 
 validate_frontmatter() {
   local end_line="$1"
   local invalid
 
-  invalid="$(sed -n "2,$((end_line - 1))p" "$PROFILE_PATH" |
+  invalid="$(sed -n "2,$((end_line - 1))p" "$STYLE_PATH" |
     sed '/^[[:space:]]*$/d' |
     awk -F: '
       {
@@ -59,7 +59,7 @@ validate_sections() {
   local start_line="$1"
   local invalid
 
-  invalid="$(tail -n +"$start_line" "$PROFILE_PATH" |
+  invalid="$(tail -n +"$start_line" "$STYLE_PATH" |
     awk -v allowed="$ALLOWED_SECTIONS" '
       BEGIN {
         title_seen = 0
@@ -67,7 +67,7 @@ validate_sections() {
         count = 0
       }
       /^[[:space:]]*$/ { next }
-      /^# Collaborator Profile$/ {
+      /^# Working Style$/ {
         if (title_seen || section != "") {
           print "title must appear once before sections"
           exit
@@ -77,7 +77,7 @@ validate_sections() {
       }
       /^## / {
         if (!title_seen) {
-          print "section appears before profile title"
+          print "section appears before style title"
           exit
         }
         if (section != "" && count > 5) {
@@ -107,7 +107,7 @@ validate_sections() {
       }
       END {
         if (!title_seen) {
-          print "profile title is required"
+          print "style title is required"
         } else if (section != "" && count > 5) {
           print "section has more than 5 bullets: " section
         }
@@ -119,11 +119,11 @@ validate_safety() {
   local source_block_pattern='^[[:space:]]*```[[:space:]]*(transcript|chat[-_ ]?log|conversation[-_ ]?log|source[-_ ]?document)'
   local secret_pattern='^[[:space:]]*([-*+][[:space:]]+|[0-9]+[.)][[:space:]]+)?(export[[:space:]]+)?(api[_-]?key|access[_-]?token|auth[_-]?token|secret|password|bearer[_-]?token)[[:space:]]*[:=][[:space:]]*[^[:space:]]+'
 
-  if grep -Eiq "$source_block_pattern" "$PROFILE_PATH"; then
-    deny "profile contains a transcript or source-document block"
+  if grep -Eiq "$source_block_pattern" "$STYLE_PATH"; then
+    deny "style contains a transcript or source-document block"
   fi
-  if grep -Eiq "$secret_pattern" "$PROFILE_PATH"; then
-    deny "profile contains a secrets-looking assignment"
+  if grep -Eiq "$secret_pattern" "$STYLE_PATH"; then
+    deny "style contains a secrets-looking assignment"
   fi
 }
 
@@ -131,8 +131,8 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --root)
       shift; [ "$#" -gt 0 ] || die "--root requires a value"; ROOT="$1" ;;
-    --profile)
-      shift; [ "$#" -gt 0 ] || die "--profile requires a value"; PROFILE_PATH="$1" ;;
+    --style)
+      shift; [ "$#" -gt 0 ] || die "--style requires a value"; STYLE_PATH="$1" ;;
     --enforce-if-frontmatter)
       ENFORCE_IF_FRONTMATTER=1 ;;
     --require-structured)
@@ -146,27 +146,27 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ "$COMMAND" = "lint" ] || die "first argument must be lint"
-[ -n "$PROFILE_PATH" ] || die "--profile is required"
+[ -n "$STYLE_PATH" ] || die "--style is required"
 ROOT="$(cd "$ROOT" && pwd -P)"
-[ ! -L "$PROFILE_PATH" ] || die "profile must not be a symlink"
-[ -f "$PROFILE_PATH" ] || die "profile is not a file: $PROFILE_PATH"
-PROFILE_PATH="$(absolute_path "$PROFILE_PATH")"
+[ ! -L "$STYLE_PATH" ] || die "style must not be a symlink"
+[ -f "$STYLE_PATH" ] || die "style is not a file: $STYLE_PATH"
+STYLE_PATH="$(absolute_path "$STYLE_PATH")"
 validate_safety
 
-char_count="$(wc -m < "$PROFILE_PATH" | tr -d '[:space:]')"
-[ "$char_count" -le 1600 ] || deny "profile exceeds 1600 characters"
+char_count="$(wc -m < "$STYLE_PATH" | tr -d '[:space:]')"
+[ "$char_count" -le 1600 ] || deny "style exceeds 1600 characters"
 compact=false
 [ "$char_count" -lt 1200 ] || compact=true
 
 schema="legacy"
-if profile_has_frontmatter; then
+if style_has_frontmatter; then
   end_line="$(frontmatter_end_line)"
   [ -n "$end_line" ] || deny "frontmatter is not closed"
   validate_frontmatter "$end_line"
   validate_sections "$((end_line + 1))"
   schema="ok"
 elif [ "$REQUIRE_STRUCTURED" -eq 1 ]; then
-  deny "structured profile frontmatter is required"
+  deny "structured style frontmatter is required"
 elif [ "$ENFORCE_IF_FRONTMATTER" -eq 0 ]; then
   schema="legacy"
 fi

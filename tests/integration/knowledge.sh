@@ -88,52 +88,6 @@ else
   ok "knowledge helper rejects proposal commit SHA outside main history"
 fi
 
-if bash "$ROOT/bin/knot-knowledge.sh" admin-review \
-  --root "$knowledge_root" \
-  --mirror "$knowledge_root/workspace/knowledge/vault" \
-  --platform feishu \
-  --user-id ou/member \
-  --identity-key feishu:user:member \
-  --actor-user member-user >/dev/null 2>&1; then
-  fail "knowledge helper allowed member admin review"
-else
-  ok "knowledge helper rejects member admin review"
-fi
-
-mkdir -p "$knowledge_root/workspace/knowledge/vault/.github/workflows" \
-  "$knowledge_root/workspace/knowledge/vault/.skills/knot-workflow" \
-  "$knowledge_root/workspace/knowledge/vault/components/knot-skills" \
-  "$knowledge_root/workspace/knowledge/vault/docs/schemas" \
-  "$knowledge_root/workspace/knowledge/vault/bin" \
-  "$knowledge_root/workspace/knowledge/vault/lib/knot" \
-  "$knowledge_root/workspace/knowledge/vault/.skills/knot-setup/references"
-printf '%s\n' 'name: unsafe' > "$knowledge_root/workspace/knowledge/vault/.github/workflows/unsafe.yml"
-printf '%s\n' 'skill change' > "$knowledge_root/workspace/knowledge/vault/.skills/knot-workflow/SKILL.md"
-printf '%s\n' 'component skill change' > "$knowledge_root/workspace/knowledge/vault/components/knot-skills/SKILL.md"
-printf '%s\n' '{}' > "$knowledge_root/workspace/knowledge/vault/docs/schemas/example.schema.json"
-printf '%s\n' '# helper' > "$knowledge_root/workspace/knowledge/vault/bin/knot-helper.sh"
-printf '%s\n' '# library' > "$knowledge_root/workspace/knowledge/vault/lib/knot/example.sh"
-printf '%s\n' '| User | Workspace |' > "$knowledge_root/workspace/knowledge/vault/.skills/knot-setup/references/permissions.template.md"
-if review_output="$(bash "$ROOT/bin/knot-knowledge.sh" admin-review \
-  --root "$knowledge_root" \
-  --mirror "$knowledge_root/workspace/knowledge/vault" \
-  --platform feishu \
-  --user-id ou/admin \
-  --identity-key feishu:user:admin \
-  --actor-user admin-user 2>&1)" &&
-  printf '%s\n' "$review_output" | grep -Fq "high_risk=true" &&
-  printf '%s\n' "$review_output" | grep -Fq ".github/workflows/unsafe.yml" &&
-  printf '%s\n' "$review_output" | grep -Fq ".skills/knot-workflow/SKILL.md" &&
-  printf '%s\n' "$review_output" | grep -Fq "components/knot-skills/SKILL.md" &&
-  printf '%s\n' "$review_output" | grep -Fq "docs/schemas/example.schema.json" &&
-  printf '%s\n' "$review_output" | grep -Fq "bin/knot-helper.sh" &&
-  printf '%s\n' "$review_output" | grep -Fq "lib/knot/example.sh" &&
-  printf '%s\n' "$review_output" | grep -Fq ".skills/knot-setup/references/permissions.template.md"; then
-  ok "knowledge helper flags protected workflow, skill, schema, helper, and permission changes for admin review"
-else
-  fail "knowledge helper did not flag high-risk protected changes: $review_output"
-fi
-
 printf '%s\n' 'draft knowledge' > "$knowledge_root/workspace/users/member-user/work/proposal/draft.md"
 knowledge_symlink_sink="$TMP_PARENT/knowledge-proposal-symlink-sink"
 mkdir -p "$knowledge_symlink_sink"

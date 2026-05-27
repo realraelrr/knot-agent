@@ -44,10 +44,10 @@
         "recovery.prompt_sent",
         "recovery.completed",
         "recovery.failed",
-        "collab.profile.pack.generated",
-        "collab.profile.pack.denied",
-        "collab.profile.patch.applied",
-        "collab.profile.patch.denied"
+        "working_style.pack.generated",
+        "working_style.pack.denied",
+        "working_style.patch.applied",
+        "working_style.patch.denied"
       ]
     },
     "platform": {
@@ -99,12 +99,12 @@
         "send_failed",
         "recovery_empty",
         "write_failed",
-        "collab_profile_identity_unresolved",
-        "collab_profile_identity_ambiguous",
-        "collab_profile_workspace_mismatch",
-        "collab_profile_patch_invalid",
-        "collab_profile_patch_conflict",
-        "collab_profile_content_denied"
+        "working_style_identity_unresolved",
+        "working_style_identity_ambiguous",
+        "working_style_workspace_mismatch",
+        "working_style_patch_invalid",
+        "working_style_patch_conflict",
+        "working_style_content_denied"
       ]
     },
     "resource_kind": {

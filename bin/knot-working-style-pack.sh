@@ -6,8 +6,8 @@ DEFAULT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT="${KNOT_ROOT:-$DEFAULT_ROOT}"
 # shellcheck source=lib/knot/core.sh
 . "$DEFAULT_ROOT/lib/knot/core.sh"
-# shellcheck source=lib/knot/collaborator-profile-direct.sh
-. "$DEFAULT_ROOT/lib/knot/collaborator-profile-direct.sh"
+# shellcheck source=lib/knot/working-style.sh
+. "$DEFAULT_ROOT/lib/knot/working-style.sh"
 
 COMMAND="${1:-}"
 [ "$#" -eq 0 ] || shift
@@ -27,7 +27,7 @@ EXPLICIT_ACTOR_WORKSPACE=0
 
 usage() {
   cat <<'EOF'
-Usage: bash bin/knot-collaborator-profile-pack.sh pack --actor-user SLUG --active-workspace DIR --user-workspace DIR [options]
+Usage: bash bin/knot-working-style-pack.sh pack --actor-user SLUG --active-workspace DIR --user-workspace DIR [options]
 
 Options:
   --root DIR
@@ -46,23 +46,23 @@ Options:
 EOF
 }
 
-collab_profile_deny() {
+working_style_deny() {
   local reason_code="$1"
   local message="$2"
 
-  knot_audit_record collab.profile.pack.denied denied "$reason_code" || true
+  knot_audit_record working_style.pack.denied denied "$reason_code" || true
   die "$message"
 }
 
-write_profile_source() {
+write_style_source() {
   local path="$1"
   local rel
 
-  rel="$(collab_profile_relative_to_root "$path")" ||
-    collab_profile_deny invalid_resource "collaborator profile source is outside Knot root: $path"
+  rel="$(working_style_relative_to_root "$path")" ||
+    working_style_deny invalid_resource "working style source is outside Knot root: $path"
 
   printf '### %s\n\n' "$rel"
-  printf 'kind: collaborator_profile\n'
+  printf 'kind: working_style\n'
   printf 'sha256: %s\n\n' "$(file_sha256 "$path")"
   printf '```markdown\n'
   cat "$path"
@@ -76,7 +76,7 @@ write_profile_source() {
   printf '```\n\n'
 }
 
-initialize_structured_profile_if_empty() {
+initialize_structured_style_if_empty() {
   local path="$1"
 
   [ -s "$path" ] && return 0
@@ -86,7 +86,7 @@ version: 1
 updated: $(date -u '+%Y-%m-%d')
 reviewed:
 ---
-# Collaborator Profile
+# Working Style
 
 ## Communication
 
@@ -186,76 +186,71 @@ done
 if [ -L "$ROOT" ]; then
   ROOT="$(cd "$ROOT" && pwd -P)" || die "cannot resolve Knot root"
   ROOT_REAL="$ROOT"
-  collab_profile_deny symlink_denied "Knot root must not be a symlink"
+  working_style_deny symlink_denied "Knot root must not be a symlink"
 fi
 
 ROOT="$(cd "$ROOT" && pwd -P)"
 ROOT_REAL="$ROOT"
 
-collab_profile_validate_actor_scope
+working_style_validate_actor_scope
 
 umask 077
 
-PROFILE_DIR="$USER_WORKSPACE/collaboration"
 CONTEXT_DIR="$ACTOR_WORKSPACE/.knot"
-PACK_PATH="$CONTEXT_DIR/collaborator-profile-pack.md"
-PROFILE_FILE="$PROFILE_DIR/profile.md"
-PROFILE_REL="workspace/users/$USER_SLUG/collaboration/profile.md"
+PACK_PATH="$CONTEXT_DIR/style-pack.md"
+STYLE_FILE="$USER_WORKSPACE/style.md"
+STYLE_REL="workspace/users/$USER_SLUG/style.md"
 ensure_dir_no_symlink "$USER_WORKSPACE" "user workspace"
 if [ "$SCOPE" = "group" ]; then
-  collab_profile_deny_if_symlink "$PROFILE_DIR" "collaboration profile"
-  if [ -e "$PROFILE_DIR" ] && [ ! -d "$PROFILE_DIR" ]; then
-    collab_profile_deny invalid_resource "collaboration profile path is not a directory: $PROFILE_DIR"
-  fi
+  working_style_deny_if_symlink "$STYLE_FILE" "working style"
   ensure_dir_no_symlink "$ACTOR_WORKSPACE" "group actor workspace"
   ensure_dir_no_symlink "$CONTEXT_DIR" "group actor runtime context"
   chmod 700 "$CONTEXT_DIR"
 else
-  ensure_dir_no_symlink "$PROFILE_DIR" "collaboration profile"
   ensure_dir_no_symlink "$CONTEXT_DIR" "user runtime context"
-  chmod 700 "$PROFILE_DIR" "$CONTEXT_DIR"
+  chmod 700 "$CONTEXT_DIR"
 fi
 
 if [ "$SCOPE" = "direct" ]; then
-  collab_profile_ensure_owner_only_file "$PROFILE_FILE"
-  initialize_structured_profile_if_empty "$PROFILE_FILE"
-elif [ -L "$PROFILE_FILE" ]; then
-  collab_profile_deny symlink_denied "collaborator profile must not be a symlink: $PROFILE_FILE"
+  working_style_ensure_owner_only_file "$STYLE_FILE"
+  initialize_structured_style_if_empty "$STYLE_FILE"
+elif [ -L "$STYLE_FILE" ]; then
+  working_style_deny symlink_denied "working style must not be a symlink: $STYLE_FILE"
 fi
-if [ -f "$PROFILE_FILE" ]; then
-  collab_profile_validate_content "$PROFILE_FILE"
+if [ -f "$STYLE_FILE" ]; then
+  working_style_validate_content "$STYLE_FILE"
 fi
 
-tmp_pack="$(mktemp "$CONTEXT_DIR/.collaborator-profile-pack.md.tmp.XXXXXX")"
+tmp_pack="$(mktemp "$CONTEXT_DIR/.style-pack.md.tmp.XXXXXX")"
 chmod 600 "$tmp_pack"
 
 {
-  printf '# Knot Collaborator Profile Pack\n\n'
-  printf 'scope: collaborator_profile\n'
+  printf '# Knot Working Style Pack\n\n'
+  printf 'scope: working_style\n'
   if [ "$SCOPE" = "group" ]; then
     printf 'mode: read_only\n'
   else
     printf 'mode: writable\n'
   fi
   printf 'actor_user: %s\n' "$USER_SLUG"
-  printf 'active_workspace: %s\n' "$(collab_profile_relative_to_root "$ACTIVE_WORKSPACE")"
-  printf 'user_workspace: %s\n' "$(collab_profile_relative_to_root "$USER_WORKSPACE")"
+  printf 'active_workspace: %s\n' "$(working_style_relative_to_root "$ACTIVE_WORKSPACE")"
+  printf 'user_workspace: %s\n' "$(working_style_relative_to_root "$USER_WORKSPACE")"
   if [ "$SCOPE" = "group" ]; then
-    printf 'actor_workspace: %s\n' "$(collab_profile_relative_to_root "$ACTOR_WORKSPACE")"
-    printf 'source_profile: %s\n' "$PROFILE_REL"
+    printf 'actor_workspace: %s\n' "$(working_style_relative_to_root "$ACTOR_WORKSPACE")"
+    printf 'source_style: %s\n' "$STYLE_REL"
     printf 'write_target: read_only\n\n'
   else
-    printf 'write_target: %s\n\n' "$PROFILE_REL"
+    printf 'write_target: %s\n\n' "$STYLE_REL"
   fi
   printf '## Sources\n\n'
-  if [ -f "$PROFILE_FILE" ]; then
-    write_profile_source "$PROFILE_FILE"
+  if [ -f "$STYLE_FILE" ]; then
+    write_style_source "$STYLE_FILE"
   else
-    printf '_No collaborator profile has been created for this actor._\n\n'
+    printf '_No working style has been created for this actor._\n\n'
   fi
 } > "$tmp_pack"
 
-previous_pack="$(mktemp "$CONTEXT_DIR/.collaborator-profile-pack.md.previous.XXXXXX")"
+previous_pack="$(mktemp "$CONTEXT_DIR/.style-pack.md.previous.XXXXXX")"
 had_previous_pack=0
 if [ -f "$PACK_PATH" ]; then
   cp "$PACK_PATH" "$previous_pack"
@@ -268,14 +263,14 @@ fi
 mv "$tmp_pack" "$PACK_PATH"
 chmod 600 "$PACK_PATH"
 
-if ! knot_audit_record collab.profile.pack.generated recorded; then
+if ! knot_audit_record working_style.pack.generated recorded; then
   if [ "$had_previous_pack" -eq 1 ]; then
     mv "$previous_pack" "$PACK_PATH"
     chmod 600 "$PACK_PATH"
   else
     rm -f "$PACK_PATH"
   fi
-  die "cannot record collaborator profile pack event"
+  die "cannot record working style pack event"
 fi
 rm -f "$previous_pack"
 printf '%s\n' "$PACK_PATH"

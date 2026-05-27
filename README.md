@@ -54,6 +54,6 @@ boundaries. See [`docs/architecture/enterprise-data-flow.md`](docs/architecture/
 - IM smoke testing: [`docs/ops/im-smoke-sop.md`](docs/ops/im-smoke-sop.md)
 - Security model: [`docs/security/security-model.md`](docs/security/security-model.md)
 - Audit event schema: [`docs/schemas/audit-event.schema.json`](docs/schemas/audit-event.schema.json)
-- Collaborator profile: [`docs/architecture/collaborator-profile.md`](docs/architecture/collaborator-profile.md)
+- Working style: [`docs/architecture/working-style.md`](docs/architecture/working-style.md)
 
 Licensed under the Apache License 2.0. See `LICENSE`.

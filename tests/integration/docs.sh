@@ -46,7 +46,9 @@ doc_root="$TMP_PARENT/doc-contract-root"
 mkdir -p \
   "$doc_root/checks/doctor" \
   "$doc_root/.skills/knot-setup/references" \
-  "$doc_root/.skills/knot-collaborator-profile" \
+  "$doc_root/.skills/knot-knowledge" \
+  "$doc_root/.skills/knot-delivery" \
+  "$doc_root/.skills/working-style" \
   "$doc_root/.skills/knot-workflow" \
   "$doc_root/docs/ops" \
   "$doc_root/docs/security" \
@@ -55,7 +57,9 @@ cp "$ROOT/checks/doctor/common.sh" "$doc_root/checks/doctor/common.sh"
 cp "$ROOT/checks/doctor/source.sh" "$doc_root/checks/doctor/source.sh"
 cp "$ROOT/checks/doctor/installed.sh" "$doc_root/checks/doctor/installed.sh"
 cp "$ROOT/AGENTS.md" "$doc_root/AGENTS.md"
-cp "$ROOT/.skills/knot-collaborator-profile/SKILL.md" "$doc_root/.skills/knot-collaborator-profile/SKILL.md"
+cp "$ROOT/.skills/knot-knowledge/SKILL.md" "$doc_root/.skills/knot-knowledge/SKILL.md"
+cp "$ROOT/.skills/knot-delivery/SKILL.md" "$doc_root/.skills/knot-delivery/SKILL.md"
+cp "$ROOT/.skills/working-style/SKILL.md" "$doc_root/.skills/working-style/SKILL.md"
 cp "$ROOT/.skills/knot-workflow/SKILL.md" "$doc_root/.skills/knot-workflow/SKILL.md"
 cp "$ROOT/.skills/knot-setup/references/"*.md "$doc_root/.skills/knot-setup/references/"
 cp "$ROOT/docs/ops/im-smoke-sop.md" "$doc_root/docs/ops/im-smoke-sop.md"

@@ -12,11 +12,11 @@ process sandbox, container boundary, or operating-system access-control layer.
 - **Codex session history:** Codex session history is the transcript source of
   truth for user and model messages.
 - **Knot helpers:** `bin/knot-workspace.sh`, `bin/knot-deliver.sh`,
-  `bin/knot-attachment.sh`, `bin/knot-collaborator-profile-pack.sh`,
-  `bin/knot-collaborator-profile-apply.sh`,
-  `bin/knot-collaborator-profile-lint.sh`, `bin/knot-knowledge.sh`,
+  `bin/knot-attachment.sh`, `bin/knot-working-style-pack.sh`,
+  `bin/knot-working-style-apply.sh`,
+  `bin/knot-working-style-lint.sh`, `bin/knot-knowledge.sh`,
   `bin/knot-planning.sh`, and `bin/knot-audit.sh` provide deterministic
-  workspace routing, delivery/profile validation, knowledge proposal checks,
+  workspace routing, delivery/style validation, knowledge proposal checks,
   planning lifecycle checks, and compact boundary event records that follow
   `docs/schemas/audit-event.schema.json`.
 - **Workspace data:** `workspace/users/<user_slug>/` is the direct-chat working
@@ -56,12 +56,12 @@ In the default local setup, Knot's deterministic helpers reject:
 - symlink escapes from current workspaces and deliverables directories;
 - static `KNOT_ACTIVE_WORKSPACE` runtime configuration;
 - component lockfile rows that point outside the pinned component layout;
-- collaborator profile snapshots or patches containing marked transcript/source
+- working style snapshots or patches containing marked transcript/source
   document blocks, secrets-looking assignments, or content beyond the bounded
-  profile size;
-- structured collaborator profiles with invalid frontmatter, invalid sections,
+  style size;
+- structured working styles with invalid frontmatter, invalid sections,
   or too many bullets;
-- planning archive or expiration of active or current task-pointer plans;
+- planning cleanup of active, current, or symlinked task state;
 - local knowledge proposal writes that target the approved mirror or are made
   with member credentials carrying GitHub tokens.
 

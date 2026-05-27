@@ -15,10 +15,10 @@ Classify the request before acting:
 - **Knowledge source**: a document, folder, note, URL, or attachment should become reusable knowledge.
 - **Knowledge query**: the user asks what the organization knows or what a source says.
 - **Execution task**: the user wants analysis, drafting, PPT, HTML, file generation, research, automation, or operations work.
-- **IM delivery**: the user wants a local file or image sent back through chat.
-- **Collaborator profile**: the task depends on the human collaborator's
+- **IM delivery**: the user wants a local file or image sent back through chat; use `knot-delivery`.
+- **Working style**: the task depends on the human collaborator's
   communication style, work habits, repeated corrections, or stable personal
-  workflow cues; use `knot-collaborator-profile`.
+  workflow cues; use `working-style`.
 
 Use the lightest execution weight that fits:
 
@@ -51,17 +51,13 @@ task crosses an authorization boundary.
   launching Codex. Codex should run from `KNOT_ACTIVE_WORKSPACE`: direct chats
   use the actor's `workspace/users/<user_slug>` directory; authorized group
   chats use the current `workspace/groups/<group_slug>` directory.
-- Raw document to knowledge: use an available conversion skill when conversion
-  helps, write intermediates under the active workspace, then use an available
-  knowledge-ingest skill to produce a reviewable proposal. Durable knowledge is
-  approved through the GitHub-backed knowledge repo, not by direct local writes.
-- Direct knowledge ingest: use an available knowledge-ingest skill when the
-  source is already clean text or Markdown. Do not force a conversion step.
+- Knowledge source or correction: use `knot-knowledge`. Convert only when the
+  source needs extraction before a reviewable proposal.
 - Knowledge query: use an available knowledge-query skill first. If evidence is
   missing or stale, say so and, when allowed, propose a feedback or update path.
 - Wiki maintenance: use available wiki maintenance skills only when the task
   calls for them.
-- Collaborator profile: use `knot-collaborator-profile` only for personal
+- Working style: use `working-style` only for personal
   collaboration preferences and corrections. Enterprise facts belong in
   reusable knowledge, task progress belongs in task planning, and reusable
   operations belong in workflow skill or SOP candidates.
@@ -71,29 +67,18 @@ task crosses an authorization boundary.
   sidecars, or knowledge ingest.
 - General execution: use the execution weights above; create workspace files
   only when the task needs them.
-- IM file/image delivery: generation is not delivery. For generated or local
-  artifacts, use `bin/knot-deliver.sh` to copy the file into the current
-  direct-user deliverables directory or, in group scope, the current group
-  deliverables directory. Source files must already live under the current
-  direct user's `work/`, `inbox/`, or `deliverables/` directory, or in group
-  scope under the current group actor lane excluding `.knot/` and `.state/`, or
-  the group `deliverables/` directory. Then delegate to
-  `bin/knot-attachment.sh` to validate the boundary and print the cc-connect
-  attachment block. Do not answer with only a local path when the user asked to
-  receive the file in IM.
-- Knowledge feedback from members: append a row to
-  `workspace/admin/knowledge-feedback.md` and use `bin/knot-knowledge.sh propose`
-  to create a local proposal bundle. Durable changes need `Diff`, `Status`,
-  and `Execution`; only explicit admins may run the approval path.
+- IM file/image delivery: use `knot-delivery`.
+- Knowledge feedback from members: use `knot-knowledge`. Members propose;
+  only explicit admins may approve durable knowledge.
 
 ## Learning Routes
 
 - Personal collaboration style, repeated corrections, and stable individual
-  work preferences may update the collaborator profile through
-  `knot-collaborator-profile`.
+  work preferences may update the working style through
+  `working-style`.
 - Enterprise knowledge, policies, facts, and source-backed decisions go through
-  `llm-wiki` and the GitHub-backed knowledge feedback/review path. Knot runtime
-  should read only the approved main mirror or a pinned approved commit.
+  `knot-knowledge` and the GitHub-backed review path. Knot runtime should read
+  only the approved main mirror or a pinned approved commit.
 - Single-task progress, intermediate decisions, blockers, and handoff state go
   through `planning-with-files` when task tracking is needed. Use
   `bin/knot-planning.sh` so the task lands in the direct, group actor-lane, or

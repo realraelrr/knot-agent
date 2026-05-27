@@ -6,8 +6,8 @@ DEFAULT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT="${KNOT_ROOT:-$DEFAULT_ROOT}"
 # shellcheck source=lib/knot/core.sh
 . "$DEFAULT_ROOT/lib/knot/core.sh"
-# shellcheck source=lib/knot/collaborator-profile-direct.sh
-. "$DEFAULT_ROOT/lib/knot/collaborator-profile-direct.sh"
+# shellcheck source=lib/knot/working-style.sh
+. "$DEFAULT_ROOT/lib/knot/working-style.sh"
 
 COMMAND="${1:-}"
 [ "$#" -eq 0 ] || shift
@@ -33,7 +33,7 @@ LOCK_HELD=0
 
 usage() {
   cat <<'EOF'
-Usage: bash bin/knot-collaborator-profile-apply.sh apply --patch FILE --actor-user SLUG --active-workspace DIR --user-workspace DIR [options]
+Usage: bash bin/knot-working-style-apply.sh apply --patch FILE --actor-user SLUG --active-workspace DIR --user-workspace DIR [options]
 
 Options:
   --root DIR
@@ -63,18 +63,18 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
-collab_profile_deny() {
+working_style_deny() {
   local reason_code="$1"
   local message="$2"
 
-  knot_audit_record collab.profile.patch.denied denied "$reason_code" || true
+  knot_audit_record working_style.patch.denied denied "$reason_code" || true
   die "$message"
 }
 
 acquire_apply_lock() {
-  LOCK_DIR="$USER_WORKSPACE/.knot/collaborator-profile-apply.lock"
+  LOCK_DIR="$USER_WORKSPACE/.knot/style-apply.lock"
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    collab_profile_deny collab_profile_patch_conflict "another collaborator profile patch apply is already in progress"
+    working_style_deny working_style_patch_conflict "another working style patch apply is already in progress"
   fi
   LOCK_HELD=1
 }
@@ -168,84 +168,84 @@ done
 if [ -L "$ROOT" ]; then
   ROOT="$(cd "$ROOT" && pwd -P)" || die "cannot resolve Knot root"
   ROOT_REAL="$ROOT"
-  collab_profile_deny symlink_denied "Knot root must not be a symlink"
+  working_style_deny symlink_denied "Knot root must not be a symlink"
 fi
 ROOT="$(cd "$ROOT" && pwd -P)"
 ROOT_REAL="$ROOT"
 
-collab_profile_validate_actor_scope
+working_style_validate_actor_scope
 
 if [ "$SCOPE" = "group" ]; then
-  collab_profile_deny collab_profile_workspace_mismatch "group scope cannot apply collaborator profile patches"
+  working_style_deny working_style_workspace_mismatch "group scope cannot apply working style patches"
 fi
 
-[ -n "$PATCH_PATH" ] || collab_profile_deny collab_profile_patch_invalid "--patch is required"
-collab_profile_deny_if_symlink "$USER_WORKSPACE/collaboration" "collaboration profile"
-collab_profile_deny_if_symlink "$USER_WORKSPACE/.knot" "user runtime context"
-collab_profile_deny_if_symlink "$PATCH_PATH" "collaborator profile patch proposal"
-[ -f "$PATCH_PATH" ] || collab_profile_deny collab_profile_patch_invalid "collaborator profile patch proposal is not a file"
+[ -n "$PATCH_PATH" ] || working_style_deny working_style_patch_invalid "--patch is required"
+working_style_deny_if_symlink "$USER_WORKSPACE/style.md" "working style"
+working_style_deny_if_symlink "$USER_WORKSPACE/.knot" "user runtime context"
+working_style_deny_if_symlink "$PATCH_PATH" "working style patch proposal"
+[ -f "$PATCH_PATH" ] || working_style_deny working_style_patch_invalid "working style patch proposal is not a file"
 
 PATCH_PATH="$(absolute_path "$PATCH_PATH")" ||
-  collab_profile_deny collab_profile_patch_invalid "cannot resolve collaborator profile patch proposal"
-EXPECTED_PATCH_PATH="$(absolute_path "$USER_WORKSPACE/.knot/collaborator-profile.patch")" ||
-  collab_profile_deny collab_profile_patch_invalid "cannot resolve expected collaborator profile patch proposal"
+  working_style_deny working_style_patch_invalid "cannot resolve working style patch proposal"
+EXPECTED_PATCH_PATH="$(absolute_path "$USER_WORKSPACE/.knot/style.patch")" ||
+  working_style_deny working_style_patch_invalid "cannot resolve expected working style patch proposal"
 [ "$PATCH_PATH" = "$EXPECTED_PATCH_PATH" ] ||
-  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch proposal must be in the active runtime context"
+  working_style_deny working_style_patch_invalid "working style patch proposal must be in the active runtime context"
 chmod 600 "$PATCH_PATH"
 acquire_apply_lock
 
 TARGET_REL="$(sed -n '1s/^target: //p' "$PATCH_PATH")"
 BASE_SHA256="$(sed -n '2s/^base_sha256: //p' "$PATCH_PATH")"
 [ "$(sed -n '3p' "$PATCH_PATH")" = "" ] ||
-  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch metadata must be followed by a blank line"
+  working_style_deny working_style_patch_invalid "working style patch metadata must be followed by a blank line"
 [ -n "$TARGET_REL" ] ||
-  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch target is missing"
+  working_style_deny working_style_patch_invalid "working style patch target is missing"
 printf '%s' "$BASE_SHA256" | grep -Eq '^[0-9a-f]{64}$' ||
-  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch base_sha256 is invalid"
+  working_style_deny working_style_patch_invalid "working style patch base_sha256 is invalid"
 
 case "$TARGET_REL" in
-  "workspace/users/$USER_SLUG/collaboration/profile.md")
+  "workspace/users/$USER_SLUG/style.md")
     ;;
   *)
-    collab_profile_deny collab_profile_patch_invalid "collaborator profile patch target is not the actor profile"
+    working_style_deny working_style_patch_invalid "working style patch target is not the actor style file"
     ;;
 esac
 
 [ "$(sed -n '4p' "$PATCH_PATH")" = "--- a/$TARGET_REL" ] ||
-  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch source header does not match target"
+  working_style_deny working_style_patch_invalid "working style patch source header does not match target"
 [ "$(sed -n '5p' "$PATCH_PATH")" = "+++ b/$TARGET_REL" ] ||
-  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch destination header does not match target"
+  working_style_deny working_style_patch_invalid "working style patch destination header does not match target"
 
 TARGET_PATH="$ROOT/$TARGET_REL"
-collab_profile_deny_if_symlink "$TARGET_PATH" "collaborator profile patch target"
+working_style_deny_if_symlink "$TARGET_PATH" "working style patch target"
 [ -f "$TARGET_PATH" ] ||
-  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch target is not an existing file"
+  working_style_deny working_style_patch_invalid "working style patch target is not an existing file"
 [ "$(file_sha256 "$TARGET_PATH")" = "$BASE_SHA256" ] ||
-  collab_profile_deny collab_profile_patch_conflict "collaborator profile patch base hash no longer matches target"
+  working_style_deny working_style_patch_conflict "working style patch base hash no longer matches target"
 
-TMP_DIFF="$(mktemp "$USER_WORKSPACE/.knot/.collaborator-profile.patch.diff.XXXXXX")"
-TMP_OUTPUT="$(mktemp "$USER_WORKSPACE/collaboration/.collaborator-profile-apply.md.XXXXXX")"
+TMP_DIFF="$(mktemp "$USER_WORKSPACE/.knot/.style.patch.diff.XXXXXX")"
+TMP_OUTPUT="$(mktemp "$USER_WORKSPACE/.working-style-apply.md.XXXXXX")"
 chmod 600 "$TMP_DIFF" "$TMP_OUTPUT"
 tail -n +4 "$PATCH_PATH" > "$TMP_DIFF"
 
 if ! /usr/bin/patch -s -f -F 0 -o "$TMP_OUTPUT" "$TARGET_PATH" "$TMP_DIFF" >/dev/null 2>&1; then
-  collab_profile_deny collab_profile_patch_invalid "collaborator profile patch is not an applicable unified diff"
+  working_style_deny working_style_patch_invalid "working style patch is not an applicable unified diff"
 fi
 
-collab_profile_validate_content "$TMP_OUTPUT" write
-TMP_BACKUP="$(mktemp "$USER_WORKSPACE/collaboration/.collaborator-profile-before.md.XXXXXX")"
+working_style_validate_content "$TMP_OUTPUT" write
+TMP_BACKUP="$(mktemp "$USER_WORKSPACE/.working-style-before.md.XXXXXX")"
 cp "$TARGET_PATH" "$TMP_BACKUP"
 chmod 600 "$TMP_BACKUP"
 knot_atomic_replace "$TMP_OUTPUT" "$TARGET_PATH" ||
-  collab_profile_deny write_failed "cannot atomically replace collaborator profile"
+  working_style_deny write_failed "cannot atomically replace working style"
 TMP_OUTPUT=""
 chmod 600 "$TARGET_PATH"
 
-if ! knot_audit_record collab.profile.patch.applied recorded; then
+if ! knot_audit_record working_style.patch.applied recorded; then
   knot_atomic_replace "$TMP_BACKUP" "$TARGET_PATH" ||
-    die "cannot restore collaborator profile after audit failure"
+    die "cannot restore working style after audit failure"
   TMP_BACKUP=""
-  die "cannot record collaborator profile patch apply event"
+  die "cannot record working style patch apply event"
 fi
 rm -f "$TMP_BACKUP"
 TMP_BACKUP=""

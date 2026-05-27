@@ -28,7 +28,6 @@ Commands:
   status
   sync-approved
   propose --source DIR [--title NAME]
-  admin-review
 
 Options:
   --root DIR
@@ -94,46 +93,6 @@ copy_proposal_files() {
     cp "$file" "$dest_dir/files/$rel"
   done < <(find "$source_dir" -type f ! -path '*/.git/*' -print0)
   knot_manifest_write_dir "$dest_dir/files" "$dest_dir/manifest.tsv"
-}
-
-knot_knowledge_path_is_high_risk() {
-  local path="$1"
-
-  case "$path" in
-    .github/*|CODEOWNERS|*/CODEOWNERS|docs/schemas/*|bin/knot-*|lib/knot/*|.skills/*|components/knot-skills/*|workspace/admin/permissions.md)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
-status_has_high_risk_path() {
-  local status="$1"
-  local line
-  local path
-  local old_path
-  local new_path
-
-  while IFS= read -r line || [ -n "$line" ]; do
-    [ -n "$line" ] || continue
-    path="${line#?? }"
-    case "$path" in
-      *" -> "*)
-        old_path="${path%% -> *}"
-        new_path="${path##* -> }"
-        knot_knowledge_path_is_high_risk "$old_path" && return 0
-        knot_knowledge_path_is_high_risk "$new_path" && return 0
-        ;;
-      *)
-        knot_knowledge_path_is_high_risk "$path" && return 0
-        ;;
-    esac
-  done <<EOF
-$status
-EOF
-  return 1
 }
 
 while [ "$#" -gt 0 ]; do
@@ -204,18 +163,6 @@ case "$COMMAND" in
       git -C "$MIRROR" reset --hard "$APPROVED_REF" >/dev/null
     fi
     printf 'synced: %s %s\n' "$MIRROR" "$APPROVED_REF"
-    ;;
-  admin-review)
-    require_admin "$ROLE"
-    [ -d "$MIRROR/.git" ] || die "knowledge mirror is not a git repository: $MIRROR"
-    status="$(git -C "$MIRROR" status --porcelain -uall)"
-    printf 'role=admin\n'
-    if status_has_high_risk_path "$status"; then
-      printf 'high_risk=true\n'
-    else
-      printf 'high_risk=false\n'
-    fi
-    printf '%s\n' "$status" | sed '/^$/d'
     ;;
   propose)
     [ -n "$USER_SLUG" ] || die "--actor-user or KNOT_ACTOR_USER is required"

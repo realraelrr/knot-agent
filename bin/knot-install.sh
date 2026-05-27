@@ -250,7 +250,9 @@ link_skill md-for-human components/md-for-human/.codex/skills/md-for-human
 link_skill handoff components/handoff-skill/.codex/skills/handoff
 link_skill knot-setup .skills/knot-setup
 link_skill knot-workflow .skills/knot-workflow
-link_skill knot-collaborator-profile .skills/knot-collaborator-profile
+link_skill knot-knowledge .skills/knot-knowledge
+link_skill knot-delivery .skills/knot-delivery
+link_skill working-style .skills/working-style
 
 if [ "$SKIP_BUILD" -eq 0 ]; then
   if [ -d components/cc-connect-local-main ]; then

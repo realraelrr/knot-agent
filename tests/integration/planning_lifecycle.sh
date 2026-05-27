@@ -77,14 +77,11 @@ else
   fail "planning helper did not resolve active direct task"
 fi
 
-if bash "$ROOT/bin/knot-planning.sh" cleanup archive --apply \
-  --root "$planning_root" \
-  --scope direct \
-  --actor-user direct-user \
-  --now 2026-01-10T00:00:00Z >/dev/null 2>&1; then
-  fail "planning cleanup archived active task"
+if PLAN_ID="../../admin" KNOT_SCOPE=direct KNOT_ACTOR_USER=direct-user \
+  bash "$ROOT/bin/knot-planning.sh" resolve --root "$planning_root" >/dev/null 2>&1; then
+  fail "planning helper allowed traversal PLAN_ID"
 else
-  ok "planning cleanup rejects active task archive"
+  ok "planning helper rejects traversal PLAN_ID"
 fi
 
 symlink_source="$planning_root/symlink-source"
@@ -93,16 +90,16 @@ mkdir -p "$symlink_source"
 cp "$direct_task/task_plan.md" "$symlink_source/task_plan.md"
 jq '.status = "closed" | .closed_at = "2026-01-01T00:00:00Z"' "$direct_task/task.meta.json" > "$symlink_source/task.meta.json"
 ln -s "$symlink_source" "$symlink_task"
-if bash "$ROOT/bin/knot-planning.sh" cleanup archive --apply \
+if bash "$ROOT/bin/knot-planning.sh" cleanup delete --apply \
   --root "$planning_root" \
   --scope direct \
   --actor-user direct-user \
   --now 2026-01-10T00:00:00Z >/dev/null 2>&1; then
-  fail "planning cleanup allowed symlinked task archive"
+  fail "planning cleanup allowed symlinked task deletion"
 else
-  ok "planning cleanup rejects symlinked task archive"
+  ok "planning cleanup rejects symlinked task deletion"
 fi
-rm -f "$symlink_task" "$planning_root/workspace/users/direct-user/.state/task-archives/task-link"
+rm -f "$symlink_task"
 
 if bash "$ROOT/bin/knot-planning.sh" close \
   --root "$planning_root" \
@@ -110,103 +107,35 @@ if bash "$ROOT/bin/knot-planning.sh" close \
   --actor-user direct-user \
   --task-id task-direct \
   --now 2026-01-01T00:00:00Z >/dev/null &&
-  archive_dry_run="$(bash "$ROOT/bin/knot-planning.sh" cleanup archive --dry-run \
-    --root "$planning_root" \
-    --scope direct \
-    --actor-user direct-user \
-    --now 2026-01-10T00:00:00Z)" &&
-  printf '%s\n' "$archive_dry_run" | grep -Fq "archive task-direct"; then
-  ok "planning cleanup dry-run reports closed archive candidate"
+  jq -e '.status == "closed" and .closed_at == "2026-01-01T00:00:00Z"' "$direct_task/task.meta.json" >/dev/null &&
+  [ ! -f "$planning_root/workspace/users/direct-user/.state/tasks/.active_task" ]; then
+  ok "planning helper closes direct task and clears active pointer"
 else
-  fail "planning cleanup did not report closed archive candidate"
+  fail "planning helper did not close direct task"
 fi
 
-if archive_output="$(bash "$ROOT/bin/knot-planning.sh" cleanup archive --apply \
+if delete_dry_run="$(bash "$ROOT/bin/knot-planning.sh" cleanup delete --dry-run \
   --root "$planning_root" \
   --scope direct \
   --actor-user direct-user \
   --now 2026-01-10T00:00:00Z)" &&
-  archive_path="$(printf '%s\n' "$archive_output" | sed -n 's/^archived: //p')" &&
-  [ -f "$archive_path/archive-manifest.tsv" ] &&
+  printf '%s\n' "$delete_dry_run" | grep -Fq "delete task-direct" &&
+  [ -d "$direct_task" ]; then
+  ok "planning cleanup dry-run reports closed delete candidate"
+else
+  fail "planning cleanup did not report closed delete candidate"
+fi
+
+if delete_output="$(bash "$ROOT/bin/knot-planning.sh" cleanup delete --apply \
+  --root "$planning_root" \
+  --scope direct \
+  --actor-user direct-user \
+  --now 2026-01-10T00:00:00Z)" &&
+  printf '%s\n' "$delete_output" | grep -Fq "deleted: task-direct" &&
   [ ! -e "$direct_task" ]; then
-  ok "planning cleanup archives closed task with manifest"
+  ok "planning cleanup deletes closed task after retention window"
 else
-  fail "planning cleanup did not archive closed task"
-fi
-
-archive_plan_backup="$TMP_PARENT/archive-task-plan-backup.md"
-cp "$archive_path/task_plan.md" "$archive_plan_backup"
-printf '%s\n' '# changed after manifest' >> "$archive_path/task_plan.md"
-if bash "$ROOT/bin/knot-planning.sh" restore \
-  --root "$planning_root" \
-  --scope direct \
-  --actor-user direct-user \
-  --task-id task-direct >/dev/null 2>&1; then
-  fail "planning helper restored archive with invalid manifest hash"
-else
-  ok "planning helper rejects restore with invalid manifest hash"
-fi
-cp "$archive_plan_backup" "$archive_path/task_plan.md"
-
-if restore_output="$(bash "$ROOT/bin/knot-planning.sh" restore \
-  --root "$planning_root" \
-  --scope direct \
-  --actor-user direct-user \
-  --task-id task-direct)" &&
-  [ "$restore_output" = "$direct_task" ] &&
-  [ -f "$direct_task/task_plan.md" ]; then
-  ok "planning helper restores archived task"
-else
-  fail "planning helper did not restore archived task"
-fi
-
-bash "$ROOT/bin/knot-planning.sh" cleanup archive --apply \
-  --root "$planning_root" \
-  --scope direct \
-  --actor-user direct-user \
-  --now 2026-01-10T00:00:00Z >/dev/null
-archive_path="$planning_root/workspace/users/direct-user/.state/task-archives/task-direct"
-cp "$archive_path/task_plan.md" "$archive_plan_backup"
-printf '%s\n' '# changed before deletion' >> "$archive_path/task_plan.md"
-if bash "$ROOT/bin/knot-planning.sh" cleanup expire --apply \
-  --root "$planning_root" \
-  --scope direct \
-  --actor-user direct-user \
-  --now 2026-04-15T00:00:00Z >/dev/null 2>&1; then
-  fail "planning cleanup expired archive with invalid manifest hash"
-else
-  ok "planning cleanup rejects expiration with invalid manifest hash"
-fi
-cp "$archive_plan_backup" "$archive_path/task_plan.md"
-tombstone_escape="$TMP_PARENT/planning-tombstone-escape.txt"
-printf '%s\n' 'outside tombstone sentinel' > "$tombstone_escape"
-mkdir -p "$planning_root/workspace/users/direct-user/.state/task-tombstones"
-ln -s "$tombstone_escape" "$planning_root/workspace/users/direct-user/.state/task-tombstones/task-direct.json"
-if bash "$ROOT/bin/knot-planning.sh" cleanup expire --apply \
-  --root "$planning_root" \
-  --scope direct \
-  --actor-user direct-user \
-  --now 2026-04-15T00:00:00Z >/dev/null 2>&1; then
-  fail "planning cleanup wrote tombstone through symlink"
-elif grep -Fxq 'outside tombstone sentinel' "$tombstone_escape" &&
-  [ -d "$archive_path" ]; then
-  ok "planning cleanup rejects symlinked tombstone target"
-else
-  fail "planning cleanup modified outside tombstone target or archive on symlink denial"
-fi
-rm -f "$planning_root/workspace/users/direct-user/.state/task-tombstones/task-direct.json"
-
-if expire_output="$(bash "$ROOT/bin/knot-planning.sh" cleanup expire --apply \
-  --root "$planning_root" \
-  --scope direct \
-  --actor-user direct-user \
-  --now 2026-04-15T00:00:00Z)" &&
-  printf '%s\n' "$expire_output" | grep -Fq "expired: task-direct" &&
-  [ -f "$planning_root/workspace/users/direct-user/.state/task-tombstones/task-direct.json" ] &&
-  jq -e '.manifest_sha256 | test("^[0-9a-f]{64}$")' "$planning_root/workspace/users/direct-user/.state/task-tombstones/task-direct.json" >/dev/null; then
-  ok "planning cleanup expires archived task after retention window"
-else
-  fail "planning cleanup did not expire archived task after retention window"
+  fail "planning cleanup did not delete closed task after retention window"
 fi
 
 stale_task="$(bash "$ROOT/bin/knot-planning.sh" init \
@@ -227,10 +156,11 @@ if stale_output="$(bash "$ROOT/bin/knot-planning.sh" cleanup scan \
   --actor-user direct-user \
   --now 2026-01-10T00:00:00Z)" &&
   printf '%s\n' "$stale_output" | grep -Fq "stale task-stale" &&
+  ! printf '%s\n' "$stale_output" | grep -Fq "stale task-current" &&
   [ -d "$stale_task" ]; then
-  ok "planning cleanup reports stale task without archiving it"
+  ok "planning cleanup reports stale task without deleting it"
 else
-  fail "planning cleanup did not report stale task without archiving it"
+  fail "planning cleanup did not report stale task without deleting it"
 fi
 
 if bash "$ROOT/bin/knot-planning.sh" init \

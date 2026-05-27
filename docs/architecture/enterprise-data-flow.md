@@ -10,7 +10,7 @@ where outputs may leave, and which deterministic boundary events are recorded.
 |---|---|---|---|
 | IM message flow | Group or direct messages from a configured IM platform | IM glue layer resolves identity and launches Codex from the direct user workspace or authorized current group workspace | A Codex session in `workspace/users/<user_slug>/` for direct chats, or `workspace/groups/<group_slug>/` for group chats |
 | File flow | Uploaded files, generated files, and agent-created artifacts | Workspace layout plus `bin/knot-deliver.sh` and `bin/knot-attachment.sh` enforce scope-specific deliverables boundaries | Local deliverables and optional IM attachment blocks from the current direct user or authorized group `deliverables/` directory |
-| Knowledge flow | Approved sources, admin feedback, and reviewed corrections | GitHub branch protection, explicit admin review, visible diff, `bin/knot-knowledge.sh`, and `workspace/admin/knowledge-feedback.md` | Durable shared knowledge on the approved `main` ref, mirrored locally under `workspace/knowledge/vault/` by default |
+| Knowledge flow | Approved sources, admin feedback, and reviewed corrections | GitHub branch protection, explicit admin review, visible diff, local proposal bundles, and `workspace/admin/knowledge-feedback.md` | Durable shared knowledge on the approved `main` ref, mirrored locally under `workspace/knowledge/vault/` by default |
 | Audit flow | Deterministic boundary actions from Knot helpers | `bin/knot-audit.sh` writes compact rows that follow `docs/schemas/audit-event.schema.json` | `events.jsonl` records under `workspace/conversations/<platform>/chat_<hash>/` |
 
 ## Boundary Rules
