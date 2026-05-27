@@ -91,6 +91,18 @@ apply_working_style_patch() {
     --conversation-dir "$style_conversation_dir"
 }
 
+write_style_patch() {
+  local target="$1"
+  local base_sha256="$2"
+  local patch_file="${3:-$style_patch_file}"
+
+  {
+    printf 'target: %s\n' "$target"
+    printf 'base_sha256: %s\n\n' "$base_sha256"
+    cat
+  } > "$patch_file"
+}
+
 assert_style_patch_denied_unchanged() {
   local label="$1"
   local expected_reason="$2"
@@ -193,10 +205,7 @@ else
 fi
 
 group_style_base="$(file_sha256 "$style_file")"
-cat > "$group_style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $group_style_base
-
+write_style_patch "$style_target_rel" "$group_style_base" "$group_style_patch_file" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,1 +9,2 @@
@@ -268,10 +277,7 @@ fi
 implicit_group_apply_backup="$style_user_workspace/.implicit-group-apply.backup"
 cp "$style_file" "$implicit_group_apply_backup"
 implicit_group_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $implicit_group_base
-
+write_style_patch "$style_target_rel" "$implicit_group_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,1 +9,2 @@
@@ -612,10 +618,7 @@ else
 fi
 
 style_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,1 +9,2 @@
@@ -634,10 +637,7 @@ else
 fi
 
 style_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -1,10 +1,2 @@
@@ -657,10 +657,7 @@ assert_style_patch_denied_unchanged \
   working_style_content_denied
 
 style_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,3 @@
@@ -689,10 +686,7 @@ else
   fail "working style apply left mutation after audit failure"
 fi
 
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: 0000000000000000000000000000000000000000000000000000000000000000
-
+write_style_patch "$style_target_rel" "0000000000000000000000000000000000000000000000000000000000000000" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,3 @@
@@ -705,10 +699,7 @@ assert_style_patch_denied_unchanged \
   working_style_patch_conflict
 
 style_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,3 @@
@@ -722,10 +713,7 @@ assert_style_patch_denied_unchanged \
   working_style_patch_conflict
 rmdir "$style_user_workspace/.knot/style-apply.lock"
 
-cat > "$style_patch_file" <<EOF
-target: workspace/users/direct-user/../memory/style.md
-base_sha256: $style_base
-
+write_style_patch "workspace/users/direct-user/../memory/style.md" "$style_base" <<EOF
 --- a/workspace/users/direct-user/../memory/style.md
 +++ b/workspace/users/direct-user/../memory/style.md
 @@ -1,1 +1,2 @@
@@ -736,10 +724,7 @@ assert_style_patch_denied_unchanged \
   "working style rejects traversal patch target" \
   working_style_patch_invalid
 
-cat > "$style_patch_file" <<EOF
-target: $style_file
-base_sha256: $style_base
-
+write_style_patch "$style_file" "$style_base" <<EOF
 --- a/$style_file
 +++ b/$style_file
 @@ -9,2 +9,3 @@
@@ -751,10 +736,7 @@ assert_style_patch_denied_unchanged \
   "working style rejects absolute patch target" \
   working_style_patch_invalid
 
-cat > "$style_patch_file" <<EOF
-target: workspace/users/direct-user/notes.md
-base_sha256: $style_base
-
+write_style_patch "workspace/users/direct-user/notes.md" "$style_base" <<EOF
 --- a/workspace/users/direct-user/notes.md
 +++ b/workspace/users/direct-user/notes.md
 @@ -1,1 +1,2 @@
@@ -765,10 +747,7 @@ assert_style_patch_denied_unchanged \
   "working style rejects non-style patch target" \
   working_style_patch_invalid
 
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -99,1 +99,2 @@
@@ -780,10 +759,7 @@ assert_style_patch_denied_unchanged \
   working_style_patch_invalid
 
 style_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,4 @@
@@ -797,10 +773,7 @@ assert_style_patch_denied_unchanged \
   working_style_content_denied
 
 style_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,3 @@
@@ -813,10 +786,7 @@ assert_style_patch_denied_unchanged \
   working_style_content_denied
 
 style_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,3 @@
@@ -829,10 +799,7 @@ assert_style_patch_denied_unchanged \
   working_style_content_denied
 
 style_base="$(file_sha256 "$style_file")"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,3 @@
@@ -846,10 +813,7 @@ assert_style_patch_denied_unchanged \
 
 style_base="$(file_sha256 "$style_file")"
 long_style_line="$(printf 'x%.0s' $(seq 1 1700))"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $style_base
-
+write_style_patch "$style_target_rel" "$style_base" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,3 @@
@@ -886,10 +850,7 @@ style_symlink_outside="$TMP_PARENT/working-style-outside.md"
 cp "$style_file" "$style_symlink_outside"
 rm "$style_file"
 ln -s "$style_symlink_outside" "$style_file"
-cat > "$style_patch_file" <<EOF
-target: $style_target_rel
-base_sha256: $(file_sha256 "$style_symlink_outside")
-
+write_style_patch "$style_target_rel" "$(file_sha256 "$style_symlink_outside")" <<EOF
 --- a/$style_target_rel
 +++ b/$style_target_rel
 @@ -9,2 +9,3 @@
