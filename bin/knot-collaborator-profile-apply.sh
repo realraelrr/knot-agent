@@ -249,15 +249,4 @@ if ! knot_audit_record collab.profile.patch.applied recorded; then
 fi
 rm -f "$TMP_BACKUP"
 TMP_BACKUP=""
-if [ -x "$KNOT_COMMAND_ROOT/bin/knot-collaborator-profile-lint.sh" ] &&
-  ! bash "$KNOT_COMMAND_ROOT/bin/knot-collaborator-profile-lint.sh" lint \
-    --root "$ROOT" \
-    --profile "$TARGET_PATH" \
-    --require-structured \
-    --write-sidecar \
-    --scope direct \
-    --actor-user "$USER_SLUG" \
-    --user-workspace "$USER_WORKSPACE" >/dev/null 2>&1; then
-  printf 'WARN collaborator profile applied but conflict sidecar refresh failed\n' >&2
-fi
 printf '%s\n' "$TARGET_PATH"

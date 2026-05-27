@@ -146,7 +146,7 @@ collab_profile_validate_actor_scope() {
   if [ "$SCOPE" = "group" ]; then
     [ -n "$GROUP_SLUG" ] ||
       collab_profile_deny collab_profile_workspace_mismatch "group scope requires --group-slug or KNOT_GROUP_SLUG"
-    permissions_can_use_group "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG" ||
+    permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG" ||
       collab_profile_deny collab_profile_workspace_mismatch "group workspace is not authorized for this actor/context"
     expected_group_workspace="$ROOT/workspace/groups/$GROUP_SLUG"
     expected_actor_workspace="$expected_group_workspace/work/$USER_SLUG"

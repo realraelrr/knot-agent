@@ -40,7 +40,6 @@ workspace/users/<user_slug>/
   .knot/
     collaborator-profile-pack.md
     collaborator-profile.patch
-    collaborator-profile-conflicts.json
 
 workspace/groups/<group_slug>/work/<user_slug>/
   .knot/
@@ -57,9 +56,6 @@ session and is never a durable source.
 
 `.knot/collaborator-profile.patch` is temporary agent output. It is applied only
 through the deterministic helper.
-
-`.knot/collaborator-profile-conflicts.json` is a redacted lint sidecar for
-deterministic conflict hints. It must not contain full preference bullets.
 
 ## Profile Contents
 
@@ -80,6 +76,7 @@ frontmatter keys. Body sections are fixed to `Communication`,
 `Evidence And Review`, `Delivery`, `Recurring Workflows`, and `Avoid`, with at
 most five bullets per section. Profiles over 1200 characters should produce a
 compact recommendation, but compaction is still only a patch proposal.
+Lint stays structural: it does not infer or persist semantic conflict state.
 
 ## Runtime Flow
 

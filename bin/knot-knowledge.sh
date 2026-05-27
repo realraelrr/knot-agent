@@ -13,7 +13,6 @@ COMMAND="${1:-}"
 REPO_URL="${KNOT_KNOWLEDGE_REPO_URL:-}"
 MIRROR="${KNOT_KNOWLEDGE_LOCAL_MIRROR:-}"
 APPROVED_REF="${KNOT_KNOWLEDGE_APPROVED_REF:-main}"
-PROPOSAL_REMOTE="${KNOT_KNOWLEDGE_PROPOSAL_REMOTE:-}"
 SOURCE=""
 TITLE="proposal"
 PLATFORM="${KNOT_PLATFORM:-}"
@@ -30,14 +29,12 @@ Commands:
   sync-approved
   propose --source DIR [--title NAME]
   admin-review
-  backup-check
 
 Options:
   --root DIR
   --repo-url URL
   --mirror DIR
   --approved-ref REF
-  --proposal-remote NAME
   --source DIR
   --title NAME
   --platform NAME
@@ -99,6 +96,19 @@ copy_proposal_files() {
   knot_manifest_write_dir "$dest_dir/files" "$dest_dir/manifest.tsv"
 }
 
+knot_knowledge_path_is_high_risk() {
+  local path="$1"
+
+  case "$path" in
+    .github/*|CODEOWNERS|*/CODEOWNERS|docs/schemas/*|bin/knot-*|lib/knot/*|.skills/*|components/knot-skills/*|workspace/admin/permissions.md)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 status_has_high_risk_path() {
   local status="$1"
   local line
@@ -113,11 +123,11 @@ status_has_high_risk_path() {
       *" -> "*)
         old_path="${path%% -> *}"
         new_path="${path##* -> }"
-        knot_path_is_high_risk "$old_path" && return 0
-        knot_path_is_high_risk "$new_path" && return 0
+        knot_knowledge_path_is_high_risk "$old_path" && return 0
+        knot_knowledge_path_is_high_risk "$new_path" && return 0
         ;;
       *)
-        knot_path_is_high_risk "$path" && return 0
+        knot_knowledge_path_is_high_risk "$path" && return 0
         ;;
     esac
   done <<EOF
@@ -136,8 +146,6 @@ while [ "$#" -gt 0 ]; do
       shift; [ "$#" -gt 0 ] || die "--mirror requires a value"; MIRROR="$1" ;;
     --approved-ref)
       shift; [ "$#" -gt 0 ] || die "--approved-ref requires a value"; APPROVED_REF="$1" ;;
-    --proposal-remote)
-      shift; [ "$#" -gt 0 ] || die "--proposal-remote requires a value"; PROPOSAL_REMOTE="$1" ;;
     --source)
       shift; [ "$#" -gt 0 ] || die "--source requires a value"; SOURCE="$1" ;;
     --title)
@@ -246,15 +254,8 @@ case "$COMMAND" in
       printf 'actor\t%s\n' "$USER_SLUG"
       printf 'role\t%s\n' "$ROLE"
       printf 'source\t%s\n' "${SOURCE#"$ROOT/"}"
-      printf 'proposal_remote\t%s\n' "$PROPOSAL_REMOTE"
     } > "$proposal_dir/proposal.tsv"
     printf 'proposal: %s\n' "$proposal_dir"
-    ;;
-  backup-check)
-    [ -d "$MIRROR/.git" ] || die "knowledge mirror is not a git repository: $MIRROR"
-    printf 'mirror=%s\n' "$MIRROR"
-    printf 'approved_ref=%s\n' "$APPROVED_REF"
-    git -C "$MIRROR" remote -v
     ;;
   *)
     die "unknown command: $COMMAND"

@@ -56,10 +56,8 @@ In the default local setup, Knot's deterministic helpers reject:
   document blocks, secrets-looking assignments, or content beyond the bounded
   profile size;
 - structured collaborator profiles with invalid frontmatter, invalid sections,
-  too many bullets, or deterministic conflict sidecars containing raw
-  preference text;
-- planning archive or expiration of active, pinned, open-phase, or current
-  task-pointer plans;
+  or too many bullets;
+- planning archive or expiration of active or current task-pointer plans;
 - local knowledge proposal writes that target the approved mirror or are made
   with member credentials carrying GitHub tokens.
 
@@ -133,8 +131,8 @@ helper contract.
 - Knowledge changes require a human-reviewable diff, approval status, execution
   evidence, GitHub protected-branch enforcement, and a row in
   `workspace/admin/knowledge-feedback.md`.
-- Member or proposal-bot credentials must not have merge, approve, or `main`
-  write permission on the knowledge repo.
+- Member credentials must not have merge, approve, or `main` write permission
+  on the knowledge repo.
 - Live IM rollout requires platform smoke tests because local helper tests do
   not prove platform identity mapping.
 - Permission-table changes must be reviewed as access-control changes, even

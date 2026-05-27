@@ -256,19 +256,6 @@ path_is_under() {
   esac
 }
 
-knot_path_is_high_risk() {
-  local path="$1"
-
-  case "$path" in
-    .github/*|CODEOWNERS|*/CODEOWNERS|docs/schemas/*|bin/knot-*|lib/knot/*|.skills/*|components/knot-skills/*|workspace/admin/permissions.md)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
 knot_atomic_replace() {
   local source="$1"
   local target="$2"

@@ -91,7 +91,6 @@ symlink_source="$planning_root/symlink-source"
 symlink_task="$planning_root/workspace/users/direct-user/.state/tasks/task-link"
 mkdir -p "$symlink_source"
 cp "$direct_task/task_plan.md" "$symlink_source/task_plan.md"
-perl -0pi -e 's/\*\*Status:\*\* in_progress/**Status:** complete/g; s/\*\*Status:\*\* pending/**Status:** complete/g' "$symlink_source/task_plan.md"
 jq '.status = "closed" | .closed_at = "2026-01-01T00:00:00Z"' "$direct_task/task.meta.json" > "$symlink_source/task.meta.json"
 ln -s "$symlink_source" "$symlink_task"
 if bash "$ROOT/bin/knot-planning.sh" cleanup archive --apply \
@@ -105,7 +104,6 @@ else
 fi
 rm -f "$symlink_task" "$planning_root/workspace/users/direct-user/.state/task-archives/task-link"
 
-perl -0pi -e 's/\*\*Status:\*\* in_progress/**Status:** complete/g; s/\*\*Status:\*\* pending/**Status:** complete/g' "$direct_task/task_plan.md"
 if bash "$ROOT/bin/knot-planning.sh" close \
   --root "$planning_root" \
   --scope direct \

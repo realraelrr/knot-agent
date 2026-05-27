@@ -217,35 +217,3 @@ permissions_group_authorized() {
   groups="$(permissions_groups_for_actor_chat "$root" "$platform" "$user_id" "$chat_id" "$identity_key")"
   printf '%s\n' "$groups" | grep -Fxq "$group_slug"
 }
-
-permissions_can_approve_knowledge() {
-  local role
-
-  role="$(permissions_actor_role_or_default "$1" "$2" "$3" "$4" "$5" member)"
-  [ "$role" = "admin" ]
-}
-
-permissions_can_manage_system() {
-  local role
-
-  role="$(permissions_actor_role_or_default "$1" "$2" "$3" "$4" "$5" member)"
-  [ "$role" = "admin" ] || [ "$role" = "operator" ]
-}
-
-permissions_can_use_group() {
-  permissions_group_authorized "$@"
-}
-
-permissions_can_apply_profile() {
-  local root="$1"
-  local platform="$2"
-  local user_id="$3"
-  local identity_key="$4"
-  local actor_workspace="$5"
-  local scope="$6"
-  local resolved
-
-  [ "$scope" = "direct" ] || return 1
-  resolved="$(permissions_unique_or_empty "actor identity" "$(permissions_actor_workspaces "$root" "$platform" "$user_id" "$identity_key")" 1)"
-  [ "$resolved" = "$actor_workspace" ]
-}

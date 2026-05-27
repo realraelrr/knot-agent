@@ -22,7 +22,7 @@ usage() {
 Usage: bash bin/knot-planning.sh COMMAND [options]
 
 Commands:
-  init | resolve | close | pin | unpin | restore
+  init | resolve | close | restore
   cleanup scan
   cleanup archive --dry-run|--apply
   cleanup expire --dry-run|--apply
@@ -131,12 +131,11 @@ EOF
 write_meta() {
   local path="$1"
   local status="$2"
-  local pinned="$3"
-  local created_at="$4"
-  local updated_at="$5"
-  local closed_at="${6:-}"
-  local archived_at="${7:-}"
-  local expires_at="${8:-}"
+  local created_at="$3"
+  local updated_at="$4"
+  local closed_at="${5:-}"
+  local archived_at="${6:-}"
+  local expires_at="${7:-}"
 
   cat > "$path" <<EOF
 {
@@ -145,7 +144,6 @@ write_meta() {
   "actor_user": "$USER_SLUG",
   "group_slug": "$GROUP_SLUG",
   "status": "$status",
-  "pinned": $pinned,
   "created_at": "$created_at",
   "updated_at": "$updated_at",
   "closed_at": "$closed_at",
@@ -163,11 +161,6 @@ update_meta_field() {
   tmp="$(mktemp "$file.tmp.XXXXXX")"
   jq "$jq_expr" "$file" > "$tmp"
   mv "$tmp" "$file"
-}
-
-has_open_phase() {
-  local dir="$1"
-  grep -Eq '\*\*Status:\*\* (pending|in_progress)' "$dir/task_plan.md"
 }
 
 assert_task_tree_safe() {
@@ -206,7 +199,6 @@ report_stale_one() {
   local id
   local meta
   local status
-  local pinned
   local updated_at
   local updated_epoch
   local now_epoch
@@ -217,10 +209,8 @@ report_stale_one() {
   meta="$dir/task.meta.json"
   [ -f "$meta" ] || return 0
   status="$(json_value "$meta" status)"
-  pinned="$(jq -r '.pinned // false' "$meta")"
   updated_at="$(json_value "$meta" updated_at)"
   [ "$status" = "active" ] || return 0
-  [ "$pinned" != "true" ] || return 0
   ! is_active_task "$id" || return 0
   [ -n "$updated_at" ] || return 0
   updated_epoch="$(epoch_utc "$updated_at")"
@@ -235,7 +225,6 @@ archive_one() {
   local id
   local meta
   local status
-  local pinned
   local closed_at
   local closed_epoch
   local now_epoch
@@ -248,12 +237,9 @@ archive_one() {
   meta="$dir/task.meta.json"
   [ -f "$meta" ] || return 0
   status="$(json_value "$meta" status)"
-  pinned="$(jq -r '.pinned // false' "$meta")"
   closed_at="$(json_value "$meta" closed_at)"
   [ "$status" = "closed" ] || return 0
-  [ "$pinned" != "true" ] || return 0
   ! is_active_task "$id" || return 0
-  ! has_open_phase "$dir" || return 0
   [ -n "$closed_at" ] || return 0
   closed_epoch="$(epoch_utc "$closed_at")"
   now_epoch="$(epoch_utc "$NOW")"
@@ -281,7 +267,6 @@ expire_one() {
   local dir="$1"
   local id
   local meta
-  local pinned
   local status
   local expires_at
   local expires_epoch
@@ -295,8 +280,6 @@ expire_one() {
   [ -f "$meta" ] || return 0
   status="$(json_value "$meta" status)"
   [ "$status" = "archived" ] || return 0
-  pinned="$(jq -r '.pinned // false' "$meta")"
-  [ "$pinned" != "true" ] || return 0
   ! is_active_task "$id" || return 0
   expires_at="$(json_value "$meta" expires_at)"
   [ -n "$expires_at" ] || return 0
@@ -373,7 +356,7 @@ case "$COMMAND" in
     ensure_dir_no_symlink "$(task_root)" "planning task root"
     mkdir -p "$dir"
     write_default_plan "$dir"
-    write_meta "$dir/task.meta.json" active false "$NOW" "$NOW"
+    write_meta "$dir/task.meta.json" active "$NOW" "$NOW"
     printf '%s\n' "$TASK_ID" > "$(active_file)"
     printf '%s\n' "$dir"
     ;;
@@ -399,20 +382,10 @@ case "$COMMAND" in
     dir="$(task_dir)"
     assert_task_tree_safe "$dir"
     [ -f "$dir/task.meta.json" ] || die "task metadata is missing: $dir"
-    ! has_open_phase "$dir" || die "cannot close task with pending or in_progress phases"
     update_meta_field "$dir/task.meta.json" ".status = \"closed\" | .closed_at = \"$NOW\" | .updated_at = \"$NOW\""
     if [ -f "$(active_file)" ] && [ "$(tr -d '\r\n' < "$(active_file)")" = "$TASK_ID" ]; then
       rm -f "$(active_file)"
     fi
-    printf '%s\n' "$dir"
-    ;;
-  pin|unpin)
-    dir="$(task_dir)"
-    assert_task_tree_safe "$dir"
-    [ -f "$dir/task.meta.json" ] || die "task metadata is missing: $dir"
-    value=false
-    [ "$COMMAND" = "pin" ] && value=true
-    update_meta_field "$dir/task.meta.json" ".pinned = $value | .updated_at = \"$NOW\""
     printf '%s\n' "$dir"
     ;;
   restore)

@@ -24,10 +24,11 @@ where outputs may leave, and which deterministic boundary events are recorded.
   `workspace/groups/<group_slug>/work/<user_slug>/`; this is an agent protocol,
   not OS-level write isolation.
 - Durable knowledge changes require explicit admin review; feedback alone is
-  not a verified fact. Members should create proposal PRs or patch bundles,
-  never write the approved mirror directly.
+  not a verified fact. Members should create local proposal bundles, never
+  write the approved mirror directly.
 - Knot runtime reads only the approved knowledge mirror or a pinned approved
-  commit. Proposal branches and forks are not durable knowledge sources.
+  commit. Local proposal bundles and unapproved refs are not durable knowledge
+  sources.
 - Audit rows record compact boundary evidence. Codex session history remains
   the transcript source of truth for the full conversation.
 

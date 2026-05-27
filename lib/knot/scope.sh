@@ -19,29 +19,6 @@ knot_scope_group_workspace() {
   printf '%s\n' "$root/workspace/groups/$group_slug"
 }
 
-knot_scope_workspace() {
-  local root="$1"
-  local scope="$2"
-  local actor_user="$3"
-  local group_slug="${4:-}"
-
-  case "$scope" in
-    root)
-      printf '%s\n' "$root/workspace"
-      ;;
-    direct)
-      knot_scope_user_workspace "$root" "$actor_user"
-      ;;
-    group)
-      [ -n "$group_slug" ] || die "--group-slug or KNOT_GROUP_SLUG is required"
-      knot_scope_group_workspace "$root" "$group_slug"
-      ;;
-    *)
-      die "--scope must be root, direct, or group"
-      ;;
-  esac
-}
-
 knot_scope_actor_workspace() {
   local root="$1"
   local scope="$2"
@@ -99,24 +76,4 @@ knot_scope_task_archive_root() {
 
 knot_scope_task_tombstone_root() {
   printf '%s\n' "$(knot_scope_state_root "$@")/task-tombstones"
-}
-
-knot_scope_deliverables_root() {
-  local root="$1"
-  local target="$2"
-  local actor_user="$3"
-  local group_slug="${4:-}"
-
-  case "$target" in
-    user)
-      printf '%s\n' "$(knot_scope_user_workspace "$root" "$actor_user")/deliverables"
-      ;;
-    group)
-      [ -n "$group_slug" ] || die "--target group requires --group-slug"
-      printf '%s\n' "$(knot_scope_group_workspace "$root" "$group_slug")/deliverables"
-      ;;
-    *)
-      die "--target must be user or group"
-      ;;
-  esac
 }

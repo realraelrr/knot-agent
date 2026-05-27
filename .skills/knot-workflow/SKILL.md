@@ -79,9 +79,8 @@ task crosses an authorization boundary.
   only a local path when the user asked to receive the file in IM.
 - Knowledge feedback from members: append a row to
   `workspace/admin/knowledge-feedback.md` and use `bin/knot-knowledge.sh propose`
-  to create a proposal bundle or PR source. Durable changes need
-  `Diff`, `Status`, and `Execution`; only explicit admins may run the approval
-  path.
+  to create a local proposal bundle. Durable changes need `Diff`, `Status`,
+  and `Execution`; only explicit admins may run the approval path.
 
 ## Learning Routes
 

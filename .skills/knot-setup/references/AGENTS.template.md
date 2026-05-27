@@ -94,11 +94,11 @@ Shared durable knowledge is approved from the configured GitHub knowledge repo:
 the default local mirror. Knot should read only the approved mirror or a pinned
 approved commit, never a proposal branch.
 
-Use `bin/knot-knowledge.sh` for status, approved sync, member proposals,
-admin review, and backup checks. Only identities with explicit `Role=admin` in
-`workspace/admin/permissions.md` may approve durable knowledge; `operator` does
-not imply knowledge approval. Members may create proposal branches, fork PRs, or
-patch bundles only.
+Use `bin/knot-knowledge.sh` for status, approved mirror sync, local proposal
+bundles, and admin review reports. Only identities with explicit `Role=admin`
+in `workspace/admin/permissions.md` may approve durable knowledge; `operator`
+does not imply knowledge approval. Members may create local proposal bundles
+only.
 
 Keep conversion sidecars and knowledge ingest decoupled. Treat feedback as a
 signal, not verified fact. Material knowledge changes require admin approval, a

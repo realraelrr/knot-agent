@@ -23,14 +23,11 @@ if [ "$admin_role" = "admin" ] &&
   [ "$member_role" = "member" ] &&
   [ "$admin_workspace" = "admin-user" ] &&
   [ "$member_group" = "product-room" ] &&
-  permissions_can_approve_knowledge "$governance_root" feishu ou/admin feishu:user:admin admin-user &&
-  ! permissions_can_approve_knowledge "$governance_root" feishu ou/member feishu:user:member member-user &&
-  permissions_can_apply_profile "$governance_root" feishu ou/member feishu:user:member member-user direct &&
-  ! permissions_can_apply_profile "$governance_root" feishu ou/member feishu:user:member member-user group &&
-  permissions_can_use_group "$governance_root" feishu ou/member oc/product feishu:user:member product-room; then
-  ok "governance permissions predicates share one Role and Scope contract"
+  permissions_group_authorized "$governance_root" feishu ou/member oc/product feishu:user:member product-room &&
+  ! permissions_group_authorized "$governance_root" feishu ou/member oc/other feishu:user:member product-room; then
+  ok "governance permissions resolve identity, roles, and groups consistently"
 else
-  fail "governance permissions predicates did not resolve expected roles and scopes"
+  fail "governance permissions did not resolve expected roles and groups"
 fi
 
 if workspace_output="$(bash "$ROOT/bin/knot-workspace.sh" \

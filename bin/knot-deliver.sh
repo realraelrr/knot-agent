@@ -166,7 +166,7 @@ esac
 
 [ -f "$SOURCE_PATH" ] || deny_delivery invalid_resource
 ROOT="$(cd "$ROOT" && pwd)"
-if [ -n "$GROUP_SLUG" ] && ! permissions_can_use_group "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
+if [ -n "$GROUP_SLUG" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
   deny_group_access
 fi
 SOURCE_ABS="$(resolve_path "$SOURCE_PATH")" || die "cannot resolve file path: $SOURCE_PATH"

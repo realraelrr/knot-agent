@@ -33,11 +33,7 @@ EOF
 
 if lint_output="$(bash "$ROOT/bin/knot-collaborator-profile-lint.sh" lint \
   --root "$profile_lifecycle_root" \
-  --profile "$valid_profile" \
-  --write-sidecar \
-  --scope direct \
-  --actor-user profile-user \
-  --user-workspace "$profile_lifecycle_root/workspace/users/profile-user" 2>&1)" &&
+  --profile "$valid_profile" 2>&1)" &&
   printf '%s\n' "$lint_output" | grep -Fq "schema=ok"; then
   ok "collaborator profile lint accepts valid schema"
 else
@@ -65,8 +61,52 @@ else
   ok "collaborator profile lint rejects invalid schema"
 fi
 
-conflict_profile="$profile_lifecycle_root/workspace/users/profile-user/collaboration/conflict.md"
-cat > "$conflict_profile" <<'EOF'
+secret_profile="$profile_lifecycle_root/workspace/users/profile-user/collaboration/secret.md"
+cat > "$secret_profile" <<'EOF'
+---
+version: 1
+updated: 2026-01-01
+reviewed: 2026-01-01
+---
+# Collaborator Profile
+
+## Communication
+- api_key: should-not-land
+EOF
+
+if bash "$ROOT/bin/knot-collaborator-profile-lint.sh" lint \
+  --root "$profile_lifecycle_root" \
+  --profile "$secret_profile" >/dev/null 2>&1; then
+  fail "collaborator profile lint allowed secrets-looking content"
+else
+  ok "collaborator profile lint rejects secrets-looking content"
+fi
+
+source_block_profile="$profile_lifecycle_root/workspace/users/profile-user/collaboration/source-block.md"
+cat > "$source_block_profile" <<'EOF'
+---
+version: 1
+updated: 2026-01-01
+reviewed: 2026-01-01
+---
+# Collaborator Profile
+
+## Communication
+```transcript
+raw history should not land
+```
+EOF
+
+if bash "$ROOT/bin/knot-collaborator-profile-lint.sh" lint \
+  --root "$profile_lifecycle_root" \
+  --profile "$source_block_profile" >/dev/null 2>&1; then
+  fail "collaborator profile lint allowed raw transcript or source document blocks"
+else
+  ok "collaborator profile lint rejects raw transcript and source-document blocks"
+fi
+
+mixed_preference_profile="$profile_lifecycle_root/workspace/users/profile-user/collaboration/mixed-preference.md"
+cat > "$mixed_preference_profile" <<'EOF'
 ---
 version: 1
 updated: 2026-01-01
@@ -79,32 +119,14 @@ reviewed: 2026-01-01
 - Prefers detailed answers.
 EOF
 
-if conflict_output="$(bash "$ROOT/bin/knot-collaborator-profile-lint.sh" lint \
+if mixed_preference_output="$(bash "$ROOT/bin/knot-collaborator-profile-lint.sh" lint \
   --root "$profile_lifecycle_root" \
-  --profile "$conflict_profile" \
-  --write-sidecar \
-  --scope direct \
-  --actor-user profile-user \
-  --user-workspace "$profile_lifecycle_root/workspace/users/profile-user" 2>&1)" &&
-  printf '%s\n' "$conflict_output" | grep -Fq "conflicts=1" &&
-  [ -f "$profile_lifecycle_root/workspace/users/profile-user/.knot/collaborator-profile-conflicts.json" ] &&
-  ! grep -Fq "Prefers concise answers" "$profile_lifecycle_root/workspace/users/profile-user/.knot/collaborator-profile-conflicts.json"; then
-  ok "collaborator profile lint writes redacted conflict sidecar"
+  --profile "$mixed_preference_profile" 2>&1)" &&
+  printf '%s\n' "$mixed_preference_output" | grep -Fq "schema=ok" &&
+  ! printf '%s\n' "$mixed_preference_output" | grep -Fq "conflicts="; then
+  ok "collaborator profile lint stays structural and does not emit semantic state"
 else
-  fail "collaborator profile lint did not write redacted conflict sidecar"
-fi
-
-if bash "$ROOT/bin/knot-collaborator-profile-lint.sh" lint \
-  --root "$profile_lifecycle_root" \
-  --profile "$valid_profile" \
-  --write-sidecar \
-  --scope direct \
-  --actor-user profile-user \
-  --user-workspace "$profile_lifecycle_root/workspace/users/profile-user" >/dev/null &&
-  [ ! -f "$profile_lifecycle_root/workspace/users/profile-user/.knot/collaborator-profile-conflicts.json" ]; then
-  ok "collaborator profile lint clears stale conflict sidecar"
-else
-  fail "collaborator profile lint did not clear stale conflict sidecar"
+  fail "collaborator profile lint emitted semantic state"
 fi
 
 outside_section_profile="$profile_lifecycle_root/workspace/users/profile-user/collaboration/outside-section.md"
