@@ -282,10 +282,9 @@ finally:
 PY
 }
 
-# Call as parse_knot_context_arg "$@". The shifts below only affect this
-# function's argument copy; callers consume their "$@" via KNOT_ARG_CONSUMED.
+# Field-only parser; callers consume their "$@" via KNOT_ARG_CONSUMED.
 # shellcheck disable=SC2034
-parse_knot_context_arg() {
+parse_knot_context_field_arg() {
   local arg="$1"
   local value
 

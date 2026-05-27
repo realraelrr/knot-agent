@@ -6,6 +6,8 @@ DEFAULT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT="${KNOT_ROOT:-$DEFAULT_ROOT}"
 # shellcheck source=lib/knot/core.sh
 . "$DEFAULT_ROOT/lib/knot/core.sh"
+# shellcheck source=lib/knot/delivery.sh
+. "$DEFAULT_ROOT/lib/knot/delivery.sh"
 PLATFORM="${KNOT_PLATFORM:-}"
 CHAT_ID="${KNOT_CHAT_ID:-}"
 USER_ID="${KNOT_PLATFORM_USER_ID:-}"
@@ -44,64 +46,28 @@ validates the boundary, then prints a cc-connect attachment block.
 EOF
 }
 
-message_for_reason_code() {
-  case "$1" in
-    unauthorized_group)
-      printf 'group workspace is not authorized for this actor/context: %s\n' "$GROUP_SLUG"
-      ;;
-    conversation_source_denied)
-      printf 'cannot deliver files from workspace/conversations\n'
-      ;;
-    outside_deliverables)
-      printf 'source file belongs outside the current user or group workspace\n'
-      ;;
-    invalid_resource)
-      printf 'file not found: %s\n' "$SOURCE_PATH"
-      ;;
-    *)
-      printf 'delivery denied\n'
-      ;;
-  esac
-}
-
-deny_delivery() {
-  local reason_code="$1"
-  knot_audit_deny_delivery "$reason_code" "$KIND" "$SOURCE_PATH" "$(message_for_reason_code "$reason_code")"
-}
-
-deny_group_access() {
-  knot_audit_deny_group_access "$(message_for_reason_code unauthorized_group)"
-}
-
-deny_delivery_with_message() {
-  local reason_code="$1"
-  local message="$2"
-
-  knot_audit_deny_delivery "$reason_code" "$KIND" "$SOURCE_PATH" "$message"
-}
-
 reject_non_current_workspace_source() {
   local path="$1"
 
   [ -n "$path" ] || return 0
 
   if [ -n "$CONVERSATIONS_DIR" ] && path_is_under "$path" "$CONVERSATIONS_DIR"; then
-    deny_delivery conversation_source_denied
+    knot_delivery_deny deliver conversation_source_denied "$KIND" "$SOURCE_PATH" "$GROUP_SLUG"
   fi
 
   if path_is_under "$path" "$USERS_DIR" && ! path_is_under "$path" "$USER_REAL"; then
-    deny_delivery_with_message outside_deliverables "source file belongs to another user workspace"
+    knot_delivery_deny_with_message outside_deliverables "$KIND" "$SOURCE_PATH" "source file belongs to another user workspace"
   fi
   if [ "$SCOPE" = "group" ] && path_is_under "$path" "$USERS_DIR"; then
-    deny_delivery_with_message outside_deliverables "group scope cannot deliver files from user workspaces"
+    knot_delivery_deny_with_message outside_deliverables "$KIND" "$SOURCE_PATH" "group scope cannot deliver files from user workspaces"
   fi
 
   if path_is_under "$path" "$GROUPS_DIR"; then
     if [ -z "$GROUP_REAL" ] || ! path_is_under "$path" "$GROUP_REAL"; then
-      deny_delivery_with_message outside_deliverables "source file belongs to another group workspace"
+      knot_delivery_deny_with_message outside_deliverables "$KIND" "$SOURCE_PATH" "source file belongs to another group workspace"
     fi
     if [ "$SCOPE" = "direct" ]; then
-      deny_delivery_with_message outside_deliverables "direct scope cannot deliver files from group workspaces"
+      knot_delivery_deny_with_message outside_deliverables "$KIND" "$SOURCE_PATH" "direct scope cannot deliver files from group workspaces"
     fi
   fi
 }
@@ -126,7 +92,7 @@ source_is_allowed() {
 }
 
 while [ "$#" -gt 0 ]; do
-  if parse_knot_context_arg "$@"; then
+  if parse_knot_context_field_arg "$@"; then
     shift "$KNOT_ARG_CONSUMED"
     continue
   fi
@@ -175,10 +141,10 @@ case "$KIND" in
     ;;
 esac
 
-[ -f "$SOURCE_PATH" ] || deny_delivery invalid_resource
+[ -f "$SOURCE_PATH" ] || knot_delivery_deny deliver invalid_resource "$KIND" "$SOURCE_PATH" "$GROUP_SLUG"
 ROOT="$(cd "$ROOT" && pwd)"
 if [ -n "$GROUP_SLUG" ] && ! permissions_group_authorized "$ROOT" "$PLATFORM" "$USER_ID" "$CHAT_ID" "$IDENTITY_KEY" "$GROUP_SLUG"; then
-  deny_group_access
+  knot_delivery_deny_group_access deliver "$GROUP_SLUG"
 fi
 SOURCE_ABS="$(resolve_path "$SOURCE_PATH")" || die "cannot resolve file path: $SOURCE_PATH"
 SOURCE_LOCATION_ABS="$(absolute_path "$SOURCE_PATH")" || die "cannot resolve source path location: $SOURCE_PATH"
@@ -212,16 +178,16 @@ case "$TARGET" in
 esac
 
 if [ "$SCOPE" = "group" ] && [ "$TARGET" = "user" ]; then
-  deny_delivery_with_message outside_deliverables "group scope delivery must target current group deliverables"
+  knot_delivery_deny_with_message outside_deliverables "$KIND" "$SOURCE_PATH" "group scope delivery must target current group deliverables"
 fi
 [ "$TARGET" != "group" ] || [ -n "$GROUP_SLUG" ] || die "--target group requires --group-slug"
 
 if [ -L "$USER_WORKSPACE" ] || [ -L "$USER_WORKSPACE/deliverables" ]; then
-  deny_delivery_with_message symlink_denied "current user workspace and deliverables must not be symlinks"
+  knot_delivery_deny_with_message symlink_denied "$KIND" "$SOURCE_PATH" "current user workspace and deliverables must not be symlinks"
 fi
 
 if [ -n "$GROUP_WORKSPACE" ] && { [ -L "$GROUP_WORKSPACE" ] || [ -L "$GROUP_WORKSPACE/deliverables" ]; }; then
-  deny_delivery_with_message symlink_denied "current group workspace and deliverables must not be symlinks"
+  knot_delivery_deny_with_message symlink_denied "$KIND" "$SOURCE_PATH" "current group workspace and deliverables must not be symlinks"
 fi
 
 USER_REAL="$(resolve_path "$USER_WORKSPACE")" || die "cannot resolve user workspace"
@@ -245,7 +211,7 @@ fi
 reject_non_current_workspace_source "$SOURCE_ABS"
 reject_non_current_workspace_source "$SOURCE_LOCATION_ABS"
 source_is_allowed "$SOURCE_ABS" && source_is_allowed "$SOURCE_LOCATION_ABS" ||
-  deny_delivery_with_message outside_deliverables "source file is outside approved delivery sources for the current context"
+  knot_delivery_deny_with_message outside_deliverables "$KIND" "$SOURCE_PATH" "source file is outside approved delivery sources for the current context"
 
 if [ -z "$OUTPUT_NAME" ]; then
   OUTPUT_NAME="$(basename "$SOURCE_ABS")"
