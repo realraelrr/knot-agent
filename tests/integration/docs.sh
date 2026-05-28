@@ -112,21 +112,51 @@ fi
 
 permissions_before="$(mktemp "$TMP_PARENT/permissions-before.XXXXXX")"
 cp "$doc_root/workspace/admin/permissions.md" "$permissions_before"
+
+expect_permissions_schema_rejects() {
+  local label="$1"
+
+  if run_workspace_doc_checks "$doc_root" 0 >/dev/null 2>&1; then
+    fail "permissions schema allowed $label"
+  else
+    ok "permissions schema rejects $label"
+  fi
+  cp "$permissions_before" "$doc_root/workspace/admin/permissions.md"
+}
+
+sed 's/| User | Workspace | Platform |/| User | Space | Platform |/' "$permissions_before" > "$doc_root/workspace/admin/permissions.md"
+expect_permissions_schema_rejects "header mismatch"
+
+cat >>"$doc_root/workspace/admin/permissions.md" <<'EOF'
+| Bad Columns | bad-columns | feishu | ou_bad | | | | Bad Columns | member | session |
+EOF
+expect_permissions_schema_rejects "column count mismatch"
+
+cat >>"$doc_root/workspace/admin/permissions.md" <<'EOF'
+| Bad Workspace | bad/workspace | feishu | ou_bad_workspace | | | feishu:user:bad-workspace | Bad Workspace | member | session | invalid workspace |
+EOF
+expect_permissions_schema_rejects "invalid workspace slug"
+
+cat >>"$doc_root/workspace/admin/permissions.md" <<'EOF'
+| Bad Group | bad-group-user | feishu | ou_bad_group | bad/group | oc_bad_group | feishu:user:bad-group | Bad Group | member | session | invalid group |
+EOF
+expect_permissions_schema_rejects "invalid group slug"
+
+cat >>"$doc_root/workspace/admin/permissions.md" <<'EOF'
+| Bad Platform | bad-platform | slack | U123 | | | slack:user:U123 | Bad Platform | member | session | invalid platform |
+EOF
+expect_permissions_schema_rejects "unknown platform"
+
 sed 's/| Example Admin | admin | knowledge |/| Example Admin | owner | knowledge |/' "$permissions_before" > "$doc_root/workspace/admin/permissions.md"
-if run_workspace_doc_checks "$doc_root" 0 >/dev/null 2>&1; then
-  fail "permissions schema allowed unknown role"
-else
-  ok "permissions schema rejects unknown role"
-fi
-cp "$permissions_before" "$doc_root/workspace/admin/permissions.md"
+expect_permissions_schema_rejects "unknown role"
+
+cat >>"$doc_root/workspace/admin/permissions.md" <<'EOF'
+| Bad Scope | bad-scope | feishu | ou_bad_scope | | | feishu:user:bad-scope | Bad Scope | member | forever | invalid scope |
+EOF
+expect_permissions_schema_rejects "unknown scope"
 
 cat >>"$doc_root/workspace/admin/permissions.md" <<'EOF'
 | Duplicate | duplicate | feishu | ou_duplicate | duplicate-group | oc_duplicate | feishu:user:duplicate | Duplicate | member | session | duplicate test |
-| Duplicate | duplicate | feishu | ou_duplicate | duplicate-group | oc_duplicate | feishu:user:duplicate | Duplicate | member | session | duplicate test |
+| Duplicate Alias | duplicate | feishu | ou_duplicate | duplicate-group | oc_duplicate | feishu:user:duplicate | Duplicate Alias | member | session | duplicate context |
 EOF
-if run_workspace_doc_checks "$doc_root" 0 >/dev/null 2>&1; then
-  fail "permissions schema allowed duplicate actor context"
-else
-  ok "permissions schema rejects duplicate actor context"
-fi
-cp "$permissions_before" "$doc_root/workspace/admin/permissions.md"
+expect_permissions_schema_rejects "duplicate actor context"
