@@ -14,7 +14,7 @@ existing gate to run and when. It does not replace `bin/knot-doctor.sh`, CI,
 | Platform runtime | `bash bin/knot-doctor.sh --platform dingtalk,feishu,wecom,weixin` | Local | Before live IM smoke for configured platforms | No missing runtime files for target platforms |
 | Permission smoke | `bash bin/knot-permission-smoke.sh` | Local/doctor | Before release and before live IM smoke | All permission checks print `OK` |
 | Component pins | `components.lock`, validated by installer and doctor | Local/CI | Any component revision change | Pinned refs match reviewed component commits |
-| cc-connect runtime | `GOMODCACHE=/private/tmp/knot-go-cache go test ./core ./cmd/cc-connect -count=1 -timeout=120s` from `components/cc-connect-local-main` | Component local/CI | Any cc-connect change or cc-connect pin update | Go tests pass |
+| cc-connect runtime | `GOMODCACHE=/private/tmp/knot-go-cache go test -tags no_web ./core ./cmd/cc-connect -count=1 -timeout=120s` from `components/cc-connect-local-main` | Component local/CI | Any cc-connect change or cc-connect pin update | Go tests pass |
 | Live IM smoke | `docs/ops/im-smoke-sop.md` and `bash bin/knot-im-smoke-plan.sh` | Manual | Final release validation for IM behavior | Required rows pass; skipped or blocked rows have explicit reasons |
 
 ## CI Alignment
@@ -53,7 +53,7 @@ For cc-connect changes:
 
 ```bash
 cd components/cc-connect-local-main
-GOMODCACHE=/private/tmp/knot-go-cache go test ./core ./cmd/cc-connect -count=1 -timeout=120s
+GOMODCACHE=/private/tmp/knot-go-cache go test -tags no_web ./core ./cmd/cc-connect -count=1 -timeout=120s
 ```
 
 For final IM release validation:

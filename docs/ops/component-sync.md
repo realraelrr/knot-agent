@@ -35,7 +35,7 @@ Use this when changing `components/cc-connect-local-main` or updating its pin.
 
 ```bash
 cd components/cc-connect-local-main
-GOMODCACHE=/private/tmp/knot-go-cache go test ./core ./cmd/cc-connect -count=1 -timeout=120s
+GOMODCACHE=/private/tmp/knot-go-cache go test -tags no_web ./core ./cmd/cc-connect -count=1 -timeout=120s
 git commit
 git push origin main
 git rev-parse HEAD

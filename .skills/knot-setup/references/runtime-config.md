@@ -77,6 +77,11 @@ queued = "收到，排在当前任务后处理。"
 mode = "interrupt"
 max_depth = 5
 
+# Optional hard cap for one agent turn. cc-connect also has idle_timeout_mins,
+# but that timer resets on tool events; max_turn_time_mins does not.
+# Enable this when long-running commands can otherwise keep a session busy.
+# max_turn_time_mins = 60
+
 [[projects]]
 name = "knot"
 
